@@ -43,8 +43,15 @@ export function ProductsAdmin({ products }: { products: Product[] }) {
 
   async function save() {
     if (!db || !form.title || !form.price) return notify("Title and price are required");
-    const { id, ...rest } = form;
-    const data = { ...rest, price: Number(form.price) };
+    const { id, supplierId, markup, ...rest } = form;
+    const linked = rest.delivery === "supplier";
+    if (linked && !supplierId) return notify("Choose the supplier product first");
+    const data = {
+      ...rest,
+      price: Number(form.price),
+      supplierId: linked ? Number(supplierId) : null,
+      markup: linked ? Number(markup) || 130 : null,
+    };
     if (id) {
       await update(ref(db, `products/${id}`), data);
       notify("Product updated");
@@ -52,9 +59,27 @@ export function ProductsAdmin({ products }: { products: Product[] }) {
       await push(ref(db, "products"), { ...data, salesCount: 0 });
       notify("Product added");
     }
+    if (linked) await runSync();
     setForm(emptyProduct);
     setBulk("");
   }
+
+  async function loadSupplier() {
+    setSupBusy(true);
+    const r = await fetchSupplierCatalogue();
+    setSupBusy(false);
+    if (!r.ok) return notify(r.error || "Supplier not reachable");
+    setSupplier(r.products);
+    if (r.balance) notify(`Supplier balance: ${r.balance.balance} ${r.balance.currency}`);
+  }
+
+  async function runSync() {
+    setSupBusy(true);
+    const r = await syncSupplier();
+    setSupBusy(false);
+    notify(r.ok ? `Supplier synced (${r.updated.length} product(s))` : r.error || "Sync failed");
+  }
+
 
   async function addStock() {
     if (!db || !form.id) return notify("Save the product first, then add stock");
