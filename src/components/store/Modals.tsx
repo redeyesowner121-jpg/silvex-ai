@@ -589,7 +589,9 @@ export function ProductModal() {
         <div className="text-xl font-black text-primary">${product.price}</div>
       </div>
       {product.desc ? (
-        <p className="mb-4 rounded-xl bg-muted/60 p-3 text-sm text-muted-foreground">{product.desc}</p>
+        <p className="mb-4 whitespace-pre-line break-words rounded-xl bg-muted/60 p-3 text-sm leading-relaxed text-muted-foreground">
+          {product.desc}
+        </p>
       ) : null}
 
       <div className="border-t border-border pt-3">
