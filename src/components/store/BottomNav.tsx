@@ -6,10 +6,11 @@ const items = [
   { to: "/products", label: "Shop", icon: "🛍️" },
   { to: "/cart", label: "Cart", icon: "🛒" },
   { to: "/orders", label: "Orders", icon: "📦" },
+  { to: "/profile", label: "Profile", icon: "👤" },
 ] as const;
 
 export function BottomNav() {
-  const { cartCount, user, openModal } = useStore();
+  const { cartCount } = useStore();
 
   return (
     <nav className="fixed bottom-0 left-0 z-40 w-full border-t border-border bg-card">
@@ -31,13 +32,6 @@ export function BottomNav() {
             ) : null}
           </Link>
         ))}
-        <button
-          onClick={() => openModal(user ? "profile" : "auth")}
-          className="flex flex-1 flex-col items-center gap-0.5 py-1 text-[10px] font-bold text-muted-foreground"
-        >
-          <span className="text-lg leading-none">👤</span>
-          Profile
-        </button>
       </div>
     </nav>
   );
