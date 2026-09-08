@@ -40,7 +40,26 @@ export type Profile = {
   isAdmin?: boolean;
 };
 
-export type SiteConfig = { qr?: string; fee?: number; marquee?: string };
+export type Category = { label: string; icon?: string };
+export type SiteConfig = {
+  qr?: string;
+  fee?: number;
+  marquee?: string;
+  siteName?: string;
+  siteTagline?: string;
+  depositAddress?: string;
+  supportLink?: string;
+  minOrder?: number;
+  categories?: Category[];
+};
+
+export const DEFAULT_CATEGORIES: Category[] = [
+  { label: "Service", icon: "⚡" },
+  { label: "Method", icon: "📘" },
+  { label: "Earning", icon: "💸" },
+  { label: "Free", icon: "🎁" },
+];
+
 export type Banner = { title?: string; desc?: string; link?: string };
 export type FlashSale = { pid?: string; price?: number; endTime?: number } | null;
 export type NoticeItem = { id: string; msg: string; date?: string };
