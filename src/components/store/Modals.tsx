@@ -2,9 +2,11 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import {
   createUserWithEmailAndPassword,
+  getRedirectResult,
   GoogleAuthProvider,
   signInWithEmailAndPassword,
   signInWithPopup,
+  signInWithRedirect,
   signOut,
   updateProfile,
 } from "firebase/auth";
@@ -81,12 +83,45 @@ export function AuthModal() {
   });
   const [busy, setBusy] = useState(false);
 
+  function friendly(e: unknown) {
+    const code = (e as { code?: string })?.code || "";
+    const map: Record<string, string> = {
+      "auth/invalid-email": "That email address doesn't look right.",
+      "auth/missing-password": "Please enter your password.",
+      "auth/weak-password": "Password must be at least 6 characters.",
+      "auth/email-already-in-use": "This email already has an account. Try logging in instead.",
+      "auth/invalid-credential": "Wrong email or password.",
+      "auth/invalid-login-credentials": "Wrong email or password.",
+      "auth/wrong-password": "Wrong email or password.",
+      "auth/user-not-found": "No account with this email. Create one first.",
+      "auth/too-many-requests": "Too many attempts. Please wait a minute and try again.",
+      "auth/network-request-failed": "Network problem. Check your connection and try again.",
+      "auth/popup-blocked": "Your browser blocked the Google window. Redirecting instead…",
+      "auth/operation-not-allowed": "Google sign-in is not switched on yet for this store.",
+      "auth/unauthorized-domain": "This website address is not allowed for Google sign-in yet.",
+    };
+    return map[code] || (e instanceof Error ? e.message : "Something went wrong");
+  }
+
   async function submit() {
     if (!auth || !db) return;
+    const mail = email.trim().toLowerCase();
+    if (!mail || !pass) {
+      notify("Please enter your email and password.");
+      return;
+    }
+    if (mode === "signup" && pass.length < 6) {
+      notify("Password must be at least 6 characters.");
+      return;
+    }
+    if (mode === "signup" && !name.trim()) {
+      notify("Please enter your name.");
+      return;
+    }
     setBusy(true);
     try {
       if (mode === "signup") {
-        const res = await createUserWithEmailAndPassword(auth, email, pass);
+        const res = await createUserWithEmailAndPassword(auth, mail, pass);
         await updateProfile(res.user, { displayName: name });
         const myRefCode = (name.slice(0, 3) + Math.floor(100 + Math.random() * 900)).toUpperCase();
         let wallet = 0;
@@ -111,47 +146,87 @@ export function AuthModal() {
             wallet = 20;
           }
         }
-        await set(ref(db, `users/${res.user.uid}`), {
+        await update(ref(db, `users/${res.user.uid}`), {
           name,
-          email,
+          email: mail,
           wallet,
           myRefCode,
           ...(refBy ? { refBy, usedRef } : {}),
         });
         showSuccess("Account created", "Welcome to SILENT SELLER!");
       } else {
-        await signInWithEmailAndPassword(auth, email, pass);
+        await signInWithEmailAndPassword(auth, mail, pass);
         showSuccess("Logged in", "Welcome back.");
       }
       closeModal();
     } catch (e) {
-      notify(e instanceof Error ? e.message : "Something went wrong");
+      notify(friendly(e));
     } finally {
       setBusy(false);
     }
   }
 
+  async function saveGoogleUser(u: { uid: string; displayName: string | null; email: string | null }) {
+    if (!db) return;
+    const snap = await get(ref(db, `users/${u.uid}`));
+    if (!snap.exists()) {
+      const myRefCode = (
+        (u.displayName || "USR").replace(/[^a-zA-Z]/g, "").slice(0, 3) ||
+        "USR" + Math.floor(100 + Math.random() * 900)
+      ).toUpperCase() + Math.floor(100 + Math.random() * 900);
+      await update(ref(db, `users/${u.uid}`), {
+        name: u.displayName || u.email?.split("@")[0] || "User",
+        email: u.email || "",
+        wallet: 0,
+        myRefCode,
+      });
+    }
+  }
+
+  // Finish a Google sign-in that came back through a full-page redirect
+  // (used when the browser blocks popups, e.g. inside in-app browsers).
+  useEffect(() => {
+    if (!auth || !db) return;
+    getRedirectResult(auth)
+      .then(async (res) => {
+        if (!res?.user) return;
+        await saveGoogleUser(res.user);
+        closeModal();
+        showSuccess("Welcome!", "Login successful.");
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [auth, db]);
+
   async function google() {
     if (!auth || !db) return;
+    setBusy(true);
     try {
-      const res = await signInWithPopup(auth, new GoogleAuthProvider());
-      const u = res.user;
-      const snap = await get(ref(db, `users/${u.uid}`));
-      if (!snap.exists()) {
-        const myRefCode = (
-          (u.displayName || "USR").slice(0, 3) + Math.floor(100 + Math.random() * 900)
-        ).toUpperCase();
-        await set(ref(db, `users/${u.uid}`), {
-          name: u.displayName,
-          email: u.email,
-          wallet: 0,
-          myRefCode,
-        });
-      }
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: "select_account" });
+      const res = await signInWithPopup(auth, provider);
+      await saveGoogleUser(res.user);
       closeModal();
       showSuccess("Welcome!", "Login successful.");
     } catch (e) {
-      notify(e instanceof Error ? e.message : "Google sign-in failed");
+      const code = (e as { code?: string })?.code || "";
+      if (
+        code === "auth/popup-blocked" ||
+        code === "auth/popup-closed-by-user" ||
+        code === "auth/cancelled-popup-request" ||
+        code === "auth/operation-not-supported-in-this-environment"
+      ) {
+        try {
+          await signInWithRedirect(auth, new GoogleAuthProvider());
+          return;
+        } catch (err) {
+          notify(friendly(err));
+        }
+      } else {
+        notify(friendly(e));
+      }
+    } finally {
+      setBusy(false);
     }
   }
 

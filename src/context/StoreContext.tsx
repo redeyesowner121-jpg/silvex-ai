@@ -230,6 +230,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     let unsub = () => {};
     (async () => {
       const { ref, onValue, update, get } = await import("firebase/database");
+
+      // Self-heal: if the account exists in Firebase Auth but has no profile row
+      // (interrupted signup, Google redirect sign-in, etc.) create it now so the
+      // user is never stuck in a half-registered state.
+      const existing = await get(ref(db, `users/${user.uid}`)).catch(() => null);
+      if (!existing?.exists()) {
+        const base = (user.displayName || user.email || "USR").replace(/[^a-zA-Z]/g, "") || "USR";
+        await update(ref(db, `users/${user.uid}`), {
+          name: user.displayName || user.email?.split("@")[0] || "User",
+          email: user.email || "",
+          wallet: 0,
+          myRefCode: (base.slice(0, 3) + Math.floor(100 + Math.random() * 900)).toUpperCase(),
+        }).catch(() => {});
+      }
+
       unsub = onValue(ref(db, `users/${user.uid}`), (s) => setProfile(s.val() || {}));
       if (isOwnerEmail(user.email)) {
         const snap = await get(ref(db, `users/${user.uid}/ownerRevoked`)).catch(() => null);
