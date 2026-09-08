@@ -337,12 +337,21 @@ function Admin() {
                 ))}
               </ul>
               <p className="text-lg font-black">${o.total}</p>
+              {o.delivered?.length ? (
+                <div className="mt-2 space-y-1 rounded-xl bg-muted/60 p-2 text-[11px]">
+                  {o.delivered.map((d, idx) => (
+                    <p key={idx} className="break-all">
+                      <b>{d.title}:</b> {d.content}
+                    </p>
+                  ))}
+                </div>
+              ) : null}
               <div className="mt-3 flex gap-2">
                 <button
-                  onClick={() => setOrderStatus(o, "Completed")}
+                  onClick={() => openDeliver(o)}
                   className="flex-1 rounded-lg bg-emerald-500 py-2 text-xs font-bold text-white"
                 >
-                  Complete
+                  {o.status === "Completed" ? "Edit delivery" : "Complete delivery"}
                 </button>
                 <button
                   onClick={() => setOrderStatus(o, "Cancelled")}
@@ -351,8 +360,55 @@ function Admin() {
                   Cancel
                 </button>
               </div>
+
+              {deliverFor?.orderId === o.orderId ? (
+                <div className="mt-3 space-y-2 rounded-xl border border-border p-3">
+                  <p className="text-xs font-black">Delivery details</p>
+                  {(o.items || []).map((i, idx) => (
+                    <div key={idx}>
+                      <label className="mb-1 block text-[11px] font-bold text-muted-foreground">
+                        {i.title} × {i.qty}
+                      </label>
+                      <textarea
+                        className={input}
+                        rows={2}
+                        placeholder="Account, code or link the buyer will see"
+                        value={deliverLines[idx] ?? ""}
+                        onChange={(e) => {
+                          const next = [...deliverLines];
+                          next[idx] = e.target.value;
+                          setDeliverLines(next);
+                        }}
+                      />
+                    </div>
+                  ))}
+                  <textarea
+                    className={input}
+                    rows={2}
+                    placeholder="Note for the buyer (optional)"
+                    value={deliverNote}
+                    onChange={(e) => setDeliverNote(e.target.value)}
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      disabled={delivering}
+                      onClick={completeDelivery}
+                      className="flex-1 rounded-lg bg-emerald-500 py-2 text-xs font-bold text-white disabled:opacity-60"
+                    >
+                      {delivering ? "Sending…" : "Mark delivered & notify buyer"}
+                    </button>
+                    <button
+                      onClick={() => setDeliverFor(null)}
+                      className="rounded-lg bg-muted px-3 py-2 text-xs font-bold"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : null}
             </div>
           ))}
+
           {orders.length === 0 ? <Empty text="No orders yet." /> : null}
         </div>
       ) : null}
