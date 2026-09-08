@@ -134,6 +134,61 @@ function Admin() {
     notify(approve ? "Approved" : "Rejected");
   }
 
+  function deliveryOf(item: { id?: string; title: string }) {
+    const p = products.find((x) => x.id === item.id || x.title === item.title);
+    return p?.delivery === "auto"
+      ? "Auto stock"
+      : p?.delivery === "repeat"
+        ? "Repeated"
+        : "Manual";
+  }
+
+  function exportRows(): ExportRow[] {
+    const rows: ExportRow[] = [];
+    orders.forEach((o) => {
+      const items = o.items || [];
+      if (!items.length) {
+        rows.push({
+          orderId: o.orderId,
+          date: o.date,
+          buyer: o.email || o.uid,
+          product: "—",
+          delivery: "—",
+          amount: Number(o.total) || 0,
+          status: o.status,
+        });
+        return;
+      }
+      items.forEach((i, idx) => {
+        const amount =
+          i.price != null
+            ? Number(i.price) * Number(i.qty || 1)
+            : idx === 0
+              ? Number(o.total) || 0
+              : 0;
+        rows.push({
+          orderId: o.orderId,
+          date: o.date,
+          buyer: o.email || o.uid,
+          product: `${i.title} × ${i.qty}`,
+          delivery: deliveryOf(i),
+          amount,
+          status: o.status,
+        });
+      });
+    });
+    return rows;
+  }
+
+  async function refreshOrders() {
+    if (!db) return;
+    const s = await get(ref(db, "orders"));
+    setOrders(
+      (Object.values(s.val() || {}) as OrderRow[]).sort((a, b) => (a.date < b.date ? 1 : -1)),
+    );
+    notify("Dashboard refreshed");
+  }
+
   return (
     <div className="fade-in">
       <h1 className="mb-4 text-2xl font-black">Admin panel</h1>
@@ -151,8 +206,33 @@ function Admin() {
         ))}
       </div>
 
+      {tab === "Dashboard" ? (
+        <Dashboard orders={orders} products={products} config={config} onRefresh={refreshOrders} />
+      ) : null}
+
       {tab === "Orders" ? (
         <div className="space-y-3">
+          <div className="flex gap-2">
+            <button
+              onClick={() => exportOrdersCsv(exportRows(), `orders-${Date.now()}.csv`)}
+              className="flex-1 rounded-xl bg-card py-2.5 text-xs font-bold shadow-sm"
+            >
+              ⬇ Download CSV
+            </button>
+            <button
+              onClick={async () => {
+                await exportOrdersPdf(
+                  exportRows(),
+                  `${config.siteName || "Store"} — orders report`,
+                  `orders-${Date.now()}.pdf`,
+                );
+              }}
+              className="flex-1 rounded-xl bg-card py-2.5 text-xs font-bold shadow-sm"
+            >
+              ⬇ Download PDF
+            </button>
+          </div>
+
           {orders.map((o) => (
             <div key={o.orderId} className="rounded-2xl border border-border bg-card p-4">
               <div className="flex justify-between text-xs font-bold">
