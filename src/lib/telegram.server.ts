@@ -7,9 +7,18 @@ export const TELEGRAM_OWNER_IDS = [7926443195, 6898461453];
 
 const GATEWAY = "https://connector-gateway.lovable.dev/telegram";
 
+/** Latest linked Telegram connection key (newest slot wins). */
+export function telegramConnectionKey(): string | undefined {
+  return (
+    process.env["TELEGRAM_API_KEY_1"] ||
+    process.env["TELEGRAM_API_KEY"] ||
+    undefined
+  );
+}
+
 export async function tg(method: string, body: Record<string, unknown>): Promise<any> {
   const lovableKey = process.env["LOVABLE_API_KEY"];
-  const connKey = process.env["TELEGRAM_API_KEY"];
+  const connKey = telegramConnectionKey();
   if (!lovableKey || !connKey) throw new Error("Telegram connection is not configured");
   const res = await fetch(`${GATEWAY}/${method}`, {
     method: "POST",
@@ -28,7 +37,7 @@ export async function tg(method: string, body: Record<string, unknown>): Promise
 }
 
 export function telegramWebhookSecret(): string {
-  const connKey = process.env["TELEGRAM_API_KEY"] || "";
+  const connKey = telegramConnectionKey() || "";
   return createHash("sha256").update(`telegram-webhook:${connKey}`).digest("base64url");
 }
 
@@ -158,7 +167,7 @@ export async function tgSendDocument(
   caption?: string,
 ): Promise<void> {
   const lovableKey = process.env["LOVABLE_API_KEY"];
-  const connKey = process.env["TELEGRAM_API_KEY"];
+  const connKey = telegramConnectionKey();
   if (!lovableKey || !connKey) return;
   const form = new FormData();
   form.append("chat_id", String(chatId));
