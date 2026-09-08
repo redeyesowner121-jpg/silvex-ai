@@ -87,6 +87,14 @@ export function ProductsAdmin({ products }: { products: Product[] }) {
   }
 
 
+  async function saveMarkup(id: string, pct: number) {
+    if (!db) return;
+    if (!pct || pct < 100) return notify("Use 100 or more (130 = +30% profit)");
+    await update(ref(db, `products/${id}`), { markup: pct });
+    notify("Profit updated — syncing price…");
+    await runSync();
+  }
+
   async function addStock() {
     if (!db || !form.id) return notify("Save the product first, then add stock");
     const lines = bulk
