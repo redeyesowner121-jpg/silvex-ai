@@ -31,7 +31,7 @@ export function Header() {
             </Link>
           ) : null}
           {user ? (
-            <button onClick={() => openModal("profile")} aria-label="Profile">
+            <Link to="/profile" aria-label="Profile">
               {user.photoURL ? (
                 <img
                   src={user.photoURL}
@@ -43,7 +43,8 @@ export function Header() {
                   {(profile?.name || user.email || "U").slice(0, 1)}
                 </span>
               )}
-            </button>
+            </Link>
+
           ) : (
             <button
               onClick={() => openModal("auth")}
