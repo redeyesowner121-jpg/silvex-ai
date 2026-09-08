@@ -40,8 +40,11 @@ type OrderRow = {
   phone?: string;
   note?: string;
   date: string;
+  deliveryNote?: string;
+  delivered?: Array<{ title: string; content: string }>;
   items?: Array<{ id?: string; title: string; qty: number; price?: number }>;
 };
+
 
 
 type RequestRow = {
