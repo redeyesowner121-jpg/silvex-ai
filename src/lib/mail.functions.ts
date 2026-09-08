@@ -7,7 +7,7 @@ export type SmtpSettings = {
   username: string;
   password: string;
   fromEmail: string;
-  fromName?: string;
+  fromName?: string | undefined;
 };
 
 type SendInput = {
@@ -15,7 +15,7 @@ type SendInput = {
   to: string;
   subject: string;
   html: string;
-  text?: string;
+  text?: string | undefined;
 };
 
 function validate(input: SendInput): SendInput {
