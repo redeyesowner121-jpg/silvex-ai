@@ -16,25 +16,82 @@ export function telegramConnectionKey(): string | undefined {
   );
 }
 
+/* ---------------- inline button styling ---------------- */
+
+/**
+ * Bot API 10.3 gives inline buttons a `style` ("primary" | "success" | "danger")
+ * and an `icon_custom_emoji_id` (premium emoji icon). The emoji registry plugs a
+ * decorator in here so every keyboard we send gets coloured automatically.
+ */
+type KeyboardDecorator = (markup: any) => any;
+let keyboardDecorator: KeyboardDecorator = (m) => m;
+
+export function setKeyboardDecorator(fn: KeyboardDecorator): void {
+  keyboardDecorator = fn;
+}
+
+export function decorateMarkup(markup: any): any {
+  if (!markup || !Array.isArray(markup.inline_keyboard)) return markup;
+  try {
+    return keyboardDecorator(markup);
+  } catch {
+    return markup;
+  }
+}
+
+/** Drop premium icons if Telegram refuses them for this bot. */
+function stripIcons(markup: any): any {
+  if (!markup || !Array.isArray(markup.inline_keyboard)) return markup;
+  return {
+    ...markup,
+    inline_keyboard: markup.inline_keyboard.map((row: any[]) =>
+      row.map(({ icon_custom_emoji_id, ...rest }: any) => rest),
+    ),
+  };
+}
+
 export async function tg(method: string, body: Record<string, unknown>): Promise<any> {
   const lovableKey = process.env["LOVABLE_API_KEY"];
   const connKey = telegramConnectionKey();
   if (!lovableKey || !connKey) throw new Error("Telegram connection is not configured");
-  const res = await fetch(`${GATEWAY}/${method}`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${lovableKey}`,
-      "X-Connection-Api-Key": connKey,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
-  const text = await res.text();
-  if (!res.ok) throw new Error(`Telegram ${method} failed [${res.status}]: ${text}`);
-  const json = JSON.parse(text);
-  if (json?.ok === false) throw new Error(`Telegram ${method} error: ${json.description}`);
-  return json;
+  const payload: Record<string, unknown> = { ...body };
+  if (payload["reply_markup"]) payload["reply_markup"] = decorateMarkup(payload["reply_markup"]);
+
+  const call = async (data: Record<string, unknown>) => {
+    const res = await fetch(`${GATEWAY}/${method}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${lovableKey}`,
+        "X-Connection-Api-Key": connKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    });
+    const text = await res.text();
+    if (!res.ok) throw new Error(`Telegram ${method} failed [${res.status}]: ${text}`);
+    const json = JSON.parse(text);
+    if (json?.ok === false) throw new Error(`Telegram ${method} error: ${json.description}`);
+    return json;
+  };
+
+  try {
+    return await call(payload);
+  } catch (err) {
+    const msg = String((err as Error)?.message || "");
+    // Bots without a Fragment username / premium owner can't use premium icons,
+    // and older clients may reject the style field — retry plain instead of failing.
+    if (/custom_emoji|CUSTOM_EMOJI|icon|style/i.test(msg) && payload["reply_markup"]) {
+      const plain = stripIcons(payload["reply_markup"]);
+      const noStyle = {
+        ...plain,
+        inline_keyboard: plain.inline_keyboard.map((row: any[]) => row.map(({ style, ...r }: any) => r)),
+      };
+      return await call({ ...payload, reply_markup: noStyle });
+    }
+    throw err;
+  }
 }
+
 
 export function telegramWebhookSecret(): string {
   const connKey = telegramConnectionKey() || "";
@@ -227,7 +284,7 @@ export async function tgSendPhoto(
         form.append("caption", caption);
         form.append("parse_mode", "HTML");
       }
-      if (keyboard) form.append("reply_markup", JSON.stringify(keyboard));
+      if (keyboard) form.append("reply_markup", JSON.stringify(decorateMarkup(keyboard)));
       const ext = (m[1] || "image/jpeg").split("/")[1]?.split("+")[0] || "jpg";
       form.append("photo", new Blob([bytes as unknown as BlobPart], { type: m[1] || "image/jpeg" }), `photo.${ext}`);
       const res = await fetch(`${GATEWAY}/sendPhoto`, {
@@ -246,7 +303,7 @@ export async function tgSendPhoto(
       chat_id: chatId,
       photo: photo.trim(),
       ...(caption ? { caption, parse_mode: "HTML" } : {}),
-      ...(keyboard ? { reply_markup: keyboard } : {}),
+      ...(keyboard ? { reply_markup: decorateMarkup(keyboard) } : {}),
     });
     return true;
   } catch (e) {
