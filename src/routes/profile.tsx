@@ -31,8 +31,21 @@ function ProfilePage() {
   const { auth, db, user, profile, wallet, isAdmin, openModal, showSuccess, notify } = useStore();
   const [phone, setPhone] = useState(profile?.phone ?? "");
   const navigate = useNavigate();
+  const [invited, setInvited] = useState(0);
+  const earnings = useMemo(
+    () => referralEarnings(Object.values(profile?.history ?? {})),
+    [profile?.history],
+  );
 
   useEffect(() => setPhone(profile?.phone ?? ""), [profile?.phone]);
+
+  useEffect(() => {
+    const code = profile?.myRefCode;
+    if (!db || !code) return;
+    get(query(ref(db, "users"), orderByChild("usedRef"), equalTo(code)))
+      .then((s) => setInvited(s.exists() ? Object.keys(s.val()).length : 0))
+      .catch(() => setInvited(0));
+  }, [db, profile?.myRefCode]);
 
   if (!user) {
     return (
