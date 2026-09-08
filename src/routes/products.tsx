@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useStore } from "@/context/StoreContext";
 import { ProductCard } from "@/components/store/ProductCard";
 
@@ -35,11 +35,14 @@ function Products() {
   const { products } = useStore();
   const [filter, setFilter] = useState(q ?? "");
 
-  const list = products.filter((p) => {
-    const matchesText = p.title.toLowerCase().includes(filter.toLowerCase());
-    const matchesCat = !category || p.type === category;
-    return matchesText && matchesCat;
-  });
+  const list = useMemo(() => {
+    const normalizedFilter = filter.toLowerCase();
+    return products.filter((p) => {
+      const matchesText = p.title.toLowerCase().includes(normalizedFilter);
+      const matchesCat = !category || p.type === category;
+      return matchesText && matchesCat;
+    });
+  }, [products, filter, category]);
 
   return (
     <div className="fade-in">

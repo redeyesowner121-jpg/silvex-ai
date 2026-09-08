@@ -15,6 +15,8 @@ export function Emo({ k, className = "" }: { k: string; className?: string }) {
         src={img}
         alt=""
         aria-hidden
+        loading="lazy"
+        decoding="async"
         className={`inline-block h-[1.15em] w-[1.15em] align-[-0.2em] object-contain ${className}`}
       />
     );

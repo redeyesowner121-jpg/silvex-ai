@@ -37,6 +37,7 @@ export function Header() {
                 <img
                   src={user.photoURL}
                   alt="Your profile"
+                  decoding="async"
                   className="h-9 w-9 rounded-full border-2 border-primary object-cover"
                 />
               ) : (

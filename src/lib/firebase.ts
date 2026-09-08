@@ -1,15 +1,39 @@
-import { getApps, initializeApp, type FirebaseApp } from "firebase/app";
-import { getAuth, type Auth } from "firebase/auth";
-import { getDatabase, type Database } from "firebase/database";
+import type { FirebaseApp } from "firebase/app";
+import type { Auth } from "firebase/auth";
+import type { Database } from "firebase/database";
 import { getFirebaseApiKey } from "./firebase.functions";
 
 export type FirebaseBundle = { app: FirebaseApp; auth: Auth; db: Database };
 
 let cached: FirebaseBundle | null = null;
 let pending: Promise<FirebaseBundle> | null = null;
+const API_KEY_CACHE = "silvex_firebase_api_key";
+
+async function firebaseApiKey(): Promise<string> {
+  try {
+    const saved = localStorage.getItem(API_KEY_CACHE);
+    if (saved) return saved;
+  } catch {
+    /* storage unavailable */
+  }
+  const { apiKey } = await getFirebaseApiKey();
+  if (apiKey) {
+    try {
+      localStorage.setItem(API_KEY_CACHE, apiKey);
+    } catch {
+      /* storage unavailable */
+    }
+  }
+  return apiKey;
+}
 
 async function init(): Promise<FirebaseBundle> {
-  const { apiKey } = await getFirebaseApiKey();
+  const [apiKey, firebaseApp, firebaseAuth, firebaseDatabase] = await Promise.all([
+    firebaseApiKey(),
+    import("firebase/app"),
+    import("firebase/auth"),
+    import("firebase/database"),
+  ]);
 
   const config = {
     apiKey,
@@ -22,18 +46,20 @@ async function init(): Promise<FirebaseBundle> {
     measurementId: "G-B1MPW2N31F",
   };
 
-  const app = getApps()[0] ?? initializeApp(config);
-  const bundle: FirebaseBundle = { app, auth: getAuth(app), db: getDatabase(app) };
-
-  // Analytics is browser-only and optional; never let it break the app.
-  try {
-    const { isSupported, getAnalytics } = await import("firebase/analytics");
-    if (await isSupported()) getAnalytics(app);
-  } catch {
-    /* analytics unavailable */
-  }
+  const app = firebaseApp.getApps()[0] ?? firebaseApp.initializeApp(config);
+  const bundle: FirebaseBundle = {
+    app,
+    auth: firebaseAuth.getAuth(app),
+    db: firebaseDatabase.getDatabase(app),
+  };
 
   cached = bundle;
+  // Analytics is optional and must never delay products, auth, or the first paint.
+  void import("firebase/analytics")
+    .then(async ({ isSupported, getAnalytics }) => {
+      if (await isSupported()) getAnalytics(app);
+    })
+    .catch(() => undefined);
   return bundle;
 }
 

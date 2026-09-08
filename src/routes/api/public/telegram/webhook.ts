@@ -62,12 +62,36 @@ type Cfg = {
 };
 
 const CFG = "site_settings/config";
+const BOT_CACHE_MS = 30_000;
+let cachedCfg: Cfg | null = null;
+let cfgLoadedAt = 0;
+let cachedButtonColors: ButtonColorMap | null = null;
+let colorsLoadedAt = 0;
 
 async function cfg(): Promise<Cfg> {
-  return (await dbGet<Cfg>(CFG)) || {};
+  if (cachedCfg && Date.now() - cfgLoadedAt < BOT_CACHE_MS) return cachedCfg;
+  cachedCfg = (await dbGet<Cfg>(CFG)) || {};
+  cfgLoadedAt = Date.now();
+  return cachedCfg;
 }
 async function siteName(): Promise<string> {
   return (await cfg()).siteName || "SILENT SELLER";
+}
+
+async function loadBotPresentation(): Promise<void> {
+  const now = Date.now();
+  await Promise.all([
+    loadEmojis().catch(() => undefined),
+    now - colorsLoadedAt < BOT_CACHE_MS && cachedButtonColors
+      ? Promise.resolve()
+      : dbGet<ButtonColorMap>("site_settings/button_colors")
+          .then((colors) => {
+            cachedButtonColors = colors || {};
+            colorsLoadedAt = Date.now();
+          })
+          .catch(() => undefined),
+  ]);
+  setButtonColors(cachedButtonColors);
 }
 
 /* ---------------- state ---------------- */
@@ -546,10 +570,13 @@ async function sendSupport(chatId: number) {
 
 async function buy(chatId: number, productId: string) {
   const uid = await ensureUser(chatId);
-  const p = await dbGet<Product>(`products/${productId}`);
+  const [p, storedUser] = await Promise.all([
+    dbGet<Product>(`products/${productId}`),
+    dbGet<any>(`users/${uid}`),
+  ]);
   if (!p) return say(chatId, "Product not found.", backHome);
   const price = Number(p.price || 0);
-  const user = (await dbGet<any>(`users/${uid}`)) || {};
+  const user = storedUser || {};
   const wallet = Number(user.wallet || 0);
   if (wallet < price) {
     return say(chatId, `Not enough wallet balance. You have ${money(wallet)}, the item costs ${money(price)}.`, {
@@ -658,9 +685,14 @@ async function adminHome(chatId: number) {
 const adminBack = { inline_keyboard: [[{ text: "⬅️ Admin", callback_data: "a:home" }]] };
 
 async function adminStats(chatId: number) {
-  const orders = Object.values((await dbGet<Record<string, any>>("orders")) || {});
-  const users = Object.keys((await dbGet<Record<string, any>>("users")) || {}).length;
-  const products = Object.values((await dbGet<Record<string, Product>>("products")) || {});
+  const [orderMap, userMap, productMap] = await Promise.all([
+    dbGet<Record<string, any>>("orders"),
+    dbGet<Record<string, any>>("users"),
+    dbGet<Record<string, Product>>("products"),
+  ]);
+  const orders = Object.values(orderMap || {});
+  const users = Object.keys(userMap || {}).length;
+  const products = Object.values(productMap || {});
   const pending = orders.filter((o: any) => o.status === "Pending").length;
   const revenue = orders
     .filter((o: any) => o.status !== "Cancelled")
@@ -1388,10 +1420,7 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
 
         const update = await request.json();
         try {
-          await loadEmojis().catch(() => undefined);
-          setButtonColors(
-            await dbGet<ButtonColorMap>("site_settings/button_colors").catch(() => null),
-          );
+          await loadBotPresentation();
           if (update?.callback_query) {
             const cq = update.callback_query;
             await tg("answerCallbackQuery", { callback_query_id: cq.id }).catch(() => undefined);

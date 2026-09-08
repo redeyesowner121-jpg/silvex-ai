@@ -12,6 +12,7 @@ export function ProductCard({ product }: { product: Product }) {
             src={product.logo}
             alt={product.title}
             loading="lazy"
+            decoding="async"
             className="h-full w-full object-cover"
           />
         ) : (

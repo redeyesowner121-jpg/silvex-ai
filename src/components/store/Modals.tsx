@@ -1,32 +1,5 @@
-import { useEffect, useState, type ReactNode } from "react";
-import { useNavigate } from "@tanstack/react-router";
-import {
-  createUserWithEmailAndPassword,
-  getRedirectResult,
-  GoogleAuthProvider,
-  signInWithEmailAndPassword,
-  signInWithPopup,
-  signInWithRedirect,
-  signOut,
-  updateProfile,
-} from "firebase/auth";
-import {
-  equalTo,
-  get,
-  onValue,
-  orderByChild,
-  push,
-  query,
-  ref,
-  set,
-  update,
-} from "firebase/database";
-import { useStore } from "@/context/StoreContext";
-import { checkDeposit, DEPOSIT_ADDRESS } from "@/lib/deposit.functions";
-import { Emo } from "@/components/store/Emo";
-
-
 import { lazy, Suspense } from "react";
+import { useStore } from "@/context/StoreContext";
 
 export function SuccessOverlay() {
   const { success, closeSuccess } = useStore();

@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { useStore } from "@/context/StoreContext";
 import { ProductCard } from "@/components/store/ProductCard";
@@ -58,9 +58,13 @@ function Home() {
   const countdown = useCountdown(flashSale?.endTime);
 
 
-  const trending = [...products]
-    .sort((a, b) => (b.salesCount ?? 0) - (a.salesCount ?? 0))
-    .slice(0, 6);
+  const trending = useMemo(
+    () =>
+      [...products]
+        .sort((a, b) => (b.salesCount ?? 0) - (a.salesCount ?? 0))
+        .slice(0, 6),
+    [products],
+  );
 
   return (
     <div className="fade-in">
