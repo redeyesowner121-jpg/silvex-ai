@@ -20,6 +20,7 @@ import {
   update,
 } from "firebase/database";
 import { useStore } from "@/context/StoreContext";
+import { checkDeposit, DEPOSIT_ADDRESS } from "@/lib/deposit.functions";
 
 function Sheet({
   onClose,
@@ -226,7 +227,7 @@ export function ProfileModal() {
       <div className="mb-6 flex items-center justify-between rounded-2xl bg-foreground p-5 text-background shadow-lg">
         <div>
           <p className="text-[10px] font-bold uppercase opacity-70">Wallet balance</p>
-          <p className="text-2xl font-bold">₹{wallet}</p>
+          <p className="text-2xl font-bold">${wallet}</p>
         </div>
         <button
           onClick={() => openModal("wallet")}
@@ -238,7 +239,7 @@ export function ProfileModal() {
       {profile?.myRefCode ? (
         <div className="mb-4 rounded-xl border border-dashed border-border p-3 text-center text-xs font-bold">
           Referral code: <span className="text-primary">{profile.myRefCode}</span> — friends get you
-          ₹20
+          $20
         </div>
       ) : null}
       <label className="mb-1 ml-1 block text-xs font-bold text-muted-foreground">Phone number</label>
@@ -293,7 +294,10 @@ export function WalletModal() {
   const { db, user, wallet, profile, config, closeModal, showSuccess, notify } = useStore();
   const [tab, setTab] = useState<"deposit" | "withdraw" | "history">("deposit");
   const [amount, setAmount] = useState("");
-  const [utr, setUtr] = useState("");
+  const [txHash, setTxHash] = useState("");
+  const [chain, setChain] = useState<"bep20" | "polygon">("bep20");
+  const [checking, setChecking] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [upi, setUpi] = useState("");
   const [history, setHistory] = useState<
     Array<{ id: string; type: string; amount: number; desc: string; date: string }>
@@ -314,22 +318,51 @@ export function WalletModal() {
 
   async function submitDeposit() {
     if (!db || !user) return;
-    const amt = Number(amount);
-    if (!amt || !utr) return notify("Enter amount and transaction ID");
-    await push(ref(db, "requests"), {
-      uid: user.uid,
-      name: profile?.name ?? user.email,
-      email: user.email,
-      type: "Deposit",
-      amount: amt,
-      utr,
-      status: "Pending",
-      date: new Date().toISOString(),
-    });
-    setAmount("");
-    setUtr("");
-    closeModal();
-    showSuccess("Request sent", "Your balance is added after admin approval.");
+    const hash = txHash.trim();
+    if (!/^0x[0-9a-fA-F]{64}$/.test(hash)) return notify("Paste the full transaction hash");
+    setChecking(true);
+    try {
+      const claimed = await get(ref(db, `deposits/${hash}`));
+      if (claimed.exists()) return notify("This transaction has already been used.");
+
+      const res = await checkDeposit({ data: { hash, chain } });
+      if (!res.ok) return notify(res.message);
+
+      const base = {
+        uid: user.uid,
+        name: profile?.name ?? user.email,
+        email: user.email,
+        amount: res.amount,
+        symbol: res.symbol,
+        chain: res.chain,
+        txHash: hash,
+        date: new Date().toISOString(),
+      };
+
+      if (res.status === "credited") {
+        await set(ref(db, `deposits/${hash}`), { ...base, status: "Credited" });
+        const w = await get(ref(db, `users/${user.uid}/wallet`));
+        await set(ref(db, `users/${user.uid}/wallet`), (Number(w.val()) || 0) + res.amount);
+        await push(ref(db, `users/${user.uid}/history`), {
+          type: "Deposit",
+          amount: res.amount,
+          desc: `${res.symbol} on ${res.chain}`,
+          date: base.date,
+        });
+        closeModal();
+        showSuccess("Balance added", `$${res.amount} credited to your wallet.`);
+      } else {
+        await set(ref(db, `deposits/${hash}`), { ...base, status: "Pending" });
+        await push(ref(db, "requests"), { ...base, type: "Deposit", utr: hash, status: "Pending" });
+        closeModal();
+        showSuccess("Sent for review", res.message);
+      }
+      setTxHash("");
+    } catch (e) {
+      notify(e instanceof Error ? e.message : "Could not check that transaction");
+    } finally {
+      setChecking(false);
+    }
   }
 
   async function submitWithdraw() {
@@ -359,7 +392,7 @@ export function WalletModal() {
     <Sheet onClose={closeModal} title="My wallet">
       <div className="mb-6 rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-600 p-6 text-center text-white shadow-lg">
         <p className="text-xs font-bold uppercase tracking-widest opacity-80">Available balance</p>
-        <div className="mt-1 text-4xl font-black">₹{wallet}</div>
+        <div className="mt-1 text-4xl font-black">${wallet}</div>
       </div>
       <div className="mb-4 flex rounded-xl bg-muted p-1">
         {(["deposit", "withdraw", "history"] as const).map((t) => (
@@ -377,30 +410,57 @@ export function WalletModal() {
 
       {tab === "deposit" ? (
         <div>
-          {config.qr ? (
-            <div className="mb-3 rounded-xl border border-dashed border-border bg-muted/50 p-4 text-center">
-              <img src={config.qr} alt="Payment QR code" className="mx-auto mb-2 w-32 rounded-lg" />
-              <p className="text-xs font-bold text-muted-foreground">Scan the QR & pay</p>
-            </div>
-          ) : null}
+          <p className="mb-2 text-xs font-bold text-muted-foreground">
+            Send USDT or USDC to this address, then paste the transaction hash.
+          </p>
+          <div className="mb-3 rounded-xl border border-dashed border-border bg-muted/50 p-3">
+            <p className="break-all font-mono text-[11px] font-bold">{DEPOSIT_ADDRESS}</p>
+            <button
+              onClick={() => {
+                navigator.clipboard?.writeText(DEPOSIT_ADDRESS);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 1500);
+              }}
+              className="mt-2 rounded-lg bg-foreground px-3 py-1 text-[11px] font-bold text-background"
+            >
+              {copied ? "Copied" : "Copy address"}
+            </button>
+          </div>
+          <div className="mb-2 flex gap-2">
+            {(
+              [
+                ["bep20", "BEP20 (BNB)"],
+                ["polygon", "Polygon"],
+              ] as const
+            ).map(([key, label]) => (
+              <button
+                key={key}
+                onClick={() => setChain(key)}
+                className={`flex-1 rounded-xl border p-2 text-xs font-bold ${
+                  chain === key ? "border-primary bg-primary/10 text-primary" : "border-border"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
           <input
-            className={`${inputCls} mb-2`}
-            placeholder="Amount (₹)"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-          />
-          <input
-            className={`${inputCls} mb-3`}
-            placeholder="Transaction ID (UTR)"
-            value={utr}
-            onChange={(e) => setUtr(e.target.value)}
+            className={`${inputCls} mb-3 font-mono text-xs`}
+            placeholder="Transaction hash (0x...)"
+            value={txHash}
+            onChange={(e) => setTxHash(e.target.value)}
           />
           <button
             onClick={submitDeposit}
-            className="w-full rounded-xl bg-emerald-500 py-3 font-bold text-white"
+            disabled={checking}
+            className="w-full rounded-xl bg-emerald-500 py-3 font-bold text-white disabled:opacity-60"
           >
-            Submit request
+            {checking ? "Checking on-chain…" : "Verify & add balance"}
           </button>
+          <p className="mt-2 text-center text-[11px] text-muted-foreground">
+            Verified payments are credited instantly in $. Anything older than 10 minutes is
+            reviewed by an admin.
+          </p>
         </div>
       ) : null}
 
@@ -444,7 +504,7 @@ export function WalletModal() {
                   <p className="text-xs font-bold">{h.type}</p>
                   <p className="text-[11px] text-muted-foreground">{h.desc}</p>
                 </div>
-                <span className="text-sm font-black">₹{h.amount}</span>
+                <span className="text-sm font-black">${h.amount}</span>
               </div>
             ))
           )}
@@ -510,7 +570,7 @@ export function ProductModal() {
           ) : null}
           <h3 className="mt-1 text-xl font-bold leading-tight">{product.title}</h3>
         </div>
-        <div className="text-xl font-black text-primary">₹{product.price}</div>
+        <div className="text-xl font-black text-primary">${product.price}</div>
       </div>
       {product.desc ? (
         <p className="mb-4 rounded-xl bg-muted/60 p-3 text-sm text-muted-foreground">{product.desc}</p>
@@ -565,7 +625,7 @@ export function ProductModal() {
         }}
         className="btn-grad mt-5 w-full rounded-xl py-3 text-sm font-bold"
       >
-        Add to cart · ₹{product.price}
+        Add to cart · ${product.price}
       </button>
     </Sheet>
   );

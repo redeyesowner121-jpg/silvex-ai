@@ -92,7 +92,7 @@ function Home() {
         desc: "Daily bonus",
         date: new Date().toISOString(),
       });
-      showSuccess("Bonus claimed", `You received ₹${bonus} daily reward!`);
+      showSuccess("Bonus claimed", `You received $${bonus} daily reward!`);
     } finally {
       setClaiming(false);
     }
@@ -148,9 +148,9 @@ function Home() {
             <div>
               <h3 className="line-clamp-1 text-sm font-bold">{saleProduct.title}</h3>
               <div className="mt-1 flex items-baseline gap-2">
-                <span className="text-xl font-black">₹{flashSale?.price}</span>
+                <span className="text-xl font-black">${flashSale?.price}</span>
                 <span className="text-xs text-muted-foreground line-through">
-                  ₹{saleProduct.price}
+                  ${saleProduct.price}
                 </span>
               </div>
             </div>

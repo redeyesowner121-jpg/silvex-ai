@@ -157,7 +157,7 @@ function Admin() {
                   </li>
                 ))}
               </ul>
-              <p className="text-lg font-black">₹{o.total}</p>
+              <p className="text-lg font-black">${o.total}</p>
               <div className="mt-3 flex gap-2">
                 <button
                   onClick={() => setOrderStatus(o, "Completed")}
@@ -184,7 +184,7 @@ function Admin() {
             <div key={r.id} className="rounded-2xl border border-border bg-card p-4">
               <div className="flex justify-between text-xs font-bold">
                 <span>
-                  {r.type} · ₹{r.amount}
+                  {r.type} · ${r.amount}
                 </span>
                 <span>{r.status}</span>
               </div>
@@ -311,7 +311,7 @@ function ProductsAdmin({ products }: { products: Product[] }) {
             <div>
               <p className="text-sm font-bold">{p.title}</p>
               <p className="text-xs text-muted-foreground">
-                ₹{p.price} · {p.type} · {p.salesCount ?? 0} sold
+                ${p.price} · {p.type} · {p.salesCount ?? 0} sold
               </p>
             </div>
             <button
@@ -361,7 +361,7 @@ function CouponsAdmin({
             value={form.type}
             onChange={(e) => setForm({ ...form, type: e.target.value })}
           >
-            <option value="flat">Flat ₹</option>
+            <option value="flat">Flat $</option>
             <option value="percent">Percent %</option>
           </select>
           <input
@@ -408,7 +408,7 @@ function CouponsAdmin({
           >
             <span className="font-bold">{c.code}</span>
             <span className="text-muted-foreground">
-              {c.type === "percent" ? `${c.value}%` : `₹${c.value}`}
+              {c.type === "percent" ? `${c.value}%` : `$${c.value}`}
             </span>
             <button
               onClick={async () => db && (await remove(ref(db, `coupons/${c.code}`)))}
@@ -518,7 +518,7 @@ function SettingsAdmin({
           <option value="">Select product</option>
           {products.map((p) => (
             <option key={p.id} value={p.id}>
-              {p.title} (₹{p.price})
+              {p.title} (${p.price})
             </option>
           ))}
         </select>
