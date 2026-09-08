@@ -24,10 +24,90 @@ type Product = {
   salesCount?: number;
 };
 
-async function siteName(): Promise<string> {
-  const cfg = await dbGet<{ siteName?: string }>("settings/config");
-  return cfg?.siteName || "SILENT SELLER";
+type Cfg = {
+  siteName?: string;
+  supportLink?: string;
+  depositAddress?: string;
+  forceJoin?: string;
+  reviewChannel?: string;
+};
+
+const CFG = "site_settings/config";
+
+async function cfg(): Promise<Cfg> {
+  return (await dbGet<Cfg>(CFG)) || {};
 }
+async function siteName(): Promise<string> {
+  return (await cfg()).siteName || "SILENT SELLER";
+}
+
+/* ---------------- state ---------------- */
+
+type State = { k: string; a?: string; b?: string } | null;
+
+async function getState(chatId: number): Promise<State> {
+  const raw = await dbGet<any>(`telegramState/${chatId}`);
+  if (!raw) return null;
+  if (typeof raw === "string") return { k: raw };
+  return raw as State;
+}
+async function setState(chatId: number, s: State) {
+  await dbPut(`telegramState/${chatId}`, s);
+}
+
+async function isBotAdmin(chatId: number): Promise<boolean> {
+  if (TELEGRAM_OWNER_IDS.includes(chatId)) return true;
+  return Boolean(await dbGet<boolean>(`telegramAdmins/${chatId}`));
+}
+
+async function say(chatId: number, text: string, keyboard?: any) {
+  await tg("sendMessage", {
+    chat_id: chatId,
+    text,
+    parse_mode: "HTML",
+    disable_web_page_preview: true,
+    ...(keyboard ? { reply_markup: keyboard } : {}),
+  });
+}
+
+const backHome = { inline_keyboard: [[{ text: "⬅️ Menu", callback_data: "home" }]] };
+
+/* ---------------- force join ---------------- */
+
+function channelLink(handle: string) {
+  const h = handle.trim();
+  if (h.startsWith("http")) return h;
+  return `https://t.me/${h.replace(/^@/, "")}`;
+}
+
+async function forceJoinBlocked(chatId: number): Promise<boolean> {
+  const c = await cfg();
+  const ch = (c.forceJoin || "").trim();
+  if (!ch || ch.startsWith("http")) return false;
+  try {
+    const res = await tg("getChatMember", {
+      chat_id: ch.startsWith("@") ? ch : `@${ch}`,
+      user_id: chatId,
+    });
+    const status = res?.result?.status;
+    if (["creator", "administrator", "member"].includes(status)) return false;
+  } catch {
+    return false;
+  }
+  await say(
+    chatId,
+    "🔒 <b>Join our channel first</b>\n\nYou must join the channel below to use this bot.",
+    {
+      inline_keyboard: [
+        [{ text: "📢 Join channel", url: channelLink(ch) }],
+        [{ text: "✅ I joined", callback_data: "home" }],
+      ],
+    },
+  );
+  return true;
+}
+
+/* ---------------- user menus ---------------- */
 
 function mainKeyboard() {
   return {
@@ -52,61 +132,77 @@ function mainKeyboard() {
 
 async function welcome(chatId: number) {
   const name = await siteName();
-  const text =
+  await say(
+    chatId,
     `🎬 <b>Welcome to ${name} !</b>\n\n` +
-    `🌟 Premium digital products at the cheapest prices\n` +
-    `⚡ Instant delivery\n` +
-    `🔒 Secure payments\n` +
-    `🎧 24/7 Support\n\n` +
-    `Choose an option below:`;
-  await tg("sendMessage", {
-    chat_id: chatId,
-    text,
-    parse_mode: "HTML",
-    reply_markup: mainKeyboard(),
-  });
+      `🌟 Premium digital products at the cheapest prices\n` +
+      `⚡ Instant delivery\n` +
+      `🔒 Secure payments\n` +
+      `🎧 24/7 Support\n\n` +
+      `Choose an option below:`,
+    mainKeyboard(),
+  );
 }
 
 async function linkedUid(chatId: number): Promise<string | null> {
   return await dbGet<string>(`telegramLinks/${chatId}`);
 }
 
+async function askLink(chatId: number) {
+  await setState(chatId, { k: "await_email" });
+  await say(
+    chatId,
+    "🔗 <b>Connect your store account</b>\n\nSend the email address you use on the website, so your wallet and orders stay the same in both places.",
+    { inline_keyboard: [[{ text: "🌐 Create account", url: SITE_URL }]] },
+  );
+}
+
+async function tryLink(chatId: number, email: string) {
+  const users = (await dbGet<Record<string, any>>("users")) || {};
+  const hit = Object.entries(users).find(
+    ([, u]: [string, any]) => String(u?.email || "").toLowerCase() === email.toLowerCase(),
+  );
+  if (!hit) {
+    await say(chatId, "No account found with that email. Create one on the website first, then send the email again.", {
+      inline_keyboard: [[{ text: "🌐 Open website", url: SITE_URL }]],
+    });
+    return;
+  }
+  const [uid] = hit;
+  await dbPut(`telegramLinks/${chatId}`, uid);
+  await dbPatch(`users/${uid}`, { telegramChatId: chatId });
+  await setState(chatId, null);
+  await say(chatId, "✅ Account connected. Your wallet, orders and referrals are now shared with the website.", mainKeyboard());
+}
+
 async function sendProducts(chatId: number) {
   const all = (await dbGet<Record<string, Product>>("products")) || {};
   const list = Object.entries(all).slice(0, 40);
-  if (!list.length) {
-    await tg("sendMessage", { chat_id: chatId, text: "No products available right now." });
-    return;
-  }
-  await tg("sendMessage", {
-    chat_id: chatId,
-    text: "🛍 <b>Products</b>\nTap any item to see details.",
-    parse_mode: "HTML",
-    reply_markup: {
-      inline_keyboard: [
-        ...list.map(([id, p]) => [
-          { text: `${p.title || "Item"} — ${money(p.price || 0)}`, callback_data: `p:${id}` },
-        ]),
-        [{ text: "⬅️ Back", callback_data: "home" }],
-      ],
-    },
+  if (!list.length) return say(chatId, "No products available right now.", backHome);
+  await say(chatId, "🛍 <b>Products</b>\nTap any item to see details.", {
+    inline_keyboard: [
+      ...list.map(([id, p]) => [
+        { text: `${p.title || "Item"} — ${money(p.price || 0)}`, callback_data: `p:${id}` },
+      ]),
+      [{ text: "⬅️ Menu", callback_data: "home" }],
+    ],
   });
 }
 
 async function sendProduct(chatId: number, id: string) {
   const p = await dbGet<Product>(`products/${id}`);
-  if (!p) {
-    await tg("sendMessage", { chat_id: chatId, text: "Product not found." });
-    return;
-  }
+  if (!p) return say(chatId, "Product not found.", backHome);
   const stock = Array.isArray(p.stock) ? p.stock.filter(Boolean).length : 0;
   const availability =
-    p.delivery === "auto" ? `📦 In stock: ${stock}` : p.delivery === "repeat" ? "⚡ Instant delivery" : "🕐 Manual delivery";
-  await tg("sendMessage", {
-    chat_id: chatId,
-    text: `<b>${p.title || "Item"}</b>\n\n${p.desc || ""}\n\n💵 Price: <b>${money(p.price || 0)}</b>\n${availability}`,
-    parse_mode: "HTML",
-    reply_markup: {
+    p.delivery === "auto"
+      ? `📦 In stock: ${stock}`
+      : p.delivery === "repeat"
+        ? "⚡ Instant delivery"
+        : "🕐 Manual delivery";
+  await say(
+    chatId,
+    `<b>${p.title || "Item"}</b>\n\n${p.desc || ""}\n\n💵 Price: <b>${money(p.price || 0)}</b>\n${availability}`,
+    {
       inline_keyboard: [
         [{ text: `Buy now — ${money(p.price || 0)}`, callback_data: `b:${id}` }],
         [
@@ -115,46 +211,74 @@ async function sendProduct(chatId: number, id: string) {
         ],
       ],
     },
-  });
+  );
 }
 
 async function sendWallet(chatId: number) {
   const uid = await linkedUid(chatId);
   if (!uid) return askLink(chatId);
   const wallet = (await dbGet<number>(`users/${uid}/wallet`)) || 0;
-  await tg("sendMessage", {
-    chat_id: chatId,
-    text: `👛 <b>Wallet</b>\n\nBalance: <b>${money(wallet)}</b>\n\nAdd funds from the website wallet page.`,
-    parse_mode: "HTML",
-    reply_markup: {
-      inline_keyboard: [
-        [{ text: "💳 Add funds on website", url: `${SITE_URL}/wallet` }],
-        [{ text: "⬅️ Back", callback_data: "home" }],
+  await say(chatId, `👛 <b>Wallet</b>\n\nBalance: <b>${money(wallet)}</b>`, {
+    inline_keyboard: [
+      [
+        { text: "➕ Deposit", callback_data: "dep" },
+        { text: "➖ Withdraw", callback_data: "wd" },
       ],
-    },
+      [{ text: "📜 History", callback_data: "whist" }],
+      [{ text: "⬅️ Menu", callback_data: "home" }],
+    ],
   });
+}
+
+async function walletHistory(chatId: number) {
+  const uid = await linkedUid(chatId);
+  if (!uid) return askLink(chatId);
+  const h = (await dbGet<Record<string, any>>(`users/${uid}/history`)) || {};
+  const list = Object.values(h).slice(-10).reverse();
+  const text = list.length
+    ? list.map((x: any) => `• ${x.type} ${money(x.amount)} — ${x.desc || ""}`).join("\n")
+    : "No transactions yet.";
+  await say(chatId, `📜 <b>Wallet history</b>\n\n${text}`, backHome);
+}
+
+async function startDeposit(chatId: number) {
+  const uid = await linkedUid(chatId);
+  if (!uid) return askLink(chatId);
+  const c = await cfg();
+  await setState(chatId, { k: "dep_amount" });
+  await say(
+    chatId,
+    `➕ <b>Deposit</b>\n\nSend USDT (BEP20 / Polygon) to:\n<code>${c.depositAddress || "-"}</code>\n\nNow send the amount you deposited in dollars (e.g. 25).`,
+    { inline_keyboard: [[{ text: "❌ Cancel", callback_data: "home" }]] },
+  );
+}
+
+async function startWithdraw(chatId: number) {
+  const uid = await linkedUid(chatId);
+  if (!uid) return askLink(chatId);
+  const wallet = (await dbGet<number>(`users/${uid}/wallet`)) || 0;
+  await setState(chatId, { k: "wd_amount" });
+  await say(
+    chatId,
+    `➖ <b>Withdraw</b>\n\nAvailable: <b>${money(wallet)}</b>\nSend the amount you want to withdraw in dollars.`,
+    { inline_keyboard: [[{ text: "❌ Cancel", callback_data: "home" }]] },
+  );
 }
 
 async function sendProfile(chatId: number) {
   const uid = await linkedUid(chatId);
   if (!uid) return askLink(chatId);
   const u = await dbGet<any>(`users/${uid}`);
-  await tg("sendMessage", {
-    chat_id: chatId,
-    text:
-      `👤 <b>Profile</b>\n\n` +
-      `Name: ${u?.name || "-"}\n` +
-      `Email: ${u?.email || "-"}\n` +
-      `Wallet: ${money(u?.wallet || 0)}\n` +
-      `Referral code: <code>${u?.myRefCode || "-"}</code>`,
-    parse_mode: "HTML",
-    reply_markup: {
+  await say(
+    chatId,
+    `👤 <b>Profile</b>\n\nName: ${u?.name || "-"}\nEmail: ${u?.email || "-"}\nPhone: ${u?.phone || "-"}\nWallet: ${money(u?.wallet || 0)}\nReferral code: <code>${u?.myRefCode || "-"}</code>`,
+    {
       inline_keyboard: [
         [{ text: "🌐 Open profile on website", url: `${SITE_URL}/profile` }],
-        [{ text: "⬅️ Back", callback_data: "home" }],
+        [{ text: "⬅️ Menu", callback_data: "home" }],
       ],
     },
-  });
+  );
 }
 
 async function sendOrders(chatId: number) {
@@ -165,121 +289,73 @@ async function sendOrders(chatId: number) {
     .filter((o: any) => o?.uid === uid)
     .sort((a: any, b: any) => String(b.date).localeCompare(String(a.date)))
     .slice(0, 8);
-  if (!mine.length) {
-    await tg("sendMessage", { chat_id: chatId, text: "You have no orders yet." });
-    return;
-  }
+  if (!mine.length) return say(chatId, "You have no orders yet.", backHome);
   const text = mine
     .map((o: any) => {
       const items = (o.items || []).map((i: any) => `${i.title} x${i.qty || 1}`).join(", ");
-      return `🧾 <b>${o.orderId}</b>\n${items}\n${money(o.total)} • ${o.status}`;
+      const del = (o.delivered || []).map((d: any) => `\n<code>${d.content}</code>`).join("");
+      return `🧾 <b>${o.orderId}</b>\n${items}\n${money(o.total)} • ${o.status}${del}`;
     })
     .join("\n\n");
-  await tg("sendMessage", {
-    chat_id: chatId,
-    text,
-    parse_mode: "HTML",
-    reply_markup: {
-      inline_keyboard: [
-        [{ text: "🌐 See all on website", url: `${SITE_URL}/orders` }],
-        [{ text: "⬅️ Back", callback_data: "home" }],
-      ],
-    },
+  await say(chatId, text, {
+    inline_keyboard: [
+      [{ text: "🌐 See all on website", url: `${SITE_URL}/orders` }],
+      [{ text: "⬅️ Menu", callback_data: "home" }],
+    ],
   });
 }
 
 async function sendReviews(chatId: number) {
+  const c = await cfg();
   const all = (await dbGet<Record<string, any>>("reviews")) || {};
   const list = Object.values(all).slice(-5).reverse();
   const text = list.length
     ? list.map((r: any) => `⭐ ${r.rating || 5}/5 — ${r.text || r.message || ""}`).join("\n\n")
     : "No reviews yet.";
-  await tg("sendMessage", {
-    chat_id: chatId,
-    text: `⭐ <b>Reviews</b>\n\n${text}`,
-    parse_mode: "HTML",
-    reply_markup: { inline_keyboard: [[{ text: "⬅️ Back", callback_data: "home" }]] },
-  });
+  const rows: any[] = [[{ text: "✍️ Write a review", callback_data: "rev_new" }]];
+  if (c.reviewChannel) rows.push([{ text: "📢 Review channel", url: channelLink(c.reviewChannel) }]);
+  rows.push([{ text: "⬅️ Menu", callback_data: "home" }]);
+  await say(chatId, `⭐ <b>Reviews</b>\n\n${text}`, { inline_keyboard: rows });
 }
 
 async function sendRefer(chatId: number) {
   const uid = await linkedUid(chatId);
   if (!uid) return askLink(chatId);
-  const code = (await dbGet<string>(`users/${uid}/myRefCode`)) || "-";
-  await tg("sendMessage", {
-    chat_id: chatId,
-    text: `🎁 <b>Refer & Earn</b>\n\nYour code: <code>${code}</code>\nShare this link:\n${SITE_URL}/?ref=${code}`,
-    parse_mode: "HTML",
-    reply_markup: { inline_keyboard: [[{ text: "⬅️ Back", callback_data: "home" }]] },
-  });
+  const u = (await dbGet<any>(`users/${uid}`)) || {};
+  const code = u.myRefCode || "-";
+  const users = (await dbGet<Record<string, any>>("users")) || {};
+  const invited = Object.values(users).filter((x: any) => x?.usedRef === code).length;
+  await say(
+    chatId,
+    `🎁 <b>Refer & Earn</b>\n\nYour code: <code>${code}</code>\nFriends joined: <b>${invited}</b>\n\nShare this link:\n${SITE_URL}/?ref=${code}`,
+    backHome,
+  );
 }
 
 async function sendSupport(chatId: number) {
-  const cfg = await dbGet<{ supportLink?: string }>("settings/config");
+  const c = await cfg();
   const rows: any[] = [];
-  if (cfg?.supportLink) rows.push([{ text: "💬 Contact support", url: cfg.supportLink }]);
-  rows.push([{ text: "⬅️ Back", callback_data: "home" }]);
-  await tg("sendMessage", {
-    chat_id: chatId,
-    text: "🆘 <b>Support</b>\n\nWe reply 24/7. You can also message us on the website.",
-    parse_mode: "HTML",
-    reply_markup: { inline_keyboard: rows },
+  if (c.supportLink) rows.push([{ text: "💬 Contact support", url: c.supportLink }]);
+  rows.push([{ text: "⬅️ Menu", callback_data: "home" }]);
+  await say(chatId, "🆘 <b>Support</b>\n\nWe reply 24/7. You can also message us on the website.", {
+    inline_keyboard: rows,
   });
 }
 
-async function askLink(chatId: number) {
-  await dbPut(`telegramState/${chatId}`, "await_email");
-  await tg("sendMessage", {
-    chat_id: chatId,
-    text:
-      "🔗 <b>Connect your store account</b>\n\nSend the email address you use on the website, so your wallet and orders stay the same in both places.",
-    parse_mode: "HTML",
-    reply_markup: { inline_keyboard: [[{ text: "🌐 Create account", url: SITE_URL }]] },
-  });
-}
-
-async function tryLink(chatId: number, email: string) {
-  const users = (await dbGet<Record<string, any>>("users")) || {};
-  const hit = Object.entries(users).find(
-    ([, u]: [string, any]) => String(u?.email || "").toLowerCase() === email.toLowerCase(),
-  );
-  if (!hit) {
-    await tg("sendMessage", {
-      chat_id: chatId,
-      text: "No account found with that email. Create one on the website first, then send the email again.",
-      reply_markup: { inline_keyboard: [[{ text: "🌐 Open website", url: SITE_URL }]] },
-    });
-    return;
-  }
-  const [uid] = hit;
-  await dbPut(`telegramLinks/${chatId}`, uid);
-  await dbPatch(`users/${uid}`, { telegramChatId: chatId });
-  await dbPut(`telegramState/${chatId}`, null);
-  await tg("sendMessage", {
-    chat_id: chatId,
-    text: "✅ Account connected. Your wallet, orders and referrals are now shared with the website.",
-    reply_markup: mainKeyboard(),
-  });
-}
+/* ---------------- buying ---------------- */
 
 async function buy(chatId: number, productId: string) {
   const uid = await linkedUid(chatId);
   if (!uid) return askLink(chatId);
   const p = await dbGet<Product>(`products/${productId}`);
-  if (!p) {
-    await tg("sendMessage", { chat_id: chatId, text: "Product not found." });
-    return;
-  }
+  if (!p) return say(chatId, "Product not found.", backHome);
   const price = Number(p.price || 0);
   const user = (await dbGet<any>(`users/${uid}`)) || {};
   const wallet = Number(user.wallet || 0);
   if (wallet < price) {
-    await tg("sendMessage", {
-      chat_id: chatId,
-      text: `Not enough wallet balance. You have ${money(wallet)}, the item costs ${money(price)}.`,
-      reply_markup: { inline_keyboard: [[{ text: "💳 Add funds", url: `${SITE_URL}/wallet` }]] },
+    return say(chatId, `Not enough wallet balance. You have ${money(wallet)}, the item costs ${money(price)}.`, {
+      inline_keyboard: [[{ text: "➕ Deposit", callback_data: "dep" }]],
     });
-    return;
   }
 
   const delivered: { title: string; content: string }[] = [];
@@ -333,29 +409,425 @@ async function buy(chatId: number, productId: string) {
   const body = complete
     ? `✅ <b>Order delivered</b>\n\n${delivered.map((d) => `${d.title}\n<code>${d.content}</code>`).join("\n\n")}`
     : `🧾 <b>Order placed</b>\n\n${p.title}\nWe will deliver it shortly.`;
-  await tg("sendMessage", {
-    chat_id: chatId,
-    text: `${body}\n\nOrder: <code>${orderId}</code>\nPaid: ${money(price)}\n\n🌐 Website: ${SITE_URL}`,
-    parse_mode: "HTML",
-    reply_markup: {
-      inline_keyboard: [
-        [{ text: "🌐 Visit website", url: SITE_URL }],
-        [{ text: "🛍 Buy more", callback_data: "products" }],
-      ],
-    },
+  await say(chatId, `${body}\n\nOrder: <code>${orderId}</code>\nPaid: ${money(price)}\n\n🌐 Website: ${SITE_URL}`, {
+    inline_keyboard: [
+      [{ text: "🌐 Visit website", url: SITE_URL }],
+      [{ text: "🛍 Buy more", callback_data: "products" }],
+    ],
   });
   await notifyOwners(
     `🛒 <b>New Telegram order</b>\n${p.title}\nBuyer: ${user.email || chatId}\nTotal: ${money(price)}\nOrder: ${orderId}\nStatus: ${complete ? "Completed" : "Pending"}`,
   );
 }
 
+/* ---------------- admin panel ---------------- */
+
+async function adminHome(chatId: number) {
+  await say(chatId, "👑 <b>Owner panel</b>\n\nManage the whole store from here.", {
+    inline_keyboard: [
+      [
+        { text: "📊 Stats", callback_data: "a:stats" },
+        { text: "🧾 Orders", callback_data: "a:orders" },
+      ],
+      [
+        { text: "💰 Requests", callback_data: "a:req" },
+        { text: "📦 Products", callback_data: "a:prod" },
+      ],
+      [
+        { text: "👥 Users", callback_data: "a:users" },
+        { text: "📣 Broadcast", callback_data: "a:bc" },
+      ],
+      [
+        { text: "🔒 Force join", callback_data: "a:fj" },
+        { text: "⭐ Review channel", callback_data: "a:rc" },
+      ],
+      [{ text: "⚙️ Settings", callback_data: "a:set" }],
+      [{ text: "🌐 Website admin", url: `${SITE_URL}/admin` }],
+    ],
+  });
+}
+
+const adminBack = { inline_keyboard: [[{ text: "⬅️ Admin", callback_data: "a:home" }]] };
+
+async function adminStats(chatId: number) {
+  const orders = Object.values((await dbGet<Record<string, any>>("orders")) || {});
+  const users = Object.keys((await dbGet<Record<string, any>>("users")) || {}).length;
+  const products = Object.values((await dbGet<Record<string, Product>>("products")) || {});
+  const pending = orders.filter((o: any) => o.status === "Pending").length;
+  const revenue = orders
+    .filter((o: any) => o.status !== "Cancelled")
+    .reduce((s: number, o: any) => s + Number(o.total || 0), 0);
+  const weekAgo = Date.now() - 7 * 864e5;
+  const week = orders
+    .filter((o: any) => o.status !== "Cancelled" && new Date(o.date).getTime() > weekAgo)
+    .reduce((s: number, o: any) => s + Number(o.total || 0), 0);
+  const stock = products.reduce(
+    (s, p) => s + (Array.isArray(p.stock) ? p.stock.filter(Boolean).length : 0),
+    0,
+  );
+  await say(
+    chatId,
+    `📊 <b>Stats</b>\n\nOrders: ${orders.length}\nPending: ${pending}\nRevenue: ${money(revenue)}\nThis week: ${money(week)}\nUsers: ${users}\nProducts: ${products.length}\nStock left: ${stock}`,
+    adminBack,
+  );
+}
+
+async function adminOrders(chatId: number) {
+  const all = (await dbGet<Record<string, any>>("orders")) || {};
+  const pending = Object.values(all)
+    .filter((o: any) => o.status === "Pending")
+    .sort((a: any, b: any) => String(b.date).localeCompare(String(a.date)))
+    .slice(0, 10);
+  if (!pending.length) return say(chatId, "No pending orders 🎉", adminBack);
+  await say(chatId, "🧾 <b>Pending orders</b>\nTap one to deliver it.", {
+    inline_keyboard: [
+      ...pending.map((o: any) => [
+        {
+          text: `${o.orderId.slice(-6)} • ${money(o.total)} • ${(o.items || [])[0]?.title || ""}`.slice(0, 60),
+          callback_data: `a:o:${o.orderId}`,
+        },
+      ]),
+      [{ text: "⬅️ Admin", callback_data: "a:home" }],
+    ],
+  });
+}
+
+async function adminOrder(chatId: number, orderId: string) {
+  const o = await dbGet<any>(`orders/${orderId}`);
+  if (!o) return say(chatId, "Order not found.", adminBack);
+  const items = (o.items || []).map((i: any) => `• ${i.title} x${i.qty || 1}`).join("\n");
+  await say(
+    chatId,
+    `🧾 <b>${o.orderId}</b>\n${items}\nBuyer: ${o.email || o.uid}\nTotal: ${money(o.total)}\nStatus: ${o.status}`,
+    {
+      inline_keyboard: [
+        [{ text: "✅ Complete delivery", callback_data: `a:dl:${orderId}` }],
+        [{ text: "❌ Cancel & refund", callback_data: `a:oc:${orderId}` }],
+        [{ text: "⬅️ Orders", callback_data: "a:orders" }],
+      ],
+    },
+  );
+}
+
+async function adminAskDelivery(chatId: number, orderId: string) {
+  await setState(chatId, { k: "deliver", a: orderId });
+  await say(
+    chatId,
+    "✍️ Send the delivery details for this order (the buyer will see exactly this text). One line per item.",
+    { inline_keyboard: [[{ text: "❌ Cancel", callback_data: "a:home" }]] },
+  );
+}
+
+async function adminDeliver(chatId: number, orderId: string, text: string) {
+  const o = await dbGet<any>(`orders/${orderId}`);
+  if (!o) return say(chatId, "Order not found.", adminBack);
+  const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+  const items = o.items || [];
+  const delivered = lines.map((content, idx) => ({
+    title: items[idx]?.title || items[0]?.title || "Item",
+    content,
+  }));
+  await dbPatch(`orders/${orderId}`, {
+    delivered,
+    status: "Completed",
+    deliveredAt: new Date().toISOString(),
+  });
+  await setState(chatId, null);
+  await say(chatId, `✅ Order ${orderId} delivered and the buyer was notified.`, adminBack);
+
+  const buyerChat = o.telegramChatId || (o.uid ? await dbGet<number>(`users/${o.uid}/telegramChatId`) : null);
+  if (buyerChat) {
+    await say(
+      Number(buyerChat),
+      `✅ <b>Your order is delivered</b>\n\nOrder: <code>${orderId}</code>\n\n${delivered
+        .map((d) => `${d.title}\n<code>${d.content}</code>`)
+        .join("\n\n")}\n\n🌐 Website: ${SITE_URL}`,
+      { inline_keyboard: [[{ text: "🌐 Visit website", url: SITE_URL }]] },
+    ).catch(() => undefined);
+  }
+}
+
+async function adminCancelOrder(chatId: number, orderId: string) {
+  const o = await dbGet<any>(`orders/${orderId}`);
+  if (!o) return say(chatId, "Order not found.", adminBack);
+  if (o.status !== "Cancelled") {
+    await dbPatch(`orders/${orderId}`, { status: "Cancelled" });
+    if (o.uid) {
+      const w = (await dbGet<number>(`users/${o.uid}/wallet`)) || 0;
+      await dbPut(`users/${o.uid}/wallet`, w + Number(o.total || 0));
+      await dbPush(`users/${o.uid}/history`, {
+        type: "Refund",
+        amount: Number(o.total || 0),
+        desc: `Cancelled ${orderId.slice(-4)}`,
+        date: new Date().toISOString(),
+      });
+    }
+  }
+  await say(chatId, `❌ Order ${orderId} cancelled and refunded.`, adminBack);
+}
+
+async function adminRequests(chatId: number) {
+  const all = (await dbGet<Record<string, any>>("requests")) || {};
+  const pending = Object.entries(all)
+    .filter(([, r]: [string, any]) => r.status === "Pending")
+    .slice(0, 10);
+  if (!pending.length) return say(chatId, "No pending wallet requests.", adminBack);
+  await say(chatId, "💰 <b>Pending wallet requests</b>", {
+    inline_keyboard: [
+      ...pending.flatMap(([id, r]: [string, any]) => [
+        [{ text: `${r.type} ${money(r.amount)} — ${r.email || r.uid}`.slice(0, 60), callback_data: "noop" }],
+        [
+          { text: "✅ Approve", callback_data: `a:ra:${id}` },
+          { text: "❌ Reject", callback_data: `a:rr:${id}` },
+        ],
+      ]),
+      [{ text: "⬅️ Admin", callback_data: "a:home" }],
+    ],
+  });
+}
+
+async function adminDecideRequest(chatId: number, id: string, approve: boolean) {
+  const r = await dbGet<any>(`requests/${id}`);
+  if (!r) return say(chatId, "Request not found.", adminBack);
+  if (approve) {
+    const w = (await dbGet<number>(`users/${r.uid}/wallet`)) || 0;
+    const next = r.type === "Deposit" ? w + Number(r.amount) : w - Number(r.amount);
+    if (next < 0) return say(chatId, "User has insufficient balance.", adminBack);
+    await dbPut(`users/${r.uid}/wallet`, next);
+    await dbPush(`users/${r.uid}/history`, {
+      type: r.type,
+      amount: r.amount,
+      desc: `${r.type} approved`,
+      date: new Date().toISOString(),
+    });
+  }
+  await dbPatch(`requests/${id}`, { status: approve ? "Approved" : "Rejected" });
+  const buyerChat = await dbGet<number>(`users/${r.uid}/telegramChatId`);
+  if (buyerChat)
+    await say(
+      Number(buyerChat),
+      `${approve ? "✅" : "❌"} Your ${r.type.toLowerCase()} of ${money(r.amount)} was ${approve ? "approved" : "rejected"}.`,
+    ).catch(() => undefined);
+  await say(chatId, `Request ${approve ? "approved" : "rejected"}.`, adminBack);
+}
+
+async function adminProducts(chatId: number) {
+  const all = (await dbGet<Record<string, Product>>("products")) || {};
+  const list = Object.entries(all).slice(0, 30);
+  if (!list.length) return say(chatId, "No products yet.", adminBack);
+  await say(chatId, "📦 <b>Products</b>\nTap one to manage.", {
+    inline_keyboard: [
+      ...list.map(([id, p]) => [
+        {
+          text: `${p.title || "Item"} • ${money(p.price || 0)} • stock ${Array.isArray(p.stock) ? p.stock.filter(Boolean).length : 0}`.slice(0, 60),
+          callback_data: `a:p:${id}`,
+        },
+      ]),
+      [{ text: "⬅️ Admin", callback_data: "a:home" }],
+    ],
+  });
+}
+
+async function adminProduct(chatId: number, id: string) {
+  const p = await dbGet<Product>(`products/${id}`);
+  if (!p) return say(chatId, "Product not found.", adminBack);
+  const stock = Array.isArray(p.stock) ? p.stock.filter(Boolean).length : 0;
+  await say(
+    chatId,
+    `📦 <b>${p.title}</b>\nPrice: ${money(p.price || 0)}\nDelivery: ${p.delivery || "manual"}\nStock: ${stock}\nSales: ${p.salesCount || 0}`,
+    {
+      inline_keyboard: [
+        [
+          { text: "💵 Change price", callback_data: `a:pp:${id}` },
+          { text: "➕ Add stock", callback_data: `a:ps:${id}` },
+        ],
+        [
+          { text: "⚡ Auto", callback_data: `a:pd:${id}:auto` },
+          { text: "🔁 Repeat", callback_data: `a:pd:${id}:repeat` },
+          { text: "🕐 Manual", callback_data: `a:pd:${id}:manual` },
+        ],
+        [{ text: "⬅️ Products", callback_data: "a:prod" }],
+      ],
+    },
+  );
+}
+
+async function adminUsers(chatId: number) {
+  await setState(chatId, { k: "u_find" });
+  await say(chatId, "👥 Send an email (or part of it) to find a user.", {
+    inline_keyboard: [[{ text: "❌ Cancel", callback_data: "a:home" }]],
+  });
+}
+
+async function adminFindUser(chatId: number, q: string) {
+  const users = (await dbGet<Record<string, any>>("users")) || {};
+  const hits = Object.entries(users)
+    .filter(([, u]: [string, any]) => String(u?.email || "").toLowerCase().includes(q.toLowerCase()))
+    .slice(0, 8);
+  await setState(chatId, null);
+  if (!hits.length) return say(chatId, "No user found.", adminBack);
+  await say(chatId, "👥 <b>Results</b>", {
+    inline_keyboard: [
+      ...hits.map(([uid, u]: [string, any]) => [
+        { text: `${u.email} • ${money(u.wallet || 0)}`.slice(0, 60), callback_data: `a:u:${uid}` },
+      ]),
+      [{ text: "⬅️ Admin", callback_data: "a:home" }],
+    ],
+  });
+}
+
+async function adminUser(chatId: number, uid: string) {
+  const u = (await dbGet<any>(`users/${uid}`)) || {};
+  await say(
+    chatId,
+    `👤 <b>${u.email || uid}</b>\nName: ${u.name || "-"}\nWallet: ${money(u.wallet || 0)}\nAdmin: ${u.isAdmin ? "yes" : "no"}`,
+    {
+      inline_keyboard: [
+        [{ text: "💵 Set wallet balance", callback_data: `a:uw:${uid}` }],
+        [
+          { text: u.isAdmin ? "🚫 Remove admin" : "🛠 Make admin", callback_data: `a:ua:${uid}` },
+        ],
+        [{ text: "⬅️ Admin", callback_data: "a:home" }],
+      ],
+    },
+  );
+}
+
+async function saveConfig(patch: Record<string, unknown>) {
+  await dbPatch(CFG, patch);
+}
+
+async function adminSettings(chatId: number) {
+  const c = await cfg();
+  await say(
+    chatId,
+    `⚙️ <b>Settings</b>\n\nSite name: ${c.siteName || "-"}\nSupport: ${c.supportLink || "-"}\nDeposit address: <code>${c.depositAddress || "-"}</code>`,
+    {
+      inline_keyboard: [
+        [{ text: "✏️ Site name", callback_data: "a:s:siteName" }],
+        [{ text: "✏️ Support link", callback_data: "a:s:supportLink" }],
+        [{ text: "✏️ Deposit address", callback_data: "a:s:depositAddress" }],
+        [{ text: "⬅️ Admin", callback_data: "a:home" }],
+      ],
+    },
+  );
+}
+
+async function broadcast(chatId: number, text: string) {
+  const users = (await dbGet<Record<string, boolean>>("telegramUsers")) || {};
+  const ids = Object.keys(users).map(Number).filter(Boolean);
+  let sent = 0;
+  for (const id of ids) {
+    try {
+      await tg("sendMessage", { chat_id: id, text, parse_mode: "HTML" });
+      sent++;
+    } catch {
+      /* blocked user */
+    }
+  }
+  await setState(chatId, null);
+  await say(chatId, `📣 Broadcast sent to ${sent}/${ids.length} users.`, adminBack);
+}
+
+/* ---------------- routing ---------------- */
+
 async function handleCallback(chatId: number, data: string) {
-  if (data === "home") return welcome(chatId);
+  if (data === "noop") return;
+  if (data === "home") {
+    await setState(chatId, null);
+    if (await forceJoinBlocked(chatId)) return;
+    return welcome(chatId);
+  }
+  if (await forceJoinBlocked(chatId)) return;
+
+  if (data.startsWith("a:")) {
+    if (!(await isBotAdmin(chatId))) return;
+    const [, key, arg, arg2] = data.split(":");
+    if (key === "home") return adminHome(chatId);
+    if (key === "stats") return adminStats(chatId);
+    if (key === "orders") return adminOrders(chatId);
+    if (key === "o") return adminOrder(chatId, arg!);
+    if (key === "dl") return adminAskDelivery(chatId, arg!);
+    if (key === "oc") return adminCancelOrder(chatId, arg!);
+    if (key === "req") return adminRequests(chatId);
+    if (key === "ra") return adminDecideRequest(chatId, arg!, true);
+    if (key === "rr") return adminDecideRequest(chatId, arg!, false);
+    if (key === "prod") return adminProducts(chatId);
+    if (key === "p") return adminProduct(chatId, arg!);
+    if (key === "pp") {
+      await setState(chatId, { k: "p_price", a: arg! });
+      return say(chatId, "Send the new price in dollars (e.g. 9.99).");
+    }
+    if (key === "ps") {
+      await setState(chatId, { k: "p_stock", a: arg! });
+      return say(chatId, "Send the stock lines — one line = one stock item.");
+    }
+    if (key === "pd") {
+      await dbPatch(`products/${arg}`, { delivery: arg2 });
+      return adminProduct(chatId, arg!);
+    }
+    if (key === "users") return adminUsers(chatId);
+    if (key === "u") return adminUser(chatId, arg!);
+    if (key === "uw") {
+      await setState(chatId, { k: "u_wallet", a: arg! });
+      return say(chatId, "Send the new wallet balance in dollars.");
+    }
+    if (key === "ua") {
+      const cur = await dbGet<boolean>(`users/${arg}/isAdmin`);
+      await dbPatch(`users/${arg}`, { isAdmin: !cur });
+      return adminUser(chatId, arg!);
+    }
+    if (key === "bc") {
+      await setState(chatId, { k: "bc" });
+      return say(chatId, "📣 Send the message to broadcast to every bot user.", {
+        inline_keyboard: [[{ text: "❌ Cancel", callback_data: "a:home" }]],
+      });
+    }
+    if (key === "fj") {
+      const c = await cfg();
+      return say(chatId, `🔒 <b>Force join</b>\n\nCurrent: ${c.forceJoin || "off"}`, {
+        inline_keyboard: [
+          [{ text: "✏️ Set channel", callback_data: "a:s:forceJoin" }],
+          [{ text: "🚫 Turn off", callback_data: "a:fjoff" }],
+          [{ text: "⬅️ Admin", callback_data: "a:home" }],
+        ],
+      });
+    }
+    if (key === "fjoff") {
+      await saveConfig({ forceJoin: "" });
+      return say(chatId, "Force join turned off.", adminBack);
+    }
+    if (key === "rc") {
+      const c = await cfg();
+      return say(chatId, `⭐ <b>Review channel</b>\n\nCurrent: ${c.reviewChannel || "not set"}`, {
+        inline_keyboard: [
+          [{ text: "✏️ Set channel", callback_data: "a:s:reviewChannel" }],
+          [{ text: "⬅️ Admin", callback_data: "a:home" }],
+        ],
+      });
+    }
+    if (key === "set") return adminSettings(chatId);
+    if (key === "s") {
+      await setState(chatId, { k: "cfg", a: arg! });
+      return say(chatId, `Send the new value for <b>${arg}</b>.`, {
+        inline_keyboard: [[{ text: "❌ Cancel", callback_data: "a:home" }]],
+      });
+    }
+    return;
+  }
+
   if (data === "products") return sendProducts(chatId);
   if (data === "wallet") return sendWallet(chatId);
+  if (data === "whist") return walletHistory(chatId);
+  if (data === "dep") return startDeposit(chatId);
+  if (data === "wd") return startWithdraw(chatId);
   if (data === "profile") return sendProfile(chatId);
   if (data === "orders") return sendOrders(chatId);
   if (data === "reviews") return sendReviews(chatId);
+  if (data === "rev_new") {
+    await setState(chatId, { k: "review" });
+    return say(chatId, "✍️ Send your review (start with a number 1-5 for the rating, e.g. “5 great service”).");
+  }
   if (data === "refer") return sendRefer(chatId);
   if (data === "support") return sendSupport(chatId);
   if (data === "link") return askLink(chatId);
@@ -363,30 +835,134 @@ async function handleCallback(chatId: number, data: string) {
   if (data.startsWith("b:")) return buy(chatId, data.slice(2));
 }
 
+async function submitReview(chatId: number, text: string) {
+  const uid = await linkedUid(chatId);
+  const u = uid ? await dbGet<any>(`users/${uid}`) : null;
+  const m = text.match(/^([1-5])\s+(.*)$/s);
+  const rating = m ? Number(m[1]) : 5;
+  const body = m ? m[2]! : text;
+  await dbPush("reviews", {
+    uid: uid || null,
+    name: u?.name || u?.email || "Telegram user",
+    rating,
+    text: body,
+    date: new Date().toISOString(),
+  });
+  await setState(chatId, null);
+  await say(chatId, "🙏 Thanks for your review!", backHome);
+  const c = await cfg();
+  if (c.reviewChannel && !c.reviewChannel.startsWith("http")) {
+    await tg("sendMessage", {
+      chat_id: c.reviewChannel.startsWith("@") ? c.reviewChannel : `@${c.reviewChannel}`,
+      text: `⭐ ${rating}/5 — ${body}\n\n— ${u?.name || "Customer"}`,
+    }).catch(() => undefined);
+  }
+}
+
 async function handleText(chatId: number, text: string) {
   const t = text.trim();
+  await dbPut(`telegramUsers/${chatId}`, true);
+
   if (t === "/start" || t === "/menu") {
-    await dbPut(`telegramState/${chatId}`, null);
+    await setState(chatId, null);
+    if (await forceJoinBlocked(chatId)) return;
     return welcome(chatId);
   }
+  if (await forceJoinBlocked(chatId)) return;
   if (t === "/link") return askLink(chatId);
-  if (t === "/admin" && TELEGRAM_OWNER_IDS.includes(chatId)) {
-    const orders = (await dbGet<Record<string, any>>("orders")) || {};
-    const list = Object.values(orders);
-    const pending = list.filter((o: any) => o.status !== "Completed").length;
-    const revenue = list.reduce((s: number, o: any) => s + Number(o.total || 0), 0);
-    await tg("sendMessage", {
-      chat_id: chatId,
-      text: `👑 <b>Owner panel</b>\n\nOrders: ${list.length}\nPending: ${pending}\nRevenue: ${money(revenue)}`,
-      parse_mode: "HTML",
-      reply_markup: { inline_keyboard: [[{ text: "🌐 Admin panel", url: `${SITE_URL}/admin` }]] },
+  if (t === "/admin") {
+    if (!(await isBotAdmin(chatId))) return say(chatId, "This command is for store owners only.");
+    await setState(chatId, null);
+    return adminHome(chatId);
+  }
+
+  const state = await getState(chatId);
+  const k = state?.k;
+
+  if (k === "await_email" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t)) return tryLink(chatId, t);
+
+  if (k === "dep_amount") {
+    const amt = Number(t);
+    if (!amt || amt <= 0) return say(chatId, "Send a valid amount, e.g. 25");
+    await setState(chatId, { k: "dep_hash", a: String(amt) });
+    return say(chatId, "Now send the transaction hash (TXID) of your deposit.");
+  }
+  if (k === "dep_hash") {
+    const uid = await linkedUid(chatId);
+    const u = uid ? await dbGet<any>(`users/${uid}`) : null;
+    await dbPush("requests", {
+      uid,
+      name: u?.name || "",
+      email: u?.email || "",
+      type: "Deposit",
+      amount: Number(state?.a || 0),
+      utr: t,
+      status: "Pending",
+      source: "telegram",
+      date: new Date().toISOString(),
     });
-    return;
+    await setState(chatId, null);
+    await say(chatId, "✅ Deposit submitted. It will be credited after review.", backHome);
+    return notifyOwners(`💰 <b>Telegram deposit</b>\n${u?.email || chatId}\nAmount: ${money(Number(state?.a || 0))}\nTX: <code>${t}</code>`);
   }
-  const state = await dbGet<string>(`telegramState/${chatId}`);
-  if (state === "await_email" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t)) {
-    return tryLink(chatId, t);
+  if (k === "wd_amount") {
+    const uid = await linkedUid(chatId);
+    const wallet = uid ? (await dbGet<number>(`users/${uid}/wallet`)) || 0 : 0;
+    const amt = Number(t);
+    if (!amt || amt <= 0) return say(chatId, "Send a valid amount.");
+    if (amt > wallet) return say(chatId, `You only have ${money(wallet)}.`);
+    await setState(chatId, { k: "wd_addr", a: String(amt) });
+    return say(chatId, "Send the wallet address (USDT BEP20 / Polygon) to receive the payout.");
   }
+  if (k === "wd_addr") {
+    const uid = await linkedUid(chatId);
+    const u = uid ? await dbGet<any>(`users/${uid}`) : null;
+    await dbPush("requests", {
+      uid,
+      name: u?.name || "",
+      email: u?.email || "",
+      type: "Withdraw",
+      amount: Number(state?.a || 0),
+      upi: t,
+      status: "Pending",
+      source: "telegram",
+      date: new Date().toISOString(),
+    });
+    await setState(chatId, null);
+    await say(chatId, "✅ Withdrawal requested. We will process it shortly.", backHome);
+    return notifyOwners(`🏧 <b>Telegram withdrawal</b>\n${u?.email || chatId}\nAmount: ${money(Number(state?.a || 0))}\nTo: <code>${t}</code>`);
+  }
+  if (k === "review") return submitReview(chatId, t);
+
+  if (state && (await isBotAdmin(chatId))) {
+    if (k === "deliver") return adminDeliver(chatId, state.a!, t);
+    if (k === "bc") return broadcast(chatId, t);
+    if (k === "cfg") {
+      await saveConfig({ [state.a!]: t });
+      await setState(chatId, null);
+      return say(chatId, "✅ Saved.", adminBack);
+    }
+    if (k === "p_price") {
+      await dbPatch(`products/${state.a}`, { price: Number(t) || 0 });
+      await setState(chatId, null);
+      return adminProduct(chatId, state.a!);
+    }
+    if (k === "p_stock") {
+      const lines = t.split("\n").map((l) => l.trim()).filter(Boolean);
+      const cur = (await dbGet<string[]>(`products/${state.a}/stock`)) || [];
+      await dbPut(`products/${state.a}/stock`, [...cur.filter(Boolean), ...lines]);
+      await setState(chatId, null);
+      await say(chatId, `✅ Added ${lines.length} stock items.`);
+      return adminProduct(chatId, state.a!);
+    }
+    if (k === "u_find") return adminFindUser(chatId, t);
+    if (k === "u_wallet") {
+      await dbPut(`users/${state.a}/wallet`, Number(t) || 0);
+      await setState(chatId, null);
+      return adminUser(chatId, state.a!);
+    }
+  }
+
   return welcome(chatId);
 }
 
