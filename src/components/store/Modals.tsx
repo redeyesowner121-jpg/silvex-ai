@@ -144,47 +144,87 @@ export function AuthModal() {
             wallet = 20;
           }
         }
-        await set(ref(db, `users/${res.user.uid}`), {
+        await update(ref(db, `users/${res.user.uid}`), {
           name,
-          email,
+          email: mail,
           wallet,
           myRefCode,
           ...(refBy ? { refBy, usedRef } : {}),
         });
         showSuccess("Account created", "Welcome to SILENT SELLER!");
       } else {
-        await signInWithEmailAndPassword(auth, email, pass);
+        await signInWithEmailAndPassword(auth, mail, pass);
         showSuccess("Logged in", "Welcome back.");
       }
       closeModal();
     } catch (e) {
-      notify(e instanceof Error ? e.message : "Something went wrong");
+      notify(friendly(e));
     } finally {
       setBusy(false);
     }
   }
 
+  async function saveGoogleUser(u: { uid: string; displayName: string | null; email: string | null }) {
+    if (!db) return;
+    const snap = await get(ref(db, `users/${u.uid}`));
+    if (!snap.exists()) {
+      const myRefCode = (
+        (u.displayName || "USR").replace(/[^a-zA-Z]/g, "").slice(0, 3) ||
+        "USR" + Math.floor(100 + Math.random() * 900)
+      ).toUpperCase() + Math.floor(100 + Math.random() * 900);
+      await update(ref(db, `users/${u.uid}`), {
+        name: u.displayName || u.email?.split("@")[0] || "User",
+        email: u.email || "",
+        wallet: 0,
+        myRefCode,
+      });
+    }
+  }
+
+  // Finish a Google sign-in that came back through a full-page redirect
+  // (used when the browser blocks popups, e.g. inside in-app browsers).
+  useEffect(() => {
+    if (!auth || !db) return;
+    getRedirectResult(auth)
+      .then(async (res) => {
+        if (!res?.user) return;
+        await saveGoogleUser(res.user);
+        closeModal();
+        showSuccess("Welcome!", "Login successful.");
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [auth, db]);
+
   async function google() {
     if (!auth || !db) return;
+    setBusy(true);
     try {
-      const res = await signInWithPopup(auth, new GoogleAuthProvider());
-      const u = res.user;
-      const snap = await get(ref(db, `users/${u.uid}`));
-      if (!snap.exists()) {
-        const myRefCode = (
-          (u.displayName || "USR").slice(0, 3) + Math.floor(100 + Math.random() * 900)
-        ).toUpperCase();
-        await set(ref(db, `users/${u.uid}`), {
-          name: u.displayName,
-          email: u.email,
-          wallet: 0,
-          myRefCode,
-        });
-      }
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: "select_account" });
+      const res = await signInWithPopup(auth, provider);
+      await saveGoogleUser(res.user);
       closeModal();
       showSuccess("Welcome!", "Login successful.");
     } catch (e) {
-      notify(e instanceof Error ? e.message : "Google sign-in failed");
+      const code = (e as { code?: string })?.code || "";
+      if (
+        code === "auth/popup-blocked" ||
+        code === "auth/popup-closed-by-user" ||
+        code === "auth/cancelled-popup-request" ||
+        code === "auth/operation-not-supported-in-this-environment"
+      ) {
+        try {
+          await signInWithRedirect(auth, new GoogleAuthProvider());
+          return;
+        } catch (err) {
+          notify(friendly(err));
+        }
+      } else {
+        notify(friendly(e));
+      }
+    } finally {
+      setBusy(false);
     }
   }
 
