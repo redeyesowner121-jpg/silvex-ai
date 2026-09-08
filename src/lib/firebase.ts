@@ -1,6 +1,6 @@
-import { getApps, initializeApp, type FirebaseApp } from "firebase/app";
-import { getAuth, type Auth } from "firebase/auth";
-import { getDatabase, type Database } from "firebase/database";
+import type { FirebaseApp } from "firebase/app";
+import type { Auth } from "firebase/auth";
+import type { Database } from "firebase/database";
 import { getFirebaseApiKey } from "./firebase.functions";
 
 export type FirebaseBundle = { app: FirebaseApp; auth: Auth; db: Database };
@@ -9,7 +9,12 @@ let cached: FirebaseBundle | null = null;
 let pending: Promise<FirebaseBundle> | null = null;
 
 async function init(): Promise<FirebaseBundle> {
-  const { apiKey } = await getFirebaseApiKey();
+  const [{ apiKey }, firebaseApp, firebaseAuth, firebaseDatabase] = await Promise.all([
+    getFirebaseApiKey(),
+    import("firebase/app"),
+    import("firebase/auth"),
+    import("firebase/database"),
+  ]);
 
   const config = {
     apiKey,
@@ -22,8 +27,12 @@ async function init(): Promise<FirebaseBundle> {
     measurementId: "G-B1MPW2N31F",
   };
 
-  const app = getApps()[0] ?? initializeApp(config);
-  const bundle: FirebaseBundle = { app, auth: getAuth(app), db: getDatabase(app) };
+  const app = firebaseApp.getApps()[0] ?? firebaseApp.initializeApp(config);
+  const bundle: FirebaseBundle = {
+    app,
+    auth: firebaseAuth.getAuth(app),
+    db: firebaseDatabase.getDatabase(app),
+  };
 
   // Analytics is browser-only and optional; never let it break the app.
   try {
