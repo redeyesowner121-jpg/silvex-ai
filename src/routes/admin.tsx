@@ -307,12 +307,31 @@ const emptyProduct = {
 };
 
 function ProductsAdmin({ products }: { products: Product[] }) {
-  const { db, notify, categories } = useStore();
+  const { db, notify, categories, config } = useStore();
   const [form, setForm] = useState(emptyProduct);
   const [bulk, setBulk] = useState("");
+  const [viewing, setViewing] = useState<string | null>(null);
 
   const editing = products.find((p) => p.id === form.id);
   const stockCount = Array.isArray(editing?.stock) ? editing.stock.filter(Boolean).length : 0;
+
+  const threshold = Number((config as { lowStockAlert?: number }).lowStockAlert ?? 5);
+  const lowStock = products.filter(
+    (p) => p.delivery === "auto" && (p.stock || []).filter(Boolean).length <= threshold,
+  );
+
+  useEffect(() => {
+    if (lowStock.length)
+      notify(
+        `Low stock: ${lowStock
+          .slice(0, 3)
+          .map((p) => p.title)
+          .join(", ")}${lowStock.length > 3 ? ` +${lowStock.length - 3} more` : ""}`,
+      );
+    // only alert once per visit
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lowStock.length]);
+
 
   async function save() {
     if (!db || !form.title || !form.price) return notify("Title and price are required");
@@ -344,7 +363,32 @@ function ProductsAdmin({ products }: { products: Product[] }) {
 
   return (
     <div className="space-y-4">
+      {lowStock.length ? (
+        <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-4">
+          <h2 className="text-sm font-black text-destructive">
+            Low stock alert ({lowStock.length})
+          </h2>
+          <p className="mb-2 text-xs text-muted-foreground">
+            {threshold} or fewer left — add more stock soon.
+          </p>
+          <div className="space-y-1">
+            {lowStock.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => setViewing(p.id)}
+                className="flex w-full items-center justify-between rounded-lg bg-card px-3 py-2 text-left text-xs font-bold"
+              >
+                <span className="truncate">{p.title}</span>
+                <span className="text-destructive">
+                  {(p.stock || []).filter(Boolean).length} left
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
       <div className="space-y-2 rounded-2xl border border-border bg-card p-4">
+
         <h2 className="text-sm font-black">{form.id ? "Edit product" : "Add product"}</h2>
         <select
           className={input}
@@ -446,58 +490,117 @@ function ProductsAdmin({ products }: { products: Product[] }) {
       </div>
 
       <div className="space-y-2">
-        {products.map((p) => (
-          <div
-            key={p.id}
-            className="flex items-center justify-between gap-2 rounded-xl border border-border bg-card p-3"
-          >
-            <div className="flex min-w-0 items-center gap-3">
-              {p.logo ? (
-                <img src={p.logo} alt="" className="h-10 w-10 rounded-lg object-cover" />
-              ) : null}
-              <div className="min-w-0">
-                <p className="truncate text-sm font-bold">{p.title}</p>
-                <p className="text-xs text-muted-foreground">
-                  ${p.price} · {p.type} · {p.salesCount ?? 0} sold ·{" "}
-                  {p.delivery === "auto"
-                    ? `${(p.stock || []).filter(Boolean).length} in stock`
-                    : p.delivery === "repeat"
-                      ? "repeated"
-                      : "manual"}
-                </p>
+        {products.map((p) => {
+          const available = (p.stock || []).filter(Boolean);
+          const used = Object.values(p.usedStock || {});
+          const isLow = p.delivery === "auto" && available.length <= threshold;
+          return (
+            <div key={p.id} className="rounded-xl border border-border bg-card p-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex min-w-0 items-center gap-3">
+                  {p.logo ? (
+                    <img src={p.logo} alt="" className="h-10 w-10 rounded-lg object-cover" />
+                  ) : null}
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-bold">{p.title}</p>
+                    <p className="text-xs text-muted-foreground">
+                      ${p.price} · {p.type} · {p.salesCount ?? 0} sold ·{" "}
+                      {p.delivery === "auto" ? (
+                        <span className={isLow ? "font-bold text-destructive" : ""}>
+                          {available.length} in stock
+                        </span>
+                      ) : p.delivery === "repeat" ? (
+                        "repeated"
+                      ) : (
+                        "manual"
+                      )}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex shrink-0 gap-2">
+                  <button
+                    onClick={() =>
+                      setForm({
+                        id: p.id,
+                        type: p.type ?? "Service",
+                        title: p.title,
+                        desc: p.desc ?? "",
+                        price: String(p.price),
+                        logo: p.logo ?? "",
+                        link: p.link ?? "",
+                        delivery: p.delivery ?? "manual",
+                      })
+                    }
+                    className="rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if (db && confirm("Delete this product?"))
+                        await remove(ref(db, `products/${p.id}`));
+                    }}
+                    className="rounded-lg bg-destructive/10 px-3 py-1.5 text-xs font-bold text-destructive"
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
-            </div>
-            <div className="flex shrink-0 gap-2">
+
               <button
-                onClick={() =>
-                  setForm({
-                    id: p.id,
-                    type: p.type ?? "Service",
-                    title: p.title,
-                    desc: p.desc ?? "",
-                    price: String(p.price),
-                    logo: p.logo ?? "",
-                    link: p.link ?? "",
-                    delivery: p.delivery ?? "manual",
-                  })
-                }
-                className="rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary"
+                onClick={() => setViewing(viewing === p.id ? null : p.id)}
+                className="mt-2 w-full rounded-lg bg-muted px-3 py-1.5 text-xs font-bold"
               >
-                Edit
+                {viewing === p.id ? "Hide stocks" : "View stocks"} ({available.length} available ·{" "}
+                {used.length} used)
               </button>
-              <button
-                onClick={async () => {
-                  if (db && confirm("Delete this product?"))
-                    await remove(ref(db, `products/${p.id}`));
-                }}
-                className="rounded-lg bg-destructive/10 px-3 py-1.5 text-xs font-bold text-destructive"
-              >
-                Delete
-              </button>
+
+              {viewing === p.id ? (
+                <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                  <div className="rounded-lg bg-emerald-500/5 p-2">
+                    <p className="mb-1 text-xs font-black text-emerald-600">
+                      Available ({available.length})
+                    </p>
+                    <div className="max-h-48 space-y-1 overflow-auto">
+                      {available.length ? (
+                        available.map((s, i) => (
+                          <p key={i} className="break-all rounded bg-card p-1.5 font-mono text-[11px]">
+                            {s}
+                          </p>
+                        ))
+                      ) : (
+                        <p className="text-xs text-muted-foreground">No stock left</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="rounded-lg bg-muted/60 p-2">
+                    <p className="mb-1 text-xs font-black">Used ({used.length})</p>
+                    <div className="max-h-48 space-y-1 overflow-auto">
+                      {used.length ? (
+                        used
+                          .slice()
+                          .reverse()
+                          .map((u, i) => (
+                            <div key={i} className="rounded bg-card p-1.5">
+                              <p className="break-all font-mono text-[11px]">{u.content}</p>
+                              <p className="text-[10px] text-muted-foreground">
+                                {u.email || "—"} · {u.orderId || ""} ·{" "}
+                                {u.date ? new Date(u.date).toLocaleString() : ""}
+                              </p>
+                            </div>
+                          ))
+                      ) : (
+                        <p className="text-xs text-muted-foreground">Nothing used yet</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : null}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
+
     </div>
   );
 }
@@ -736,6 +839,7 @@ function SettingsAdmin({
     depositAddress: config.depositAddress ?? "",
     supportLink: config.supportLink ?? "",
     minOrder: String(config.minOrder ?? 0),
+    lowStockAlert: String((config as { lowStockAlert?: number }).lowStockAlert ?? 5),
   });
   const [cats, setCats] = useState<Category[]>(liveCategories);
   const [bn, setBn] = useState({
@@ -757,6 +861,7 @@ function SettingsAdmin({
       depositAddress: cfg.depositAddress.trim(),
       supportLink: cfg.supportLink,
       minOrder: Number(cfg.minOrder || 0),
+      lowStockAlert: Number(cfg.lowStockAlert || 0),
       ...extra,
     });
     notify("Settings saved");
@@ -817,6 +922,12 @@ function SettingsAdmin({
           placeholder="Minimum order ($)"
           value={cfg.minOrder}
           onChange={(e) => setCfg({ ...cfg, minOrder: e.target.value })}
+        />
+        <input
+          className={input}
+          placeholder="Low stock alert at (units left)"
+          value={cfg.lowStockAlert}
+          onChange={(e) => setCfg({ ...cfg, lowStockAlert: e.target.value })}
         />
         <ImageField
           label="Payment QR photo"

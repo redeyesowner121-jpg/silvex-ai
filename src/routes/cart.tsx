@@ -92,11 +92,23 @@ function Cart() {
           });
           if (taken.length === item.qty) {
             taken.forEach((content) => delivered.push({ title: item.title, content }));
+            // keep a record of used stock for the admin
+            await Promise.all(
+              taken.map((content) =>
+                push(ref(db, `products/${item.id}/usedStock`), {
+                  content,
+                  orderId,
+                  email: user.email || "",
+                  date: new Date().toISOString(),
+                }),
+              ),
+            );
             continue;
           }
         }
         allDelivered = false;
       }
+
 
       await set(ref(db, `users/${user.uid}/wallet`), wallet - total);
       await set(ref(db, `orders/${orderId}`), {
