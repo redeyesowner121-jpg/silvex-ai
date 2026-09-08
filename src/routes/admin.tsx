@@ -137,7 +137,7 @@ function Admin() {
               preheader: "Your items are ready",
               badge: "Delivered",
               ctaText: "View my order",
-              ctaUrl: "https://silvex-ai.lovable.app/orders",
+              ctaUrl: `${(config.siteUrl || websiteUrl()).replace(/\/+$/, "")}/orders`,
             },
           ),
           receipt: {
