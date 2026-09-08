@@ -12,7 +12,7 @@ import { notifyTelegramOrder } from "@/lib/telegram.functions";
 export const input = "w-full rounded-xl border border-border bg-muted/60 p-2.5 text-sm outline-none";
 export const SECTIONS = {
   Analysis: ["Dashboard", "Orders"],
-  Management: ["Requests", "Products", "Coupons", "Users", "Settings"],
+  Management: ["Requests", "Products", "Coupons", "Users", "Bot buttons", "Settings"],
 } as const;
 export type Section = keyof typeof SECTIONS;
 export type Tab = (typeof SECTIONS)[Section][number];
