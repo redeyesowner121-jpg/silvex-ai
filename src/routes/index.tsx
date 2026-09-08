@@ -48,7 +48,7 @@ function useCountdown(endTime?: number) {
 }
 
 function Home() {
-  const { products, config, banner, flashSale, categories, addToCart } = useStore();
+  const { products, config, banner, flashSale, categories, addToCart, emoji } = useStore();
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
 

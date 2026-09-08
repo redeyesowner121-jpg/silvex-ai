@@ -28,7 +28,7 @@ const inputCls =
   "w-full rounded-xl border border-border bg-card px-4 py-3 text-sm outline-none focus:border-primary";
 
 function ProfilePage() {
-  const { auth, db, user, profile, wallet, isAdmin, openModal, showSuccess, notify } = useStore();
+  const { auth, db, user, profile, wallet, isAdmin, openModal, showSuccess, notify, emoji } = useStore();
   const [phone, setPhone] = useState(profile?.phone ?? "");
   const navigate = useNavigate();
   const [invited, setInvited] = useState(0);

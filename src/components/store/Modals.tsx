@@ -287,7 +287,7 @@ export function AuthModal() {
 }
 
 export function ProfileModal() {
-  const { auth, db, user, profile, wallet, closeModal, openModal, showSuccess, notify } = useStore();
+  const { auth, db, user, profile, wallet, closeModal, openModal, showSuccess, notify, emoji } = useStore();
   const [phone, setPhone] = useState(profile?.phone ?? "");
   const navigate = useNavigate();
 
