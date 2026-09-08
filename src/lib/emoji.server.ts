@@ -1,5 +1,5 @@
 /** Server-only emoji registry for the Telegram bot and the website. */
-import { dbGet, dbPatch, dbPut } from "./telegram.server";
+import { dbGet, dbPatch, dbPut, setKeyboardDecorator } from "./telegram.server";
 import { WEB_EMOJI_SLOTS } from "./web-emoji";
 
 export type EmojiEntry = { id?: string; char: string };
@@ -141,3 +141,57 @@ export async function collectEmojis(texts: string[]): Promise<void> {
   store.keys = { ...(store.keys || {}), ...patch };
   await dbPatch(`${EMOJI_PATH}/keys`, patch);
 }
+
+/* ---------------- coloured inline buttons (Bot API 10.3) ---------------- */
+
+const MARKERS = /^[\u{1F7E2}\u{1F535}\u{1F7E3}\u{1F7E0}\u{1F534}\u{1F7E1}\u26AA\u26AB\u{1F7E4}]\s*/u;
+const LEAD_EMOJI = /^(\p{Extended_Pictographic}(\uFE0F|\u200D\p{Extended_Pictographic})*)\s*/u;
+
+const SUCCESS = /(buy|deposit|approve|complete|confirm|save|generate|add|make admin|joined|yes|enable|set )/i;
+const DANGER = /(cancel|reject|remove|delete|refund|turn off|disable|block|withdraw|no,|clear)/i;
+const NEUTRAL = /^(menu|back|admin|orders|products|emojis|home)$/i;
+
+/** Map a saved emoji character back to its premium (custom emoji) id, if any. */
+function customIdForChar(char: string): string | undefined {
+  for (const v of Object.values(store.keys || {})) if (v?.char === char && v.id) return v.id;
+  for (const v of Object.values(store.products || {})) if (v?.char === char && v.id) return v.id;
+  return undefined;
+}
+
+function styleFor(label: string): "primary" | "success" | "danger" | undefined {
+  const plain = label.replace(LEAD_EMOJI, "").trim();
+  if (DANGER.test(plain)) return "danger";
+  if (SUCCESS.test(plain)) return "success";
+  if (NEUTRAL.test(plain)) return undefined;
+  return "primary";
+}
+
+export function decorateKeyboard(markup: any): any {
+  if (!markup || !Array.isArray(markup.inline_keyboard)) return markup;
+  return {
+    ...markup,
+    inline_keyboard: markup.inline_keyboard.map((row: any[]) =>
+      row.map((btn: any) => {
+        if (!btn || typeof btn.text !== "string") return btn;
+        // The old fake "colour dots" are no longer needed — Telegram colours the button itself.
+        let text = btn.text.replace(MARKERS, "");
+        const out: any = { ...btn, text };
+        if (!out.style) {
+          const s = styleFor(text);
+          if (s) out.style = s;
+        }
+        if (!out.icon_custom_emoji_id) {
+          const lead = LEAD_EMOJI.exec(text)?.[1];
+          const id = lead ? customIdForChar(lead) : undefined;
+          if (id) {
+            out.icon_custom_emoji_id = id;
+            out.text = text.replace(LEAD_EMOJI, "").trim() || text;
+          }
+        }
+        return out;
+      }),
+    ),
+  };
+}
+
+setKeyboardDecorator(decorateKeyboard);
