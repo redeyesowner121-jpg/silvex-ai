@@ -51,7 +51,8 @@ export async function loadEmojis(): Promise<void> {
 
 function entry(key: string): EmojiEntry {
   const saved = store.keys?.[key];
-  if (saved?.char || saved?.id) return { char: saved.char || EMOJI_SLOTS[key]?.char || "•", id: saved.id ?? "" };
+  if (saved?.char || saved?.id)
+    return { char: saved.char || EMOJI_SLOTS[key]?.char || "•", id: saved.id ?? "", img: saved.img ?? "" };
   return { char: EMOJI_SLOTS[key]?.char || "•" };
 }
 
@@ -214,4 +215,34 @@ export async function fetchEmojiImage(id: string): Promise<string | undefined> {
   } catch {
     return undefined;
   }
+}
+
+/**
+ * Fill in missing artwork for premium emojis that were saved before images
+ * were captured, so the website can show them too. Returns how many were fixed.
+ */
+export async function syncEmojiImages(): Promise<number> {
+  await loadEmojis();
+  let fixed = 0;
+  const patch: Record<string, EmojiEntry> = {};
+  for (const [key, v] of Object.entries(store.keys || {})) {
+    if (!v?.id || v.img) continue;
+    const img = await fetchEmojiImage(v.id);
+    if (!img) continue;
+    patch[key] = { ...v, img };
+    fixed++;
+  }
+  if (Object.keys(patch).length) {
+    store.keys = { ...(store.keys || {}), ...patch };
+    await dbPatch(`${EMOJI_PATH}/keys`, patch);
+  }
+  for (const [id, v] of Object.entries(store.products || {})) {
+    if (!v?.id || v.img) continue;
+    const img = await fetchEmojiImage(v.id);
+    if (!img) continue;
+    store.products = { ...(store.products || {}), [id]: { ...v, img } };
+    await dbPut(`${EMOJI_PATH}/products/${id}`, { ...v, img });
+    fixed++;
+  }
+  return fixed;
 }
