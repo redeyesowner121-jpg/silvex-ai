@@ -41,6 +41,7 @@ function publicProduct(id: string, p: any) {
 
 async function handle(request: Request, splat: string): Promise<Response> {
   const path = (splat || "").replace(/^\/+|\/+$/g, "");
+  await loadBotRuntime().catch(() => undefined);
   const account = await resolveKey(request);
   if (!account) return json({ ok: false, error: "Invalid or missing API key" }, 401);
   const { uid, user } = account;
