@@ -25,11 +25,19 @@ export type Product = {
   type?: string;
   link?: string;
   salesCount?: number;
-  /** auto = deliver one stock line per unit, repeat = same link every time, manual = admin delivers */
-  delivery?: "auto" | "repeat" | "manual";
+  /** auto = one stock line per unit, repeat = same link, manual = admin delivers, supplier = bought live from the supplier shop */
+  delivery?: "auto" | "repeat" | "manual" | "supplier";
   stock?: string[];
   usedStock?: Record<string, { content: string; orderId?: string; email?: string; date?: string }>;
+  /** Linked supplier shop product (price and stock follow the supplier automatically) */
+  supplierId?: number;
+  /** Selling price = supplier price × this percent (e.g. 130 = +30%) */
+  markup?: number;
+  supplierPrice?: number;
+  supplierStock?: number;
+  supplierSyncedAt?: string;
 };
+
 
 export type CartItem = Product & {
   qty: number;
