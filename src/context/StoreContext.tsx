@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
   type ReactNode,
+  type Context,
 } from "react";
 import type { Auth, User } from "firebase/auth";
 import type { Database } from "firebase/database";
@@ -108,7 +109,7 @@ type StoreValue = {
 
 // Keep one context instance across hot reloads so the provider and consumers
 // never end up on two different copies of this module.
-const g = globalThis as unknown as { __rkrStoreContext?: React.Context<StoreValue | null> };
+const g = globalThis as unknown as { __rkrStoreContext?: Context<StoreValue | null> };
 const StoreContext = g.__rkrStoreContext ?? createContext<StoreValue | null>(null);
 g.__rkrStoreContext = StoreContext;
 
