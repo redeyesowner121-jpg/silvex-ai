@@ -307,12 +307,31 @@ const emptyProduct = {
 };
 
 function ProductsAdmin({ products }: { products: Product[] }) {
-  const { db, notify, categories } = useStore();
+  const { db, notify, categories, config } = useStore();
   const [form, setForm] = useState(emptyProduct);
   const [bulk, setBulk] = useState("");
+  const [viewing, setViewing] = useState<string | null>(null);
 
   const editing = products.find((p) => p.id === form.id);
   const stockCount = Array.isArray(editing?.stock) ? editing.stock.filter(Boolean).length : 0;
+
+  const threshold = Number((config as { lowStockAlert?: number }).lowStockAlert ?? 5);
+  const lowStock = products.filter(
+    (p) => p.delivery === "auto" && (p.stock || []).filter(Boolean).length <= threshold,
+  );
+
+  useEffect(() => {
+    if (lowStock.length)
+      notify(
+        `Low stock: ${lowStock
+          .slice(0, 3)
+          .map((p) => p.title)
+          .join(", ")}${lowStock.length > 3 ? ` +${lowStock.length - 3} more` : ""}`,
+      );
+    // only alert once per visit
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lowStock.length]);
+
 
   async function save() {
     if (!db || !form.title || !form.price) return notify("Title and price are required");
