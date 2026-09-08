@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { get, push, ref, set } from "firebase/database";
+
 import { useStore } from "@/context/StoreContext";
 import { ProductCard } from "@/components/store/ProductCard";
 
@@ -48,21 +48,7 @@ function useCountdown(endTime?: number) {
 }
 
 function Home() {
-  const {
-    db,
-    user,
-    profile,
-    products,
-    config,
-    banner,
-    flashSale,
-    categories,
-    openModal,
-
-    addToCart,
-    showSuccess,
-    notify,
-  } = useStore();
+  const { products, config, banner, flashSale, categories, addToCart } = useStore();
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
 
