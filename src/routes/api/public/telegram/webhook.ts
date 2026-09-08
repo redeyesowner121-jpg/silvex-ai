@@ -62,12 +62,36 @@ type Cfg = {
 };
 
 const CFG = "site_settings/config";
+const BOT_CACHE_MS = 30_000;
+let cachedCfg: Cfg | null = null;
+let cfgLoadedAt = 0;
+let cachedButtonColors: ButtonColorMap | null = null;
+let colorsLoadedAt = 0;
 
 async function cfg(): Promise<Cfg> {
-  return (await dbGet<Cfg>(CFG)) || {};
+  if (cachedCfg && Date.now() - cfgLoadedAt < BOT_CACHE_MS) return cachedCfg;
+  cachedCfg = (await dbGet<Cfg>(CFG)) || {};
+  cfgLoadedAt = Date.now();
+  return cachedCfg;
 }
 async function siteName(): Promise<string> {
   return (await cfg()).siteName || "SILENT SELLER";
+}
+
+async function loadBotPresentation(): Promise<void> {
+  const now = Date.now();
+  await Promise.all([
+    loadEmojis().catch(() => undefined),
+    now - colorsLoadedAt < BOT_CACHE_MS && cachedButtonColors
+      ? Promise.resolve()
+      : dbGet<ButtonColorMap>("site_settings/button_colors")
+          .then((colors) => {
+            cachedButtonColors = colors || {};
+            colorsLoadedAt = Date.now();
+          })
+          .catch(() => undefined),
+  ]);
+  setButtonColors(cachedButtonColors);
 }
 
 /* ---------------- state ---------------- */
@@ -1388,10 +1412,7 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
 
         const update = await request.json();
         try {
-          await loadEmojis().catch(() => undefined);
-          setButtonColors(
-            await dbGet<ButtonColorMap>("site_settings/button_colors").catch(() => null),
-          );
+          await loadBotPresentation();
           if (update?.callback_query) {
             const cq = update.callback_query;
             await tg("answerCallbackQuery", { callback_query_id: cq.id }).catch(() => undefined);

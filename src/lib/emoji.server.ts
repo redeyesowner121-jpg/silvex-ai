@@ -60,15 +60,27 @@ export const EMOJI_SLOTS: Record<string, { label: string; char: string; group: E
 };
 
 let store: EmojiStore = {};
+let loadedAt = 0;
+let loading: Promise<void> | null = null;
+const EMOJI_CACHE_MS = 60_000;
 
 export async function loadEmojis(): Promise<void> {
+  if (loadedAt && Date.now() - loadedAt < EMOJI_CACHE_MS) return;
+  if (loading) return loading;
   // Only the small key/product maps are loaded — the premium artwork lives in a
   // separate branch so the bot never downloads megabytes of images per update.
-  const [keys, products] = await Promise.all([
+  loading = Promise.all([
     dbGet<Record<string, EmojiEntry>>(`${EMOJI_PATH}/keys`),
     dbGet<Record<string, EmojiEntry>>(`${EMOJI_PATH}/products`),
-  ]);
-  store = { keys: decodeMap(keys), products: products || {} };
+  ])
+    .then(([keys, products]) => {
+      store = { keys: decodeMap(keys), products: products || {} };
+      loadedAt = Date.now();
+    })
+    .finally(() => {
+      loading = null;
+    });
+  return loading;
 }
 
 function entry(key: string): EmojiEntry {
@@ -133,6 +145,7 @@ export async function setSlotEmoji(key: string, value: EmojiEntry): Promise<void
     throw new Error(`Emoji slot ${key} was not persisted`);
   }
   store.keys = { ...(store.keys || {}), [key]: persisted };
+  loadedAt = Date.now();
   if (img) await dbPut(`${EMOJI_PATH}/img/${pathKey}`, img).catch(() => undefined);
 }
 
@@ -140,6 +153,7 @@ export async function setProductEmoji(productId: string, value: EmojiEntry): Pro
   const { img, ...meta } = value;
   await dbPut(`${EMOJI_PATH}/products/${productId}`, meta);
   store.products = { ...(store.products || {}), [productId]: meta };
+  loadedAt = Date.now();
   if (img) await dbPut(`${EMOJI_PATH}/prodimg/${productId}`, img).catch(() => undefined);
 }
 
