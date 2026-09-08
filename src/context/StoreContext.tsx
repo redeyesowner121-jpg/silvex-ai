@@ -205,10 +205,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         }),
       );
       unsubs.push(onValue(ref(d, "site_settings/config"), (s) => setConfig(s.val() || {})));
-      unsubs.push(onValue(ref(d, "telegramEmoji/keys"), (s) => setEmojis(s.val() || {})));
+      // Slot names hold dots, stored as "~" because Firebase keys can't have dots.
+      const decodeKeys = (v: Record<string, any> | null) =>
+        Object.fromEntries(Object.entries(v || {}).map(([k, val]) => [k.split("~").join("."), val]));
+      unsubs.push(onValue(ref(d, "telegramEmoji/keys"), (s) => setEmojis(decodeKeys(s.val()))));
       // Premium emoji artwork can be heavy, so it loads after the first paint.
       const loadArt = () =>
-        unsubs.push(onValue(ref(d, "telegramEmoji/img"), (s) => setEmojiImgs(s.val() || {})));
+        unsubs.push(onValue(ref(d, "telegramEmoji/img"), (s) => setEmojiImgs(decodeKeys(s.val()))));
+
       if (typeof requestIdleCallback === "function") requestIdleCallback(() => loadArt());
       else setTimeout(loadArt, 1500);
       unsubs.push(onValue(ref(d, "site_settings/banner"), (s) => setBanner(s.val() || {})));
