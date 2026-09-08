@@ -570,10 +570,13 @@ async function sendSupport(chatId: number) {
 
 async function buy(chatId: number, productId: string) {
   const uid = await ensureUser(chatId);
-  const p = await dbGet<Product>(`products/${productId}`);
+  const [p, storedUser] = await Promise.all([
+    dbGet<Product>(`products/${productId}`),
+    dbGet<any>(`users/${uid}`),
+  ]);
   if (!p) return say(chatId, "Product not found.", backHome);
   const price = Number(p.price || 0);
-  const user = (await dbGet<any>(`users/${uid}`)) || {};
+  const user = storedUser || {};
   const wallet = Number(user.wallet || 0);
   if (wallet < price) {
     return say(chatId, `Not enough wallet balance. You have ${money(wallet)}, the item costs ${money(price)}.`, {
@@ -682,9 +685,14 @@ async function adminHome(chatId: number) {
 const adminBack = { inline_keyboard: [[{ text: "⬅️ Admin", callback_data: "a:home" }]] };
 
 async function adminStats(chatId: number) {
-  const orders = Object.values((await dbGet<Record<string, any>>("orders")) || {});
-  const users = Object.keys((await dbGet<Record<string, any>>("users")) || {}).length;
-  const products = Object.values((await dbGet<Record<string, Product>>("products")) || {});
+  const [orderMap, userMap, productMap] = await Promise.all([
+    dbGet<Record<string, any>>("orders"),
+    dbGet<Record<string, any>>("users"),
+    dbGet<Record<string, Product>>("products"),
+  ]);
+  const orders = Object.values(orderMap || {});
+  const users = Object.keys(userMap || {}).length;
+  const products = Object.values(productMap || {});
   const pending = orders.filter((o: any) => o.status === "Pending").length;
   const revenue = orders
     .filter((o: any) => o.status !== "Cancelled")

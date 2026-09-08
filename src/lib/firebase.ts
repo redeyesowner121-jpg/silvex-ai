@@ -7,10 +7,29 @@ export type FirebaseBundle = { app: FirebaseApp; auth: Auth; db: Database };
 
 let cached: FirebaseBundle | null = null;
 let pending: Promise<FirebaseBundle> | null = null;
+const API_KEY_CACHE = "silvex_firebase_api_key";
+
+async function firebaseApiKey(): Promise<string> {
+  try {
+    const saved = localStorage.getItem(API_KEY_CACHE);
+    if (saved) return saved;
+  } catch {
+    /* storage unavailable */
+  }
+  const { apiKey } = await getFirebaseApiKey();
+  if (apiKey) {
+    try {
+      localStorage.setItem(API_KEY_CACHE, apiKey);
+    } catch {
+      /* storage unavailable */
+    }
+  }
+  return apiKey;
+}
 
 async function init(): Promise<FirebaseBundle> {
-  const [{ apiKey }, firebaseApp, firebaseAuth, firebaseDatabase] = await Promise.all([
-    getFirebaseApiKey(),
+  const [apiKey, firebaseApp, firebaseAuth, firebaseDatabase] = await Promise.all([
+    firebaseApiKey(),
     import("firebase/app"),
     import("firebase/auth"),
     import("firebase/database"),
