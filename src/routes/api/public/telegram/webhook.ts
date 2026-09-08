@@ -1141,6 +1141,11 @@ async function handleText(chatId: number, text: string, entities?: any[]) {
     await setState(chatId, null);
     return adminHome(chatId);
   }
+  if (t === "/setemoji") {
+    if (!(await isBotAdmin(chatId))) return say(chatId, "This command is for store owners only.");
+    await setState(chatId, null);
+    return emojiHome(chatId);
+  }
 
   const state = await getState(chatId);
   const k = state?.k;
