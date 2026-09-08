@@ -14,7 +14,7 @@ const CHAINS: Record<
 > = {
   bep20: {
     label: "BNB Chain (BEP20)",
-    rpc: ["https://bsc-dataseed.binance.org", "https://bsc-dataseed1.defibit.io"],
+    rpc: ["https://bsc-dataseed.binance.org", "https://bsc-rpc.publicnode.com"],
     tokens: {
       "0x55d398326f99059ff775485246999027b3197955": { symbol: "USDT", decimals: 18 },
       "0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d": { symbol: "USDC", decimals: 18 },
@@ -22,7 +22,7 @@ const CHAINS: Record<
   },
   polygon: {
     label: "Polygon",
-    rpc: ["https://polygon-rpc.com", "https://rpc.ankr.com/polygon"],
+    rpc: ["https://polygon-bor-rpc.publicnode.com", "https://1rpc.io/matic"],
     tokens: {
       "0xc2132d05d31c914a87c6611c10748aeb04b58e8f": { symbol: "USDT", decimals: 6 },
       "0x2791bca1f2de4661ed88a30c99a7a9449aa84174": { symbol: "USDC", decimals: 6 },
