@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { DEFAULT_DEPOSIT_ADDRESS, verifyDepositAnyChain } from "@/lib/deposit.server";
 import {
   dbGet,
   dbPatch,
@@ -295,12 +296,12 @@ async function walletHistory(chatId: number) {
 }
 
 async function startDeposit(chatId: number) {
-  const uid = await ensureUser(chatId);
+  await ensureUser(chatId);
   const c = await cfg();
-  await setState(chatId, { k: "dep_amount" });
+  await setState(chatId, { k: "dep_hash" });
   await say(
     chatId,
-    `➕ <b>Deposit</b>\n\nSend USDT (BEP20 / Polygon) to:\n<code>${c.depositAddress || "-"}</code>\n\nNow send the amount you deposited in dollars (e.g. 25).`,
+    `➕ <b>Deposit</b>\n\nSend USDT / USDC (BEP20 or Polygon) to:\n<code>${c.depositAddress || "-"}</code>\n\nThen send the transaction hash (TXID) here. Payments confirmed within 10 minutes are credited automatically.`,
     { inline_keyboard: [[{ text: "❌ Cancel", callback_data: "home" }]] },
   );
 }
@@ -967,29 +968,65 @@ async function handleText(chatId: number, text: string) {
     return saveEmail(chatId, t);
   }
 
-  if (k === "dep_amount") {
-    const amt = Number(t);
-    if (!amt || amt <= 0) return say(chatId, "Send a valid amount, e.g. 25");
-    await setState(chatId, { k: "dep_hash", a: String(amt) });
-    return say(chatId, "Now send the transaction hash (TXID) of your deposit.");
-  }
   if (k === "dep_hash") {
+    const hash = t.trim();
+    if (!/^0x[0-9a-fA-F]{64}$/.test(hash)) return say(chatId, "Send the full transaction hash, starting with 0x.");
     const uid = await ensureUser(chatId);
     const u = await dbGet<any>(`users/${uid}`);
-    await dbPush("requests", {
+    const c = await cfg();
+    const address = c.depositAddress || DEFAULT_DEPOSIT_ADDRESS;
+
+    const already = await dbGet<any>(`deposits/${hash}`);
+    if (already) return say(chatId, "This transaction has already been used.", backHome);
+
+    await say(chatId, "🔎 Checking the blockchain…");
+    let res;
+    try {
+      res = await verifyDepositAnyChain(hash, address);
+    } catch {
+      return say(chatId, "Could not read that transaction right now. Try again in a minute.", backHome);
+    }
+    if (!res.ok) return say(chatId, `❌ ${res.message}`, backHome);
+
+    await setState(chatId, null);
+    const base = {
       uid,
       name: u?.name || "",
       email: u?.email || "",
-      type: "Deposit",
-      amount: Number(state?.a || 0),
-      utr: t,
-      status: "Pending",
+      amount: res.amount,
+      symbol: res.symbol,
+      chain: res.chain,
+      txHash: hash,
       source: "telegram",
       date: new Date().toISOString(),
-    });
-    await setState(chatId, null);
-    await say(chatId, "✅ Deposit submitted. It will be credited after review.", backHome);
-    return notifyOwners(`💰 <b>Telegram deposit</b>\n${u?.email || chatId}\nAmount: ${money(Number(state?.a || 0))}\nTX: <code>${t}</code>`);
+    };
+
+    if (res.status === "credited") {
+      await dbPut(`deposits/${hash}`, { ...base, status: "Credited" });
+      const w = (await dbGet<number>(`users/${uid}/wallet`)) || 0;
+      await dbPut(`users/${uid}/wallet`, Number(w) + res.amount);
+      await dbPush(`users/${uid}/history`, {
+        type: "Deposit",
+        amount: res.amount,
+        desc: `${res.symbol} on ${res.chain}`,
+        date: base.date,
+      });
+      await say(
+        chatId,
+        `✅ <b>Deposit done</b>\n${money(res.amount)} ${res.symbol} on ${res.chain} credited.\nNew balance: <b>${money(Number(w) + res.amount)}</b>`,
+        backHome,
+      );
+      return notifyOwners(
+        `💰 <b>Telegram deposit credited</b>\n${u?.email || chatId}\nAmount: ${money(res.amount)}\nTX: <code>${hash}</code>`,
+      );
+    }
+
+    await dbPut(`deposits/${hash}`, { ...base, status: "Pending" });
+    await dbPush("requests", { ...base, type: "Deposit", utr: hash, status: "Pending" });
+    await say(chatId, `⏳ ${res.message}`, backHome);
+    return notifyOwners(
+      `💰 <b>Telegram deposit for review</b>\n${u?.email || chatId}\nAmount: ${money(res.amount)}\nAge: ${res.ageMinutes} min\nTX: <code>${hash}</code>`,
+    );
   }
   if (k === "wd_amount") {
     const uid = await ensureUser(chatId);
