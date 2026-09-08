@@ -73,13 +73,16 @@ export type DepositCheck = {
  * stablecoin it delivered to the store's deposit address.
  */
 export const checkDeposit = createServerFn({ method: "POST" })
-  .inputValidator((input: { hash: string; chain: string }) => {
+  .inputValidator((input: { hash: string; chain: string; address?: string }) => {
     const hash = String(input.hash || "").trim();
     const chain = String(input.chain || "").trim() as ChainKey;
+    const address = String(input.address || DEPOSIT_ADDRESS).trim();
     if (!/^0x[0-9a-fA-F]{64}$/.test(hash)) throw new Error("That does not look like a transaction hash.");
     if (!CHAINS[chain]) throw new Error("Unknown network.");
-    return { hash, chain };
+    if (!/^0x[0-9a-fA-F]{40}$/.test(address)) throw new Error("Deposit address is not valid.");
+    return { hash, chain, address };
   })
+
   .handler(async ({ data }): Promise<DepositCheck> => {
     const { hash, chain } = data;
     const conf = CHAINS[chain];
