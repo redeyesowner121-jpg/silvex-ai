@@ -86,6 +86,9 @@ export type SiteConfig = {
   ownerEmails?: string;
   /** Telegram numeric IDs of the bot owners, comma separated. */
   telegramOwners?: string;
+  /** Supplier shop reseller API (address + key), set in the admin panel. */
+  supplierApiUrl?: string;
+  supplierApiKey?: string;
 };
 
 export const DEFAULT_CATEGORIES: Category[] = [
