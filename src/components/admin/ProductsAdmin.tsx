@@ -21,6 +21,7 @@ export function ProductsAdmin({ products }: { products: Product[] }) {
   const [viewing, setViewing] = useState<string | null>(null);
   const [supplier, setSupplier] = useState<SupItem[]>([]);
   const [supBusy, setSupBusy] = useState(false);
+  const markupRef = useRef<Record<string, string>>({});
   const [usedMap, setUsedMap] = useState<
     Record<string, Record<string, { content: string; orderId?: string; email?: string; date?: string }>>
   >({});
