@@ -234,8 +234,8 @@ function Cart() {
       showSuccess(
         delivered.length && allDelivered ? "Delivered!" : "Order placed",
         delivered.length && allDelivered
-          ? "Your item is ready in My Orders."
-          : "We'll deliver it shortly. Check My Orders for status.",
+          ? "Your item is ready in Orders."
+          : "We'll deliver it shortly. Check Orders for status.",
       );
       navigate({ to: "/orders" });
     } finally {

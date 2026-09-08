@@ -22,12 +22,12 @@ export type ButtonDef = {
 
 export const BUTTON_CATALOG: ButtonDef[] = [
   { key: "products", label: "View products / Buy more", group: "Main menu", fallback: "green" },
-  { key: "wallet", label: "My wallet", group: "Main menu", fallback: "blue" },
+  { key: "wallet", label: "Wallet", group: "Main menu", fallback: "blue" },
   { key: "profile", label: "Profile", group: "Main menu", fallback: "blue" },
   { key: "reviews", label: "Reviews", group: "Main menu", fallback: "blue" },
   { key: "refer", label: "Refer & earn", group: "Main menu", fallback: "blue" },
   { key: "support", label: "Support", group: "Main menu", fallback: "red" },
-  { key: "orders", label: "My orders", group: "Main menu", fallback: "blue" },
+  { key: "orders", label: "Orders", group: "Main menu", fallback: "blue" },
   { key: "apikey", label: "Reseller API key", group: "Main menu", fallback: "blue" },
   { key: "home", label: "Back to menu / Skip / Cancel", group: "Main menu", fallback: "blue" },
   { key: "url", label: "Website link buttons", group: "Main menu", fallback: "blue" },

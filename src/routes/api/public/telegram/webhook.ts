@@ -181,7 +181,7 @@ function mainKeyboard() {
     inline_keyboard: [
       [cbtn(DOT.green, "btn.products", "View Products", "products")],
       [
-        cbtn(DOT.blue, "btn.wallet", "My Wallet", "wallet"),
+        cbtn(DOT.blue, "btn.wallet", "Wallet", "wallet"),
         cbtn(DOT.violet, "btn.profile", "Profile", "profile"),
       ],
       [
@@ -190,7 +190,7 @@ function mainKeyboard() {
       ],
       [
         cbtn(DOT.red, "btn.support", "Support", "support"),
-        cbtn(DOT.blue, "btn.orders", "My Orders", "orders"),
+        cbtn(DOT.blue, "btn.orders", "Orders", "orders"),
       ],
       [cbtn(DOT.violet, "btn.apikey", "Reseller API key", "apikey")],
       [{ text: `🌐 ${be("btn.website")} Visit Website`, url: SITE_URL }],
