@@ -20,6 +20,7 @@ import {
   SITE_URL,
   telegramWebhookSecret,
   tg,
+  tgSendPhoto,
   TELEGRAM_OWNER_IDS,
 } from "@/lib/telegram.server";
 
@@ -28,6 +29,7 @@ type Product = {
   title?: string;
   desc?: string;
   price?: number;
+  logo?: string;
   link?: string;
   delivery?: "auto" | "repeat" | "manual";
   stock?: string[];

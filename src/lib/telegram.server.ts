@@ -229,7 +229,7 @@ export async function tgSendPhoto(
       }
       if (keyboard) form.append("reply_markup", JSON.stringify(keyboard));
       const ext = (m[1] || "image/jpeg").split("/")[1]?.split("+")[0] || "jpg";
-      form.append("photo", new Blob([bytes as unknown as BlobPart], { type: m[1] }), `photo.${ext}`);
+      form.append("photo", new Blob([bytes as unknown as BlobPart], { type: m[1] || "image/jpeg" }), `photo.${ext}`);
       const res = await fetch(`${GATEWAY}/sendPhoto`, {
         method: "POST",
         headers: { Authorization: `Bearer ${lovableKey}`, "X-Connection-Api-Key": connKey },
