@@ -240,6 +240,9 @@ export function ProductsAdmin({ products }: { products: Product[] }) {
                         logo: p.logo ?? "",
                         link: p.link ?? "",
                         delivery: p.delivery ?? "manual",
+                        supplierId: p.supplierId ? String(p.supplierId) : "",
+                        markup: String(p.markup ?? 130),
+
                       })
                     }
                     className="rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary"
