@@ -75,7 +75,10 @@ export function AuthModal() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [pass, setPass] = useState("");
-  const [refCode, setRefCode] = useState("");
+  const [refCode, setRefCode] = useState(() => {
+    if (typeof window === "undefined") return "";
+    return new URLSearchParams(window.location.search).get("ref")?.toUpperCase() ?? "";
+  });
   const [busy, setBusy] = useState(false);
 
   async function submit() {
