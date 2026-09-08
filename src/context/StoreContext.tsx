@@ -39,6 +39,8 @@ export type Profile = {
   myRefCode?: string;
   lastBonus?: string;
   isAdmin?: boolean;
+  isOwner?: boolean;
+  ownerRevoked?: boolean;
 };
 
 export type Category = { label: string; icon?: string };
@@ -218,10 +220,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
     let unsub = () => {};
     (async () => {
-      const { ref, onValue, update } = await import("firebase/database");
+      const { ref, onValue, update, get } = await import("firebase/database");
       unsub = onValue(ref(db, `users/${user.uid}`), (s) => setProfile(s.val() || {}));
       if (isOwnerEmail(user.email)) {
-        update(ref(db, `users/${user.uid}`), { isAdmin: true, isOwner: true }).catch(() => {});
+        const snap = await get(ref(db, `users/${user.uid}/ownerRevoked`)).catch(() => null);
+        if (!snap?.val()) {
+          update(ref(db, `users/${user.uid}`), { isAdmin: true, isOwner: true }).catch(() => {});
+        }
       }
     })();
     return () => unsub();
@@ -281,7 +286,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       user,
       profile,
       wallet: Number(profile?.wallet ?? 0),
-      isAdmin: Boolean(profile?.isAdmin) || isOwnerEmail(user?.email),
+      isAdmin: profile?.ownerRevoked
+        ? Boolean(profile?.isAdmin)
+        : Boolean(profile?.isAdmin) || isOwnerEmail(user?.email),
       products,
       config,
       categories:
