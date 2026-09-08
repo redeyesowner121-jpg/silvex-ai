@@ -1049,7 +1049,7 @@ async function saveEmojiFromMessage(
     chatId,
     `✅ Emoji saved and applied: ${saved.id ? `<tg-emoji emoji-id="${saved.id}">${saved.char}</tg-emoji>` : saved.char}${saved.id ? " (premium ✨)" : ""}${note}`,
   );
-  return emojiSlots(chatId, (target && EMOJI_SLOTS[target]?.group) ?? "normal");
+  return emojiSlots(chatId, target ? (EMOJI_SLOTS[target]?.group ?? "normal") : "normal");
 }
 
 
