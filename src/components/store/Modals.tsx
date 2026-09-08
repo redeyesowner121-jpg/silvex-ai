@@ -303,6 +303,8 @@ export function WalletModal() {
     Array<{ id: string; type: string; amount: number; desc: string; date: string }>
   >([]);
   const fee = Number(config.fee ?? 25);
+  const depositAddress = config.depositAddress || DEPOSIT_ADDRESS;
+
 
   useEffect(() => {
     if (!db || !user) return;
@@ -414,10 +416,10 @@ export function WalletModal() {
             Send USDT or USDC to this address, then paste the transaction hash.
           </p>
           <div className="mb-3 rounded-xl border border-dashed border-border bg-muted/50 p-3">
-            <p className="break-all font-mono text-[11px] font-bold">{DEPOSIT_ADDRESS}</p>
+            <p className="break-all font-mono text-[11px] font-bold">{depositAddress}</p>
             <button
               onClick={() => {
-                navigator.clipboard?.writeText(DEPOSIT_ADDRESS);
+                navigator.clipboard?.writeText(depositAddress);
                 setCopied(true);
                 setTimeout(() => setCopied(false), 1500);
               }}
@@ -425,6 +427,7 @@ export function WalletModal() {
             >
               {copied ? "Copied" : "Copy address"}
             </button>
+
           </div>
           <div className="mb-2 flex gap-2">
             {(
