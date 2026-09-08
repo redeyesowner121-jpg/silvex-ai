@@ -303,11 +303,16 @@ const emptyProduct = {
   price: "",
   logo: "",
   link: "",
+  delivery: "manual" as "manual" | "auto" | "repeat",
 };
 
 function ProductsAdmin({ products }: { products: Product[] }) {
   const { db, notify, categories } = useStore();
   const [form, setForm] = useState(emptyProduct);
+  const [bulk, setBulk] = useState("");
+
+  const editing = products.find((p) => p.id === form.id);
+  const stockCount = Array.isArray(editing?.stock) ? editing.stock.filter(Boolean).length : 0;
 
   async function save() {
     if (!db || !form.title || !form.price) return notify("Title and price are required");
@@ -321,6 +326,20 @@ function ProductsAdmin({ products }: { products: Product[] }) {
       notify("Product added");
     }
     setForm(emptyProduct);
+    setBulk("");
+  }
+
+  async function addStock() {
+    if (!db || !form.id) return notify("Save the product first, then add stock");
+    const lines = bulk
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean);
+    if (!lines.length) return notify("Paste at least one line");
+    const current = Array.isArray(editing?.stock) ? editing.stock.filter(Boolean) : [];
+    await set(ref(db, `products/${form.id}/stock`), [...current, ...lines]);
+    setBulk("");
+    notify(`${lines.length} stock added`);
   }
 
   return (
