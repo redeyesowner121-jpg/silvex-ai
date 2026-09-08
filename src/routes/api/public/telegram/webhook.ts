@@ -332,9 +332,12 @@ async function sendProduct(chatId: number, id: string) {
   const availability =
     p.delivery === "auto"
       ? `${em("norm.box")} In stock: ${stock}`
-      : p.delivery === "repeat"
-        ? `${em("norm.fast")} Instant delivery`
-        : `${em("norm.clock")} Manual delivery`;
+      : p.delivery === "supplier"
+        ? `${em("norm.fast")} Instant delivery · In stock: ${Number(p.supplierStock || 0)}`
+        : p.delivery === "repeat"
+          ? `${em("norm.fast")} Instant delivery`
+          : `${em("norm.clock")} Manual delivery`;
+
   const text = `${productEmoji(id)} <b>${p.title || "Item"}</b>\n\n${p.desc || ""}\n\n${em("norm.money")} Price: <b>${money(p.price || 0)}</b>\n${availability}`;
   const keyboard = {
     inline_keyboard: [
