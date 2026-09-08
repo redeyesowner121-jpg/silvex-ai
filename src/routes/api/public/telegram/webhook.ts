@@ -155,24 +155,41 @@ async function forceJoinBlocked(chatId: number): Promise<boolean> {
 
 /* ---------------- user menus ---------------- */
 
+/**
+ * Telegram does not let bots pick button colours, so buttons are colour-coded
+ * with coloured markers + the admin's chosen emoji for each slot.
+ */
+const DOT = {
+  green: "🟢",
+  blue: "🔵",
+  violet: "🟣",
+  orange: "🟠",
+  red: "🔴",
+  yellow: "🟡",
+} as const;
+
+function cbtn(dot: string, key: string, label: string, data: string) {
+  return { text: `${dot} ${be(key)} ${label}`, callback_data: data };
+}
+
 function mainKeyboard() {
   return {
     inline_keyboard: [
-      [{ text: `${be("btn.products")} View Products`, callback_data: "products" }],
+      [cbtn(DOT.green, "btn.products", "View Products", "products")],
       [
-        { text: `${be("btn.wallet")} My Wallet`, callback_data: "wallet" },
-        { text: `${be("btn.profile")} Profile`, callback_data: "profile" },
+        cbtn(DOT.blue, "btn.wallet", "My Wallet", "wallet"),
+        cbtn(DOT.violet, "btn.profile", "Profile", "profile"),
       ],
       [
-        { text: `${be("btn.reviews")} Reviews`, callback_data: "reviews" },
-        { text: `${be("btn.refer")} Refer & Earn`, callback_data: "refer" },
+        cbtn(DOT.yellow, "btn.reviews", "Reviews", "reviews"),
+        cbtn(DOT.orange, "btn.refer", "Refer & Earn", "refer"),
       ],
       [
-        { text: `${be("btn.support")} Support`, callback_data: "support" },
-        { text: `${be("btn.orders")} My Orders`, callback_data: "orders" },
+        cbtn(DOT.red, "btn.support", "Support", "support"),
+        cbtn(DOT.blue, "btn.orders", "My Orders", "orders"),
       ],
-      [{ text: `${be("btn.apikey")} Reseller API key`, callback_data: "apikey" }],
-      [{ text: `${be("btn.website")} Visit Website`, url: SITE_URL }],
+      [cbtn(DOT.violet, "btn.apikey", "Reseller API key", "apikey")],
+      [{ text: `🌐 ${be("btn.website")} Visit Website`, url: SITE_URL }],
     ],
   };
 }
@@ -266,7 +283,7 @@ async function sendProducts(chatId: number) {
       ...list.map(([id, p]) => [
         { text: `${productEmojiChar(id)} ${p.title || "Item"} — ${money(p.price || 0)}`, callback_data: `p:${id}` },
       ]),
-      [{ text: `${be("btn.back")} Menu`, callback_data: "home" }],
+      [{ text: `🔵 ${be("btn.back")} Menu`, callback_data: "home" }],
     ],
   });
 }
@@ -285,10 +302,10 @@ async function sendProduct(chatId: number, id: string) {
   const text = `${productEmoji(id)} <b>${p.title || "Item"}</b>\n\n${p.desc || ""}\n\n${em("norm.money")} Price: <b>${money(p.price || 0)}</b>\n${availability}`;
   const keyboard = {
     inline_keyboard: [
-      [{ text: `${be("btn.buy")} Buy now — ${money(p.price || 0)}`, callback_data: `b:${id}` }],
+      [{ text: `🟢 ${be("btn.buy")} Buy now — ${money(p.price || 0)}`, callback_data: `b:${id}` }],
       [
-        { text: `${be("btn.back")} Products`, callback_data: "products" },
-        { text: `${be("btn.wallet")} Wallet`, callback_data: "wallet" },
+        { text: `🔵 ${be("btn.back")} Products`, callback_data: "products" },
+        { text: `🟣 ${be("btn.wallet")} Wallet`, callback_data: "wallet" },
       ],
     ],
   };
@@ -306,7 +323,7 @@ async function sendWallet(chatId: number) {
   await say(chatId, `👛 <b>Wallet</b>\n\nBalance: <b>${money(wallet)}</b>`, {
     inline_keyboard: [
       [
-        { text: "➕ Deposit", callback_data: "dep" },
+        { text: `🟢 ${be("btn.deposit")} Deposit`, callback_data: "dep" },
         { text: "➖ Withdraw", callback_data: "wd" },
       ],
       [{ text: "📜 History", callback_data: "whist" }],
@@ -532,7 +549,7 @@ async function buy(chatId: number, productId: string) {
   const wallet = Number(user.wallet || 0);
   if (wallet < price) {
     return say(chatId, `Not enough wallet balance. You have ${money(wallet)}, the item costs ${money(price)}.`, {
-      inline_keyboard: [[{ text: "➕ Deposit", callback_data: "dep" }]],
+      inline_keyboard: [[{ text: `🟢 ${be("btn.deposit")} Deposit`, callback_data: "dep" }]],
     });
   }
 
@@ -950,18 +967,44 @@ async function saveEmojiFromMessage(
   state: { k: string; a?: string },
   text: string,
   entities?: any[],
+  sticker?: any,
 ) {
-  const value = readEmoji(text, entities);
-  if (!value) return say(chatId, "Send a single emoji (premium emojis work too).");
+  const value = readEmoji(text, entities, sticker);
+  if (!value) {
+    return say(
+      chatId,
+      "Send a single emoji. Premium (custom) emojis work too — send it as a normal message or forward the emoji sticker.",
+    );
+  }
+
+  // Premium emojis only render if this bot is allowed to use them. Test it once
+  // right here, and silently keep the plain emoji if Telegram refuses.
+  let saved = value;
+  let note = "";
+  if (value.id) {
+    const ok = await tg("sendMessage", {
+      chat_id: chatId,
+      text: `<tg-emoji emoji-id="${value.id}">${value.char}</tg-emoji> premium emoji check`,
+      parse_mode: "HTML",
+    })
+      .then(() => true)
+      .catch(() => false);
+    if (!ok) {
+      saved = { char: value.char };
+      note =
+        "\n\n⚠️ Telegram refused this premium emoji for the bot, so the normal emoji was saved instead. Premium emojis need a bot linked to a Fragment username.";
+    }
+  }
+
   if (state.k === "em_prod") {
-    await setProductEmoji(state.a!, value);
+    await setProductEmoji(state.a!, saved);
     await setState(chatId, null);
-    await say(chatId, `✅ Product emoji saved: ${value.char}${value.id ? " (premium)" : ""}`);
+    await say(chatId, `✅ Product emoji saved: ${saved.char}${saved.id ? " (premium ✨)" : ""}${note}`);
     return emojiProducts(chatId);
   }
-  await setSlotEmoji(state.a!, value);
+  await setSlotEmoji(state.a!, saved);
   await setState(chatId, null);
-  await say(chatId, `✅ Emoji saved: ${value.char}${value.id ? " (premium)" : ""}`);
+  await say(chatId, `✅ Emoji saved: ${saved.char}${saved.id ? " (premium ✨)" : ""}${note}`);
   return emojiSlots(chatId, EMOJI_SLOTS[state.a!]?.group === "button" ? "button" : "normal");
 }
 
@@ -1133,7 +1176,7 @@ async function submitReview(chatId: number, text: string) {
   }
 }
 
-async function handleText(chatId: number, text: string, entities?: any[]) {
+async function handleText(chatId: number, text: string, entities?: any[], sticker?: any) {
   const t = text.trim();
   await dbPut(`telegramUsers/${chatId}`, true);
 
@@ -1257,7 +1300,8 @@ async function handleText(chatId: number, text: string, entities?: any[]) {
   if (k === "review") return submitReview(chatId, t);
 
   if (state && (await isBotAdmin(chatId))) {
-    if (k === "em_prod" || k === "em_key") return saveEmojiFromMessage(chatId, state, text, entities);
+    if (k === "em_prod" || k === "em_key")
+      return saveEmojiFromMessage(chatId, state, text, entities, sticker);
     if (k === "deliver") return adminDeliver(chatId, state.a!, t);
     if (k === "bc") return broadcast(chatId, t);
     if (k === "cfg") {
@@ -1317,7 +1361,13 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
           } else {
             const msg = update?.message ?? update?.edited_message;
             const chatId = msg?.chat?.id;
-            if (chatId) await handleText(Number(chatId), String(msg.text || ""), msg.entities);
+            if (chatId)
+              await handleText(
+                Number(chatId),
+                String(msg.text ?? msg.caption ?? ""),
+                msg.entities ?? msg.caption_entities,
+                msg.sticker,
+              );
           }
         } catch (err) {
           console.error("telegram webhook error", err);

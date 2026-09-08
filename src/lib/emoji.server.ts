@@ -77,11 +77,16 @@ export function productEmojiChar(productId: string): string {
 }
 
 /** Pull the first emoji (with custom emoji id when present) out of a Telegram message. */
-export function readEmoji(text: string, entities?: any[]): EmojiEntry | null {
+export function readEmoji(text: string, entities?: any[], sticker?: any): EmojiEntry | null {
+  // A premium emoji forwarded as a sticker carries its id directly.
+  if (sticker?.custom_emoji_id) {
+    return { id: String(sticker.custom_emoji_id), char: String(sticker.emoji || "⭐") };
+  }
   const custom = (entities || []).find((x) => x?.type === "custom_emoji" && x?.custom_emoji_id);
   if (custom) {
-    const chars = [...text];
-    const char = chars.slice(custom.offset, custom.offset + custom.length).join("") || "⭐";
+    // Telegram offsets/lengths are UTF-16 code units, which is exactly how
+    // JavaScript string slicing works — splitting by code points broke this.
+    const char = text.slice(custom.offset, custom.offset + custom.length) || "⭐";
     return { id: String(custom.custom_emoji_id), char };
   }
   const m = text.match(/\p{Extended_Pictographic}(\uFE0F|\u200D\p{Extended_Pictographic})*/u);
