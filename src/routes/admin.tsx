@@ -378,12 +378,58 @@ function ProductsAdmin({ products }: { products: Product[] }) {
           value={form.logo}
           onChange={(logo) => setForm({ ...form, logo })}
         />
+        <select
+          className={input}
+          value={form.delivery}
+          onChange={(e) =>
+            setForm({ ...form, delivery: e.target.value as typeof form.delivery })
+          }
+        >
+          <option value="manual">Manual delivery (admin sends it)</option>
+          <option value="auto">Auto delivery from stock (1 line = 1 stock)</option>
+          <option value="repeat">Repeated delivery (same link every order)</option>
+        </select>
         <input
           className={input}
-          placeholder="Delivery link / content"
+          placeholder={
+            form.delivery === "repeat" ? "Link sent to every buyer" : "Delivery link / content"
+          }
           value={form.link}
           onChange={(e) => setForm({ ...form, link: e.target.value })}
         />
+        {form.delivery === "auto" ? (
+          <div className="space-y-2 rounded-xl bg-muted/50 p-3">
+            <p className="text-xs font-bold">
+              Stock available: {stockCount}
+              {form.id ? "" : " — save the product first to add stock"}
+            </p>
+            <textarea
+              className={`${input} min-h-24`}
+              placeholder={"Paste stock, one per line\nline1\nline2"}
+              value={bulk}
+              onChange={(e) => setBulk(e.target.value)}
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={addStock}
+                className="rounded-lg bg-emerald-500/10 px-3 py-1.5 text-xs font-bold text-emerald-600"
+              >
+                Add stock
+              </button>
+              {stockCount ? (
+                <button
+                  onClick={async () => {
+                    if (db && form.id && confirm("Clear all stock?"))
+                      await set(ref(db, `products/${form.id}/stock`), null);
+                  }}
+                  className="rounded-lg bg-destructive/10 px-3 py-1.5 text-xs font-bold text-destructive"
+                >
+                  Clear stock
+                </button>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
         <div className="flex gap-2">
           <button onClick={save} className="btn-grad flex-1 rounded-xl py-2.5 text-sm font-bold">
             {form.id ? "Save changes" : "Save product"}
