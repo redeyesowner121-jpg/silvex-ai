@@ -32,6 +32,7 @@ import {
   productEmojiChar,
   readEmoji,
   fetchEmojiImage,
+  syncEmojiImages,
   setProductEmoji,
   setSlotEmoji,
   slotList,
@@ -923,9 +924,13 @@ async function adminSettings(chatId: number) {
 /* ---------------- emoji setup (/setemoji) ---------------- */
 
 async function emojiHome(chatId: number) {
+  // Pick up artwork for premium emojis saved before images were captured.
+  const fixed = await syncEmojiImages().catch(() => 0);
   await say(
     chatId,
-    `😍 <b>Emoji setup</b>\n\nPick what you want to change. Send any emoji — premium (custom) emojis are saved with their id automatically.`,
+    `😍 <b>Emoji setup</b>\n\nPick what you want to change. Send any emoji — premium (custom) emojis are saved with their id automatically.${
+      fixed ? `\n\n✨ ${fixed} premium emoji(s) synced for the website.` : ""
+    }`,
     {
       inline_keyboard: [
         [{ text: "🛍 Product emojis", callback_data: "a:em:prod" }],
