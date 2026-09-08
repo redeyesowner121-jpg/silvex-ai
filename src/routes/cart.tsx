@@ -90,6 +90,27 @@ function Cart() {
       for (const item of cart) {
         const snap = await get(ref(db, `products/${item.id}`));
         const p = snap.val() || {};
+        if (p.delivery === "supplier") {
+          const r = await buyFromSupplier({
+            data: { productId: item.id, qty: item.qty, orderId },
+          }).catch(() => ({ ok: false as const, items: [] as string[] }));
+          if (r.ok && r.items.length) {
+            r.items.forEach((content) => delivered.push({ title: item.title, content }));
+            void Promise.all(
+              r.items.map((content) =>
+                push(ref(db, `usedStock/${item.id}`), {
+                  content,
+                  orderId,
+                  email: user.email || "",
+                  date: new Date().toISOString(),
+                }),
+              ),
+            );
+            continue;
+          }
+          allDelivered = false;
+          continue;
+        }
         if (p.delivery === "repeat" && p.link) {
           for (let n = 0; n < item.qty; n++) delivered.push({ title: item.title, content: p.link });
           continue;
@@ -123,6 +144,7 @@ function Cart() {
         }
         allDelivered = false;
       }
+
 
 
       await set(ref(db, `users/${user.uid}/wallet`), wallet - total);
