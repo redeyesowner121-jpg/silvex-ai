@@ -1,6 +1,12 @@
 /** Server-only emoji registry for the Telegram bot and the website. */
 import { dbGet, dbPatch, dbPut, setKeyboardDecorator, tg, tgFileDataUrl } from "./telegram.server";
 import { WEB_EMOJI_SLOTS } from "./web-emoji";
+import {
+  BUTTON_CATALOG,
+  buttonKeyFor,
+  styleForColor,
+  type ButtonColorMap,
+} from "./button-colors";
 
 export type EmojiEntry = { id?: string; char: string; img?: string };
 export type EmojiStore = {
@@ -169,6 +175,22 @@ function customIdForChar(char: string): string | undefined {
   return undefined;
 }
 
+/** Colours the admin picked on the website, loaded per bot update. */
+let buttonColors: ButtonColorMap = {};
+
+export function setButtonColors(map: ButtonColorMap | null | undefined): void {
+  buttonColors = map || {};
+}
+
+function styleFromConfig(btn: any): "primary" | "success" | "danger" | undefined | false {
+  const key = buttonKeyFor(btn);
+  if (!key) return false;
+  const chosen = buttonColors[key];
+  if (chosen) return styleForColor(chosen);
+  const def = BUTTON_CATALOG.find((d) => d.key === key);
+  return def ? styleForColor(def.fallback) : false;
+}
+
 function styleFor(label: string): "primary" | "success" | "danger" | undefined {
   const plain = label.replace(LEAD_EMOJI, "").trim();
   if (DANGER.test(plain)) return "danger";
@@ -188,8 +210,13 @@ export function decorateKeyboard(markup: any): any {
         let text = btn.text.replace(MARKERS, "");
         const out: any = { ...btn, text };
         if (!out.style) {
-          const s = styleFor(text);
-          if (s) out.style = s;
+          const configured = styleFromConfig(btn);
+          if (configured === false) {
+            const s = styleFor(text);
+            if (s) out.style = s;
+          } else if (configured) {
+            out.style = configured;
+          }
         }
         if (!out.icon_custom_emoji_id) {
           const lead = LEAD_EMOJI.exec(text)?.[1];

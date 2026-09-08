@@ -17,6 +17,7 @@ const Dashboard = lazy(() => import("@/components/admin/Dashboard").then((m) => 
 const ProductsAdmin = lazy(() => import("@/components/admin/ProductsAdmin").then((m) => ({ default: m.ProductsAdmin })));
 const UsersAdmin = lazy(() => import("@/components/admin/UsersAdmin").then((m) => ({ default: m.UsersAdmin })));
 const CouponsAdmin = lazy(() => import("@/components/admin/CouponsAdmin").then((m) => ({ default: m.CouponsAdmin })));
+const ButtonsAdmin = lazy(() => import("@/components/admin/ButtonsAdmin").then((m) => ({ default: m.ButtonsAdmin })));
 const SettingsAdmin = lazy(() => import("@/components/admin/SettingsAdmin").then((m) => ({ default: m.SettingsAdmin })));
 
 
@@ -444,6 +445,8 @@ function Admin() {
       ) : null}
 
       {tab === "Users" ? <UsersAdmin /> : null}
+
+      {tab === "Bot buttons" ? <ButtonsAdmin /> : null}
 
       {tab === "Settings" ? <SettingsAdmin config={config} banner={banner} /> : null}
 
