@@ -7,6 +7,7 @@ import { exportOrdersCsv, exportOrdersPdf, type ExportRow } from "@/lib/export-o
 import { sendSmtpMail } from "@/lib/mail.functions";
 import { deliveryBlock, emailShell, sendMail } from "@/lib/mailer";
 import { notifyTelegramOrder } from "@/lib/telegram.functions";
+import { connectTelegramBot } from "@/lib/bot-setup.functions";
 
 
 import { input, Stat, Empty, ImageField, type OrderRow } from "@/components/admin/shared";
