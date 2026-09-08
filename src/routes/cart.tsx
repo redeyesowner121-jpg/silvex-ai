@@ -145,20 +145,29 @@ function Cart() {
         cart.map((i) => runTransaction(ref(db, `products/${i.id}/salesCount`), (c) => (c || 0) + 1)),
       );
       if (user.email) {
-        const rows = cart
-          .map((i) => `<tr><td>${i.title} x${i.qty}</td><td align="right">$${(i.price * i.qty).toFixed(2)}</td></tr>`)
-          .join("");
+        const done = Boolean(delivered.length && allDelivered);
         void sendMail(db, {
           to: user.email,
-          subject: `Order ${orderId.slice(-6)} confirmed`,
+          subject: `${siteName} · Order ${orderId.slice(-6)} ${done ? "delivered" : "received"}`,
           html: emailShell(
             siteName,
-            delivered.length && allDelivered ? "Your order is delivered" : "Order received",
-            `<table width="100%">${rows}<tr><td><b>Total</b></td><td align="right"><b>$${total.toFixed(2)}</b></td></tr></table>
-             <p>${delivered.length && allDelivered ? "Your items are ready in My Orders." : "We will deliver it shortly. Track it in My Orders."}</p>`,
+            done ? "Your order is delivered 🎉" : "Order received ✅",
+            `<p>Hi${user.displayName ? " " + user.displayName : ""}, thanks for your purchase.</p>
+             ${itemsTable(
+               cart.map((i) => ({ title: i.title, qty: i.qty, amount: i.price * i.qty })),
+               total,
+             )}
+             ${done ? "<p><b>Your delivery details:</b></p>" + deliveryBlock(delivered) : "<p>Our team is preparing your order. You will get another email the moment it is delivered.</p>"}
+             <p style="color:#8a8ca3;font-size:12px">Order ID: ${orderId}</p>`,
+            {
+              preheader: done ? "Your items are ready" : "We received your order",
+              ctaText: "View my order",
+              ctaUrl: "https://silvex-ai.lovable.app/orders",
+            },
           ),
         });
       }
+
       void notifyTelegramOrder({
         data: {
           orderId,
