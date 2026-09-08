@@ -97,15 +97,8 @@ export async function tg(method: string, body: Record<string, unknown>): Promise
       }
       return await call(retry);
     }
-    if (false && payload["reply_markup"]) {
-      const plain = stripIcons(payload["reply_markup"]);
-      const noStyle = {
-        ...plain,
-        inline_keyboard: plain.inline_keyboard.map((row: any[]) => row.map(({ style, ...r }: any) => r)),
-      };
-      return await call({ ...payload, reply_markup: noStyle });
-    }
     throw err;
+
   }
 }
 
