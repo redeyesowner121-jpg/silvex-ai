@@ -16,7 +16,7 @@ export const Route = createFileRoute("/")({
       { property: "og:title", content: "RKR Premium Store — Digital Products" },
       {
         property: "og:description",
-        content: "Cheapest rates, instant delivery, wallet payments and daily bonuses.",
+        content: "Cheapest rates, instant delivery and wallet payments.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
