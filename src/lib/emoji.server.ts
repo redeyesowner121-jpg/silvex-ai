@@ -11,7 +11,12 @@ export type EmojiStore = {
 export const EMOJI_PATH = "telegramEmoji";
 
 /** Built-in slots the admin can override with premium (custom) emojis. */
-export const EMOJI_SLOTS: Record<string, { label: string; char: string; group: "button" | "normal" }> = {
+export type EmojiGroup = "button" | "normal" | "web";
+
+export const EMOJI_SLOTS: Record<string, { label: string; char: string; group: EmojiGroup }> = {
+  ...Object.fromEntries(
+    Object.entries(WEB_EMOJI_SLOTS).map(([key, v]) => [key, { ...v, group: "web" as const }]),
+  ),
   "btn.products": { label: "Products button", char: "🛍", group: "button" },
   "btn.wallet": { label: "Wallet button", char: "👛", group: "button" },
   "btn.profile": { label: "Profile button", char: "👤", group: "button" },
