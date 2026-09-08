@@ -5,6 +5,8 @@ import { useStore } from "@/context/StoreContext";
 import { deliveryBlock, emailShell, itemsTable, sendMail } from "@/lib/mailer";
 import { notifyTelegramOrder } from "@/lib/telegram.functions";
 import { referralCap, referralRate, websiteUrl } from "@/lib/referral";
+import { buyFromSupplier } from "@/lib/supplier.functions";
+
 import { Emo } from "@/components/store/Emo";
 
 
