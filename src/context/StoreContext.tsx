@@ -208,6 +208,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // Keep supplier-linked products' price and stock fresh (at most once every 5 min)
+  useEffect(() => {
+    const t = setTimeout(() => {
+      import("@/lib/supplier.functions")
+        .then((m) => m.autoSyncSupplier())
+        .catch(() => undefined);
+    }, 2500);
+    return () => clearTimeout(t);
+  }, []);
+
+
   useEffect(() => {
     try {
       localStorage.setItem(CART_KEY, JSON.stringify(cart));
