@@ -188,7 +188,7 @@ function Cart() {
           subject: `${siteName} · Order ${orderId.slice(-6)} ${done ? "delivered" : "received"}`,
           html: emailShell(
             siteName,
-            done ? `Your order is delivered $<Emo k="web.party" />` : `Order received $<Emo k="web.ok" />`,
+            done ? `Your order is delivered ${emoji("web.party")}` : `Order received ${emoji("web.ok")}`,
             `<p>Hi${user.displayName ? " " + user.displayName : ""}, thanks for your purchase.</p>
              ${itemsTable(
                cart.map((i) => ({ title: i.title, qty: i.qty, amount: i.price * i.qty })),
