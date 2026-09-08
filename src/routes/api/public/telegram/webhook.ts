@@ -994,19 +994,20 @@ async function saveEmojiFromMessage(
 
   const saved: typeof value = { ...value };
   let note = "";
+  const target = state.a;
 
   // Persist the id immediately, before Telegram rendering checks or artwork
   // downloads. This keeps every non-product slot reliable and makes the new
   // emoji available to keyboard decoration in this same webhook request.
   try {
     if (state.k === "em_prod") {
-      if (!state.a) throw new Error("No product was selected");
-      await setProductEmoji(state.a, saved);
+      if (!target) throw new Error("No product was selected");
+      await setProductEmoji(target, saved);
     } else {
-      if (!state.a || (!EMOJI_SLOTS[state.a] && !state.a.startsWith("auto."))) {
+      if (!target || (!EMOJI_SLOTS[target] && !target.startsWith("auto."))) {
         throw new Error("No emoji slot was selected");
       }
-      await setSlotEmoji(state.a, saved);
+      await setSlotEmoji(target, saved);
     }
   } catch (error) {
     console.error("emoji metadata save failed", error);
@@ -1031,8 +1032,9 @@ async function saveEmojiFromMessage(
     const img = await fetchEmojiImage(value.id);
     if (img) {
       saved.img = img;
-      if (state.k === "em_prod") await setProductEmoji(state.a!, saved);
-      else await setSlotEmoji(state.a!, saved);
+      if (!target) return say(chatId, "❌ The selected emoji slot expired. Please choose it again.");
+      if (state.k === "em_prod") await setProductEmoji(target, saved);
+      else await setSlotEmoji(target, saved);
     }
     else note += "\n\n⚠️ Could not download this emoji's image for the website.";
   }
@@ -1047,7 +1049,7 @@ async function saveEmojiFromMessage(
     chatId,
     `✅ Emoji saved and applied: ${saved.id ? `<tg-emoji emoji-id="${saved.id}">${saved.char}</tg-emoji>` : saved.char}${saved.id ? " (premium ✨)" : ""}${note}`,
   );
-  return emojiSlots(chatId, EMOJI_SLOTS[state.a!]?.group ?? "normal");
+  return emojiSlots(chatId, (target && EMOJI_SLOTS[target]?.group) ?? "normal");
 }
 
 
