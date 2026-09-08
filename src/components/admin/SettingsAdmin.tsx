@@ -25,6 +25,12 @@ export function SettingsAdmin({
     supportLink?: string;
     minOrder?: number;
     categories?: Category[];
+    siteUrl?: string;
+    botUsername?: string;
+    referralRate?: number;
+    referralCap?: number;
+    ownerEmails?: string;
+    telegramOwners?: string;
   };
   banner: { title?: string; desc?: string; link?: string };
 }) {
@@ -39,6 +45,12 @@ export function SettingsAdmin({
     supportLink: config.supportLink ?? "",
     minOrder: String(config.minOrder ?? 0),
     lowStockAlert: String((config as { lowStockAlert?: number }).lowStockAlert ?? 5),
+    siteUrl: config.siteUrl ?? "",
+    botUsername: config.botUsername ?? "",
+    referralRate: String(config.referralRate ?? 2),
+    referralCap: String(config.referralCap ?? 201),
+    ownerEmails: config.ownerEmails ?? "",
+    telegramOwners: config.telegramOwners ?? "",
   });
   const [cats, setCats] = useState<Category[]>(liveCategories);
   const [bn, setBn] = useState({
@@ -61,6 +73,12 @@ export function SettingsAdmin({
       supportLink: cfg.supportLink,
       minOrder: Number(cfg.minOrder || 0),
       lowStockAlert: Number(cfg.lowStockAlert || 0),
+      siteUrl: cfg.siteUrl.trim(),
+      botUsername: cfg.botUsername.trim().replace(/^@/, ""),
+      referralRate: Number(cfg.referralRate || 0),
+      referralCap: Number(cfg.referralCap || 0),
+      ownerEmails: cfg.ownerEmails.trim(),
+      telegramOwners: cfg.telegramOwners.trim(),
       ...extra,
     });
     notify("Settings saved");
@@ -143,6 +161,57 @@ export function SettingsAdmin({
           className="btn-grad w-full rounded-xl py-2.5 text-sm font-bold"
         >
           Save payment settings
+        </button>
+      </div>
+
+      <div className="space-y-2 rounded-2xl border border-border bg-card p-4">
+        <h2 className="text-sm font-black">Links, referral &amp; owners</h2>
+        <p className="text-[11px] text-muted-foreground">
+          Used by the website, the Telegram bot and the reseller API.
+        </p>
+        <input
+          className={input}
+          placeholder="Website address (https://your-site.com)"
+          value={cfg.siteUrl}
+          onChange={(e) => setCfg({ ...cfg, siteUrl: e.target.value })}
+        />
+        <input
+          className={input}
+          placeholder="Telegram bot username (without @)"
+          value={cfg.botUsername}
+          onChange={(e) => setCfg({ ...cfg, botUsername: e.target.value })}
+        />
+        <div className="flex gap-2">
+          <input
+            className={input}
+            placeholder="Referral commission (%)"
+            value={cfg.referralRate}
+            onChange={(e) => setCfg({ ...cfg, referralRate: e.target.value })}
+          />
+          <input
+            className={input}
+            placeholder="Max per friend ($)"
+            value={cfg.referralCap}
+            onChange={(e) => setCfg({ ...cfg, referralCap: e.target.value })}
+          />
+        </div>
+        <input
+          className={input}
+          placeholder="Owner emails (comma separated)"
+          value={cfg.ownerEmails}
+          onChange={(e) => setCfg({ ...cfg, ownerEmails: e.target.value })}
+        />
+        <input
+          className={input}
+          placeholder="Telegram owner IDs (comma separated)"
+          value={cfg.telegramOwners}
+          onChange={(e) => setCfg({ ...cfg, telegramOwners: e.target.value })}
+        />
+        <button
+          onClick={() => saveConfig()}
+          className="btn-grad w-full rounded-xl py-2.5 text-sm font-bold"
+        >
+          Save links &amp; referral
         </button>
       </div>
 
