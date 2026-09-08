@@ -114,6 +114,13 @@ function ProfilePage() {
           <span>💳 Wallet & deposits</span>
           <span>›</span>
         </button>
+        <Link
+          to="/api-key"
+          className="flex w-full justify-between rounded-xl border border-border p-3.5 text-sm font-bold"
+        >
+          <span>🔑 Reseller API key</span>
+          <span>›</span>
+        </Link>
         <button
           onClick={() => openModal("suggestion")}
           className="flex w-full justify-between rounded-xl border border-border p-3.5 text-sm font-bold"
@@ -121,6 +128,7 @@ function ProfilePage() {
           <span>💡 Request a product</span>
           <span>›</span>
         </button>
+
         {isAdmin ? (
           <Link
             to="/admin"

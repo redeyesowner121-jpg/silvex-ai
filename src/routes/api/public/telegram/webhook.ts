@@ -148,6 +148,7 @@ function mainKeyboard() {
         { text: "🆘 Support", callback_data: "support" },
         { text: "🧾 My Orders", callback_data: "orders" },
       ],
+      [{ text: "🔑 Reseller API key", callback_data: "apikey" }],
       [{ text: "🌐 Visit Website", url: SITE_URL }],
     ],
   };
@@ -298,6 +299,36 @@ async function sendProfile(chatId: number) {
     {
       inline_keyboard: [
         [{ text: "🌐 Open profile on website", url: `${SITE_URL}/profile` }],
+        [{ text: "⬅️ Menu", callback_data: "home" }],
+      ],
+    },
+  );
+}
+
+async function sendApiKey(chatId: number, regenerate: boolean) {
+  const uid = await linkedUid(chatId);
+  if (!uid) return askLink(chatId);
+  const user = (await dbGet<any>(`users/${uid}`)) || {};
+  let key: string | undefined = user.apiKey;
+  if (!key || regenerate) {
+    if (key) await dbPut(`apiKeys/${key}`, null);
+    const bytes = new Uint8Array(24);
+    crypto.getRandomValues(bytes);
+    key = "sk_" + Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+    await dbPut(`apiKeys/${key}`, uid);
+    await dbPatch(`users/${uid}`, { apiKey: key, apiEnabled: true });
+  }
+  const base = `${SITE_URL}/api/public/reseller`;
+  await say(
+    chatId,
+    `🔑 <b>Your reseller API key</b>\n\n<code>${key}</code>\n\n` +
+      `Send it as the <code>x-api-key</code> header. Orders are paid from your wallet.\n\n` +
+      `<code>GET  ${base}/products\nGET  ${base}/balance\nGET  ${base}/orders\nPOST ${base}/order\n     {"productId":"ID","qty":1}</code>\n\n` +
+      `⚠️ Keep it private.`,
+    {
+      inline_keyboard: [
+        [{ text: "♻️ Generate new key", callback_data: "apikey_new" }],
+        [{ text: "🌐 Open on website", url: `${SITE_URL}/api-key` }],
         [{ text: "⬅️ Menu", callback_data: "home" }],
       ],
     },
@@ -849,6 +880,8 @@ async function handleCallback(chatId: number, data: string) {
   if (data === "dep") return startDeposit(chatId);
   if (data === "wd") return startWithdraw(chatId);
   if (data === "profile") return sendProfile(chatId);
+  if (data === "apikey") return sendApiKey(chatId, false);
+  if (data === "apikey_new") return sendApiKey(chatId, true);
   if (data === "orders") return sendOrders(chatId);
   if (data === "reviews") return sendReviews(chatId);
   if (data === "rev_new") {
