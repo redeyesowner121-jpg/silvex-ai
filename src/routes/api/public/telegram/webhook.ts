@@ -260,12 +260,13 @@ async function sendProducts(chatId: number) {
   const all = (await dbGet<Record<string, Product>>("products")) || {};
   const list = Object.entries(all).slice(0, 40);
   if (!list.length) return say(chatId, "No products available right now.", backHome);
-  await say(chatId, "🛍 <b>Products</b>\nTap any item to see details.", {
+  await collectEmojis(list.flatMap(([, p]) => [p.title || "", p.desc || ""])).catch(() => undefined);
+  await say(chatId, `${em("btn.products")} <b>Products</b>\nTap any item to see details.`, {
     inline_keyboard: [
       ...list.map(([id, p]) => [
-        { text: `${p.title || "Item"} — ${money(p.price || 0)}`, callback_data: `p:${id}` },
+        { text: `${productEmojiChar(id)} ${p.title || "Item"} — ${money(p.price || 0)}`, callback_data: `p:${id}` },
       ]),
-      [{ text: "⬅️ Menu", callback_data: "home" }],
+      [{ text: `${be("btn.back")} Menu`, callback_data: "home" }],
     ],
   });
 }
@@ -273,18 +274,22 @@ async function sendProducts(chatId: number) {
 async function sendProduct(chatId: number, id: string) {
   const p = await dbGet<Product>(`products/${id}`);
   if (!p) return say(chatId, "Product not found.", backHome);
+  await collectEmojis([p.title || "", p.desc || ""]).catch(() => undefined);
   const stock = Array.isArray(p.stock) ? p.stock.filter(Boolean).length : 0;
   const availability =
     p.delivery === "auto"
-      ? `📦 In stock: ${stock}`
+      ? `${em("norm.box")} In stock: ${stock}`
       : p.delivery === "repeat"
-        ? "⚡ Instant delivery"
-        : "🕐 Manual delivery";
-  const text = `<b>${p.title || "Item"}</b>\n\n${p.desc || ""}\n\n💵 Price: <b>${money(p.price || 0)}</b>\n${availability}`;
+        ? `${em("norm.fast")} Instant delivery`
+        : `${em("norm.clock")} Manual delivery`;
+  const text = `${productEmoji(id)} <b>${p.title || "Item"}</b>\n\n${p.desc || ""}\n\n${em("norm.money")} Price: <b>${money(p.price || 0)}</b>\n${availability}`;
   const keyboard = {
     inline_keyboard: [
-      [{ text: `Buy now — ${money(p.price || 0)}`, callback_data: `b:${id}` }],
-      [{ text: "⬅️ Products", callback_data: "products" }],
+      [{ text: `${be("btn.buy")} Buy now — ${money(p.price || 0)}`, callback_data: `b:${id}` }],
+      [
+        { text: `${be("btn.back")} Products`, callback_data: "products" },
+        { text: `${be("btn.wallet")} Wallet`, callback_data: "wallet" },
+      ],
     ],
   };
   if (p.logo) {
