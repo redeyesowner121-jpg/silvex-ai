@@ -1007,7 +1007,16 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
             const cq = update.callback_query;
             await tg("answerCallbackQuery", { callback_query_id: cq.id }).catch(() => undefined);
             const chatId = cq.message?.chat?.id;
-            if (chatId) await handleCallback(Number(chatId), String(cq.data || ""));
+            const messageId = cq.message?.message_id;
+            if (chatId && messageId) editTarget.set(Number(chatId), Number(messageId));
+            if (chatId) {
+              try {
+                await handleCallback(Number(chatId), String(cq.data || ""));
+              } finally {
+                editTarget.delete(Number(chatId));
+              }
+            }
+
           } else {
             const msg = update?.message ?? update?.edited_message;
             const chatId = msg?.chat?.id;
