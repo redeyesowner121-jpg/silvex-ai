@@ -2,14 +2,16 @@ import { Link } from "@tanstack/react-router";
 import { useStore } from "@/context/StoreContext";
 
 export function Header() {
-  const { user, profile, isAdmin, notices, openModal } = useStore();
+  const { user, profile, isAdmin, notices, openModal, siteName } = useStore();
+  const [first, ...rest] = siteName.split(" ");
 
   return (
     <header className="glass sticky top-0 z-40">
       <div className="mx-auto flex h-16 max-w-md items-center justify-between px-4">
         <Link to="/" className="text-lg font-black tracking-tight">
-          RKR <span className="text-primary">Premium</span>
+          {first} <span className="text-primary">{rest.join(" ")}</span>
         </Link>
+
         <div className="flex items-center gap-3">
           <button
             aria-label="Notifications"

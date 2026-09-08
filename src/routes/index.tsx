@@ -25,12 +25,8 @@ export const Route = createFileRoute("/")({
   component: Home,
 });
 
-const CATEGORIES = [
-  { label: "Service", icon: "⚡" },
-  { label: "Method", icon: "📘" },
-  { label: "Earning", icon: "💸" },
-  { label: "Free", icon: "🎁" },
-];
+
+
 
 function useCountdown(endTime?: number) {
   const [left, setLeft] = useState("00:00:00");
@@ -60,7 +56,9 @@ function Home() {
     config,
     banner,
     flashSale,
+    categories,
     openModal,
+
     addToCart,
     showSuccess,
     notify,
@@ -184,7 +182,7 @@ function Home() {
         Categories
       </h2>
       <div className="mb-6 grid grid-cols-4 gap-3">
-        {CATEGORIES.map((c) => (
+        {categories.map((c) => (
           <button
             key={c.label}
             onClick={() => navigate({ to: "/products", search: { category: c.label } })}

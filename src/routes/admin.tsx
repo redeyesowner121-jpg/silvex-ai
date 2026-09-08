@@ -1,7 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { get, onValue, push, ref, remove, set, update } from "firebase/database";
-import { useStore, type Product } from "@/context/StoreContext";
+import { useStore, type Product, type Category } from "@/context/StoreContext";
+import { fileToCompressedDataUrl } from "@/lib/image-upload";
+
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -19,7 +21,7 @@ export const Route = createFileRoute("/admin")({
 });
 
 const input = "w-full rounded-xl border border-border bg-muted/60 p-2.5 text-sm outline-none";
-const TABS = ["Orders", "Requests", "Products", "Coupons", "Settings"] as const;
+const TABS = ["Orders", "Requests", "Products", "Coupons", "Users", "Settings"] as const;
 type Tab = (typeof TABS)[number];
 
 type OrderRow = {
@@ -223,7 +225,10 @@ function Admin() {
         />
       ) : null}
 
+      {tab === "Users" ? <UsersAdmin /> : null}
+
       {tab === "Settings" ? <SettingsAdmin config={config} banner={banner} /> : null}
+
     </div>
   );
 }
@@ -236,35 +241,99 @@ function Empty({ text }: { text: string }) {
   );
 }
 
+function ImageField({
+  value,
+  onChange,
+  label,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  label: string;
+}) {
+  const { notify } = useStore();
+  const [busy, setBusy] = useState(false);
+
+  return (
+    <div className="space-y-2 rounded-xl border border-dashed border-border p-3">
+      <p className="text-xs font-bold text-muted-foreground">{label}</p>
+      {value ? (
+        <div className="flex items-center gap-3">
+          <img src={value} alt="" className="h-14 w-14 rounded-lg object-cover" />
+          <button onClick={() => onChange("")} className="text-xs font-bold text-destructive">
+            Remove
+          </button>
+        </div>
+      ) : null}
+      <input
+        className={input}
+        placeholder="Paste an image link"
+        value={value.startsWith("data:") ? "" : value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+      <label className="block cursor-pointer rounded-xl bg-muted py-2 text-center text-xs font-bold">
+        {busy ? "Uploading…" : "📷 Upload photo from device"}
+        <input
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={async (e) => {
+            const file = e.target.files?.[0];
+            e.target.value = "";
+            if (!file) return;
+            setBusy(true);
+            try {
+              onChange(await fileToCompressedDataUrl(file));
+            } catch (err) {
+              notify(err instanceof Error ? err.message : "Upload failed");
+            } finally {
+              setBusy(false);
+            }
+          }}
+        />
+      </label>
+    </div>
+  );
+}
+
+const emptyProduct = {
+  id: "",
+  type: "Service",
+  title: "",
+  desc: "",
+  price: "",
+  logo: "",
+  link: "",
+};
+
 function ProductsAdmin({ products }: { products: Product[] }) {
-  const { db, notify } = useStore();
-  const [form, setForm] = useState({
-    type: "Service",
-    title: "",
-    desc: "",
-    price: "",
-    logo: "",
-    link: "",
-  });
+  const { db, notify, categories } = useStore();
+  const [form, setForm] = useState(emptyProduct);
 
   async function save() {
     if (!db || !form.title || !form.price) return notify("Title and price are required");
-    await push(ref(db, "products"), { ...form, price: Number(form.price), salesCount: 0 });
-    setForm({ type: "Service", title: "", desc: "", price: "", logo: "", link: "" });
-    notify("Product added");
+    const { id, ...rest } = form;
+    const data = { ...rest, price: Number(form.price) };
+    if (id) {
+      await update(ref(db, `products/${id}`), data);
+      notify("Product updated");
+    } else {
+      await push(ref(db, "products"), { ...data, salesCount: 0 });
+      notify("Product added");
+    }
+    setForm(emptyProduct);
   }
 
   return (
     <div className="space-y-4">
       <div className="space-y-2 rounded-2xl border border-border bg-card p-4">
-        <h2 className="text-sm font-black">Add product</h2>
+        <h2 className="text-sm font-black">{form.id ? "Edit product" : "Add product"}</h2>
         <select
           className={input}
           value={form.type}
           onChange={(e) => setForm({ ...form, type: e.target.value })}
         >
-          {["Service", "Method", "Earning", "Free"].map((t) => (
-            <option key={t}>{t}</option>
+          {categories.map((c) => (
+            <option key={c.label}>{c.label}</option>
           ))}
         </select>
         <input
@@ -285,11 +354,10 @@ function ProductsAdmin({ products }: { products: Product[] }) {
           value={form.price}
           onChange={(e) => setForm({ ...form, price: e.target.value })}
         />
-        <input
-          className={input}
-          placeholder="Image URL"
+        <ImageField
+          label="Product photo"
           value={form.logo}
-          onChange={(e) => setForm({ ...form, logo: e.target.value })}
+          onChange={(logo) => setForm({ ...form, logo })}
         />
         <input
           className={input}
@@ -297,37 +365,169 @@ function ProductsAdmin({ products }: { products: Product[] }) {
           value={form.link}
           onChange={(e) => setForm({ ...form, link: e.target.value })}
         />
-        <button onClick={save} className="btn-grad w-full rounded-xl py-2.5 text-sm font-bold">
-          Save product
-        </button>
+        <div className="flex gap-2">
+          <button onClick={save} className="btn-grad flex-1 rounded-xl py-2.5 text-sm font-bold">
+            {form.id ? "Save changes" : "Save product"}
+          </button>
+          {form.id ? (
+            <button
+              onClick={() => setForm(emptyProduct)}
+              className="rounded-xl bg-muted px-4 text-sm font-bold"
+            >
+              Cancel
+            </button>
+          ) : null}
+        </div>
       </div>
 
       <div className="space-y-2">
         {products.map((p) => (
           <div
             key={p.id}
-            className="flex items-center justify-between rounded-xl border border-border bg-card p-3"
+            className="flex items-center justify-between gap-2 rounded-xl border border-border bg-card p-3"
           >
-            <div>
-              <p className="text-sm font-bold">{p.title}</p>
-              <p className="text-xs text-muted-foreground">
-                ${p.price} · {p.type} · {p.salesCount ?? 0} sold
-              </p>
+            <div className="flex min-w-0 items-center gap-3">
+              {p.logo ? (
+                <img src={p.logo} alt="" className="h-10 w-10 rounded-lg object-cover" />
+              ) : null}
+              <div className="min-w-0">
+                <p className="truncate text-sm font-bold">{p.title}</p>
+                <p className="text-xs text-muted-foreground">
+                  ${p.price} · {p.type} · {p.salesCount ?? 0} sold
+                </p>
+              </div>
             </div>
-            <button
-              onClick={async () => {
-                if (db && confirm("Delete this product?")) await remove(ref(db, `products/${p.id}`));
-              }}
-              className="rounded-lg bg-destructive/10 px-3 py-1.5 text-xs font-bold text-destructive"
-            >
-              Delete
-            </button>
+            <div className="flex shrink-0 gap-2">
+              <button
+                onClick={() =>
+                  setForm({
+                    id: p.id,
+                    type: p.type ?? "Service",
+                    title: p.title,
+                    desc: p.desc ?? "",
+                    price: String(p.price),
+                    logo: p.logo ?? "",
+                    link: p.link ?? "",
+                  })
+                }
+                className="rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary"
+              >
+                Edit
+              </button>
+              <button
+                onClick={async () => {
+                  if (db && confirm("Delete this product?"))
+                    await remove(ref(db, `products/${p.id}`));
+                }}
+                className="rounded-lg bg-destructive/10 px-3 py-1.5 text-xs font-bold text-destructive"
+              >
+                Delete
+              </button>
+            </div>
           </div>
         ))}
       </div>
     </div>
   );
 }
+
+type UserRow = {
+  uid: string;
+  name?: string;
+  email?: string;
+  wallet?: number;
+  phone?: string;
+  isAdmin?: boolean;
+  isOwner?: boolean;
+};
+
+function UsersAdmin() {
+  const { db, notify } = useStore();
+  const [users, setUsers] = useState<UserRow[]>([]);
+  const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    if (!db) return;
+    return onValue(ref(db, "users"), (s) =>
+      setUsers(
+        Object.entries(s.val() || {}).map(([uid, u]) => ({
+          uid,
+          ...(u as Omit<UserRow, "uid">),
+        })),
+      ),
+    );
+  }, [db]);
+
+  const list = users.filter((u) =>
+    `${u.name ?? ""} ${u.email ?? ""}`.toLowerCase().includes(search.toLowerCase()),
+  );
+
+  async function setWallet(u: UserRow) {
+    if (!db) return;
+    const raw = prompt(`New wallet balance for ${u.email}`, String(u.wallet ?? 0));
+    if (raw === null) return;
+    const amount = Number(raw);
+    if (Number.isNaN(amount)) return notify("Enter a number");
+    await set(ref(db, `users/${u.uid}/wallet`), amount);
+    await push(ref(db, `users/${u.uid}/history`), {
+      type: "Adjustment",
+      amount,
+      desc: "Balance set by admin",
+      date: new Date().toISOString(),
+    });
+    notify("Balance updated");
+  }
+
+  return (
+    <div className="space-y-3">
+      <input
+        className={input}
+        placeholder="Search name or email"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+      />
+      {list.map((u) => (
+        <div key={u.uid} className="rounded-2xl border border-border bg-card p-4">
+          <div className="flex items-center justify-between">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-bold">{u.name || "User"}</p>
+              <p className="truncate text-xs text-muted-foreground">{u.email}</p>
+            </div>
+            <span className="text-sm font-black">${u.wallet ?? 0}</span>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              onClick={() => setWallet(u)}
+              className="rounded-lg bg-muted px-3 py-1.5 text-xs font-bold"
+            >
+              Set balance
+            </button>
+            {u.isOwner ? (
+              <span className="rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary">
+                Owner
+              </span>
+            ) : (
+              <button
+                onClick={async () => {
+                  if (!db) return;
+                  await update(ref(db, `users/${u.uid}`), { isAdmin: !u.isAdmin });
+                  notify(u.isAdmin ? "Admin access removed" : "Admin access granted");
+                }}
+                className={`rounded-lg px-3 py-1.5 text-xs font-bold ${
+                  u.isAdmin ? "bg-destructive/10 text-destructive" : "bg-emerald-500/10 text-emerald-600"
+                }`}
+              >
+                {u.isAdmin ? "Remove admin" : "Make admin"}
+              </button>
+            )}
+          </div>
+        </div>
+      ))}
+      {list.length === 0 ? <Empty text="No users found." /> : null}
+    </div>
+  );
+}
+
 
 function CouponsAdmin({
   coupons,
@@ -427,15 +627,31 @@ function SettingsAdmin({
   config,
   banner,
 }: {
-  config: { qr?: string; fee?: number; marquee?: string };
+  config: {
+    qr?: string;
+    fee?: number;
+    marquee?: string;
+    siteName?: string;
+    siteTagline?: string;
+    depositAddress?: string;
+    supportLink?: string;
+    minOrder?: number;
+    categories?: Category[];
+  };
   banner: { title?: string; desc?: string; link?: string };
 }) {
-  const { db, products, notify } = useStore();
+  const { db, products, notify, categories: liveCategories } = useStore();
   const [cfg, setCfg] = useState({
     qr: config.qr ?? "",
     fee: String(config.fee ?? 25),
     marquee: config.marquee ?? "",
+    siteName: config.siteName ?? "RKR Premium",
+    siteTagline: config.siteTagline ?? "",
+    depositAddress: config.depositAddress ?? "",
+    supportLink: config.supportLink ?? "",
+    minOrder: String(config.minOrder ?? 0),
   });
+  const [cats, setCats] = useState<Category[]>(liveCategories);
   const [bn, setBn] = useState({
     title: banner.title ?? "",
     desc: banner.desc ?? "",
@@ -444,15 +660,65 @@ function SettingsAdmin({
   const [notice, setNotice] = useState("");
   const [fs, setFs] = useState({ pid: "", price: "", hours: "2" });
 
+  async function saveConfig(extra: Record<string, unknown> = {}) {
+    if (!db) return;
+    await update(ref(db, "site_settings/config"), {
+      qr: cfg.qr,
+      fee: Number(cfg.fee || 0),
+      marquee: cfg.marquee,
+      siteName: cfg.siteName,
+      siteTagline: cfg.siteTagline,
+      depositAddress: cfg.depositAddress.trim(),
+      supportLink: cfg.supportLink,
+      minOrder: Number(cfg.minOrder || 0),
+      ...extra,
+    });
+    notify("Settings saved");
+  }
+
   return (
     <div className="space-y-4">
       <div className="space-y-2 rounded-2xl border border-border bg-card p-4">
-        <h2 className="text-sm font-black">Global settings</h2>
+        <h2 className="text-sm font-black">Store identity</h2>
         <input
           className={input}
-          placeholder="Payment QR image URL"
-          value={cfg.qr}
-          onChange={(e) => setCfg({ ...cfg, qr: e.target.value })}
+          placeholder="Website name"
+          value={cfg.siteName}
+          onChange={(e) => setCfg({ ...cfg, siteName: e.target.value })}
+        />
+        <input
+          className={input}
+          placeholder="Tagline"
+          value={cfg.siteTagline}
+          onChange={(e) => setCfg({ ...cfg, siteTagline: e.target.value })}
+        />
+        <input
+          className={input}
+          placeholder="Support / WhatsApp link"
+          value={cfg.supportLink}
+          onChange={(e) => setCfg({ ...cfg, supportLink: e.target.value })}
+        />
+        <input
+          className={input}
+          placeholder="Scrolling notice text"
+          value={cfg.marquee}
+          onChange={(e) => setCfg({ ...cfg, marquee: e.target.value })}
+        />
+        <button
+          onClick={() => saveConfig()}
+          className="btn-grad w-full rounded-xl py-2.5 text-sm font-bold"
+        >
+          Save identity
+        </button>
+      </div>
+
+      <div className="space-y-2 rounded-2xl border border-border bg-card p-4">
+        <h2 className="text-sm font-black">Payments</h2>
+        <input
+          className={`${input} font-mono text-xs`}
+          placeholder="Crypto deposit address (0x...)"
+          value={cfg.depositAddress}
+          onChange={(e) => setCfg({ ...cfg, depositAddress: e.target.value })}
         />
         <input
           className={input}
@@ -462,25 +728,72 @@ function SettingsAdmin({
         />
         <input
           className={input}
-          placeholder="Scrolling notice text"
-          value={cfg.marquee}
-          onChange={(e) => setCfg({ ...cfg, marquee: e.target.value })}
+          placeholder="Minimum order ($)"
+          value={cfg.minOrder}
+          onChange={(e) => setCfg({ ...cfg, minOrder: e.target.value })}
+        />
+        <ImageField
+          label="Payment QR photo"
+          value={cfg.qr}
+          onChange={(qr) => setCfg({ ...cfg, qr })}
         />
         <button
           onClick={async () => {
-            if (!db) return;
-            await set(ref(db, "site_settings/config"), {
-              qr: cfg.qr,
-              fee: Number(cfg.fee || 0),
-              marquee: cfg.marquee,
-            });
-            notify("Settings saved");
+            const addr = cfg.depositAddress.trim();
+            if (addr && !/^0x[0-9a-fA-F]{40}$/.test(addr))
+              return notify("That deposit address does not look right");
+            await saveConfig();
           }}
           className="btn-grad w-full rounded-xl py-2.5 text-sm font-bold"
         >
-          Save settings
+          Save payment settings
         </button>
       </div>
+
+      <div className="space-y-2 rounded-2xl border border-border bg-card p-4">
+        <h2 className="text-sm font-black">Categories</h2>
+        {cats.map((c, i) => (
+          <div key={i} className="flex gap-2">
+            <input
+              className={`${input} w-16 text-center`}
+              value={c.icon ?? ""}
+              placeholder="🙂"
+              onChange={(e) =>
+                setCats(cats.map((x, xi) => (xi === i ? { ...x, icon: e.target.value } : x)))
+              }
+            />
+            <input
+              className={input}
+              value={c.label}
+              placeholder="Name"
+              onChange={(e) =>
+                setCats(cats.map((x, xi) => (xi === i ? { ...x, label: e.target.value } : x)))
+              }
+            />
+            <button
+              onClick={() => setCats(cats.filter((_, xi) => xi !== i))}
+              className="rounded-xl bg-destructive/10 px-3 text-xs font-bold text-destructive"
+            >
+              ✕
+            </button>
+          </div>
+        ))}
+        <button
+          onClick={() => setCats([...cats, { label: "", icon: "✨" }])}
+          className="w-full rounded-xl bg-muted py-2 text-xs font-bold"
+        >
+          + Add category
+        </button>
+        <button
+          onClick={() =>
+            saveConfig({ categories: cats.filter((c) => c.label.trim()) })
+          }
+          className="btn-grad w-full rounded-xl py-2.5 text-sm font-bold"
+        >
+          Save categories
+        </button>
+      </div>
+
 
       <div className="space-y-2 rounded-2xl border border-border bg-card p-4">
         <h2 className="text-sm font-black">Home banner</h2>
