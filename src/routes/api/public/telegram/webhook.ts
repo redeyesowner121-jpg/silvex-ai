@@ -51,7 +51,10 @@ type Product = {
   price?: number;
   logo?: string;
   link?: string;
-  delivery?: "auto" | "repeat" | "manual";
+  delivery?: "auto" | "repeat" | "manual" | "supplier";
+  supplierId?: number;
+  supplierStock?: number;
+
   stock?: string[];
   salesCount?: number;
 };
@@ -329,9 +332,12 @@ async function sendProduct(chatId: number, id: string) {
   const availability =
     p.delivery === "auto"
       ? `${em("norm.box")} In stock: ${stock}`
-      : p.delivery === "repeat"
-        ? `${em("norm.fast")} Instant delivery`
-        : `${em("norm.clock")} Manual delivery`;
+      : p.delivery === "supplier"
+        ? `${em("norm.fast")} Instant delivery · In stock: ${Number(p.supplierStock || 0)}`
+        : p.delivery === "repeat"
+          ? `${em("norm.fast")} Instant delivery`
+          : `${em("norm.clock")} Manual delivery`;
+
   const text = `${productEmoji(id)} <b>${p.title || "Item"}</b>\n\n${p.desc || ""}\n\n${em("norm.money")} Price: <b>${money(p.price || 0)}</b>\n${availability}`;
   const keyboard = {
     inline_keyboard: [
@@ -591,7 +597,24 @@ async function buy(chatId: number, productId: string) {
 
   const delivered: { title: string; content: string }[] = [];
   let complete = false;
-  if (p.delivery === "repeat" && p.link) {
+  if (p.delivery === "supplier") {
+    try {
+      const { supplierBuy } = await import("@/lib/supplier.server");
+      const items = await supplierBuy(Number(p.supplierId || 0), 1, `tg-${chatId}-${Date.now()}`);
+      for (const content of items) {
+        await dbPush(`usedStock/${productId}`, {
+          content,
+          orderId: "",
+          email: user.email || `tg:${chatId}`,
+          date: new Date().toISOString(),
+        });
+        delivered.push({ title: p.title || "Item", content });
+      }
+      complete = delivered.length > 0;
+    } catch {
+      complete = false;
+    }
+  } else if (p.delivery === "repeat" && p.link) {
     delivered.push({ title: p.title || "Item", content: p.link });
     complete = true;
   } else if (p.delivery === "auto") {
@@ -609,6 +632,7 @@ async function buy(chatId: number, productId: string) {
       complete = true;
     }
   }
+
 
   const orderId = "ORD" + Date.now();
   await dbPut(`users/${uid}/wallet`, wallet - price);

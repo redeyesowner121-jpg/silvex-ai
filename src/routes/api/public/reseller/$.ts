@@ -121,7 +121,24 @@ async function handle(request: Request, splat: string): Promise<Response> {
 
     const delivered: { title: string; content: string }[] = [];
     let complete = false;
-    if (p.delivery === "repeat" && p.link) {
+    if (p.delivery === "supplier") {
+      try {
+        const { supplierBuy } = await import("@/lib/supplier.server");
+        const items = await supplierBuy(Number(p.supplierId || 0), qty, `api-${uid}-${Date.now()}`);
+        for (const content of items) {
+          await dbPush(`usedStock/${productId}`, {
+            content,
+            orderId: "",
+            email: user.email || `api:${uid}`,
+            date: new Date().toISOString(),
+          });
+          delivered.push({ title: p.title || "Item", content });
+        }
+        complete = delivered.length > 0;
+      } catch {
+        complete = false;
+      }
+    } else if (p.delivery === "repeat" && p.link) {
       for (let i = 0; i < qty; i++) delivered.push({ title: p.title || "Item", content: p.link });
       complete = true;
     } else if (p.delivery === "auto") {
@@ -141,6 +158,7 @@ async function handle(request: Request, splat: string): Promise<Response> {
         complete = true;
       }
     }
+
 
     const orderId = "API" + Date.now();
     await dbPut(`users/${uid}/wallet`, balance - price);

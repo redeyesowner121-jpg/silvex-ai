@@ -33,6 +33,8 @@ export function SettingsAdmin({
     referralCap?: number;
     ownerEmails?: string;
     telegramOwners?: string;
+    supplierApiUrl?: string;
+    supplierApiKey?: string;
   };
   banner: { title?: string; desc?: string; link?: string };
 }) {
@@ -54,6 +56,8 @@ export function SettingsAdmin({
     referralCap: String(config.referralCap ?? 201),
     ownerEmails: config.ownerEmails ?? "",
     telegramOwners: config.telegramOwners ?? "",
+    supplierApiUrl: config.supplierApiUrl ?? "",
+    supplierApiKey: config.supplierApiKey ?? "",
   });
   const [cats, setCats] = useState<Category[]>(liveCategories);
   const [bn, setBn] = useState({
@@ -100,6 +104,8 @@ export function SettingsAdmin({
       referralCap: Number(cfg.referralCap || 0),
       ownerEmails: cfg.ownerEmails.trim(),
       telegramOwners: cfg.telegramOwners.trim(),
+      supplierApiUrl: cfg.supplierApiUrl.trim().replace(/\/+$/, ""),
+      supplierApiKey: cfg.supplierApiKey.trim(),
       ...extra,
     });
     notify("Settings saved");
@@ -107,6 +113,26 @@ export function SettingsAdmin({
 
   return (
     <div className="space-y-4">
+      <div className="space-y-2 rounded-2xl border border-border bg-card p-4">
+        <h2 className="text-sm font-black">Supplier shop (reseller API)</h2>
+        <p className="text-[11px] text-muted-foreground">
+          Link another shop's reseller API. Products set to "Supplier shop" keep their price and
+          stock in sync and are bought and delivered automatically.
+        </p>
+        <input
+          className={input}
+          placeholder="Supplier API address (https://.../api)"
+          value={cfg.supplierApiUrl}
+          onChange={(e) => setCfg({ ...cfg, supplierApiUrl: e.target.value })}
+        />
+        <input
+          className={input}
+          placeholder="Supplier API key"
+          value={cfg.supplierApiKey}
+          onChange={(e) => setCfg({ ...cfg, supplierApiKey: e.target.value })}
+        />
+      </div>
+
       <div className="space-y-2 rounded-2xl border border-border bg-card p-4">
         <h2 className="text-sm font-black">Store identity</h2>
         <input
