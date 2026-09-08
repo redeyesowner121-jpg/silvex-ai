@@ -1,7 +1,11 @@
 /** Server-only helpers for the Telegram bot + Firebase Realtime Database REST access. */
 import { createHash, timingSafeEqual } from "crypto";
 
-export const RTDB_URL = "https://silvex-ai-default-rtdb.firebaseio.com";
+/** Database URL: set FIREBASE_DATABASE_URL when remixing to another project. */
+const DEFAULT_RTDB_URL = "https://silvex-ai-default-rtdb.firebaseio.com";
+export const rtdbUrl = () =>
+  (process.env["FIREBASE_DATABASE_URL"] || DEFAULT_RTDB_URL).replace(/\/+$/, "");
+export const RTDB_URL = DEFAULT_RTDB_URL;
 
 /** Fallbacks only — the web admin panel overrides these from site_settings/config. */
 const DEFAULT_SITE_URL = "https://silvex-ai.com";
@@ -10,8 +14,13 @@ const DEFAULT_OWNER_IDS = [7926443195, 6898461453];
 let runtimeSiteUrl = DEFAULT_SITE_URL;
 let runtimeOwnerIds = DEFAULT_OWNER_IDS;
 
-export function applyBotConfig(c?: { siteUrl?: string; telegramOwners?: string | number[] } | null) {
+let runtimeBotToken = "";
+
+export function applyBotConfig(
+  c?: { siteUrl?: string; telegramOwners?: string | number[]; botToken?: string } | null,
+) {
   if (!c) return;
+  if (c.botToken !== undefined) runtimeBotToken = String(c.botToken ?? "").trim();
   if (c.siteUrl) runtimeSiteUrl = String(c.siteUrl).trim().replace(/\/+$/, "");
   const raw = c.telegramOwners;
   const ids = (Array.isArray(raw) ? raw : String(raw ?? "").split(/[,\s]+/))
@@ -26,6 +35,32 @@ export const ownerIds = () => runtimeOwnerIds;
 
 
 const GATEWAY = "https://connector-gateway.lovable.dev/telegram";
+
+/** Bot token set in the admin panel (preferred) or in the project secrets. */
+export function botToken(): string {
+  return runtimeBotToken || process.env["TELEGRAM_BOT_TOKEN"] || "";
+}
+
+/** Where to send Bot API calls: the admin token first, the linked bot otherwise. */
+export function tgApi(method: string): { url: string; headers: Record<string, string> } | null {
+  const token = botToken();
+  if (token) return { url: `https://api.telegram.org/bot${token}/${method}`, headers: {} };
+  const lovableKey = process.env["LOVABLE_API_KEY"];
+  const connKey = telegramConnectionKey();
+  if (!lovableKey || !connKey) return null;
+  return {
+    url: `${GATEWAY}/${method}`,
+    headers: { Authorization: `Bearer ${lovableKey}`, "X-Connection-Api-Key": connKey },
+  };
+}
+
+/** Download URL for a Telegram file path. */
+export function tgFileUrl(path: string): { url: string; headers: Record<string, string> } | null {
+  const token = botToken();
+  if (token) return { url: `https://api.telegram.org/file/bot${token}/${path}`, headers: {} };
+  const api = tgApi(`file/${path}`);
+  return api;
+}
 
 /** Latest linked Telegram connection key (newest slot wins). */
 export function telegramConnectionKey(): string | undefined {
@@ -71,20 +106,15 @@ function stripIcons(markup: any): any {
 }
 
 export async function tg(method: string, body: Record<string, unknown>): Promise<any> {
-  const lovableKey = process.env["LOVABLE_API_KEY"];
-  const connKey = telegramConnectionKey();
-  if (!lovableKey || !connKey) throw new Error("Telegram connection is not configured");
+  const api = tgApi(method);
+  if (!api) throw new Error("Telegram bot is not configured. Add the bot token in the admin panel.");
   const payload: Record<string, unknown> = { ...body };
   if (payload["reply_markup"]) payload["reply_markup"] = decorateMarkup(payload["reply_markup"]);
 
   const call = async (data: Record<string, unknown>) => {
-    const res = await fetch(`${GATEWAY}/${method}`, {
+    const res = await fetch(api.url, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${lovableKey}`,
-        "X-Connection-Api-Key": connKey,
-        "Content-Type": "application/json",
-      },
+      headers: { ...api.headers, "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
     const text = await res.text();
@@ -123,9 +153,19 @@ export async function tg(method: string, body: Record<string, unknown>): Promise
 }
 
 
+function secretFor(key: string): string {
+  return createHash("sha256").update(`telegram-webhook:${key}`).digest("base64url");
+}
+
+/** Secret we register with Telegram for the bot currently in use. */
 export function telegramWebhookSecret(): string {
-  const connKey = telegramConnectionKey() || "";
-  return createHash("sha256").update(`telegram-webhook:${connKey}`).digest("base64url");
+  return secretFor(botToken() || telegramConnectionKey() || "");
+}
+
+/** Accept the secret of either the admin token or the linked bot connection. */
+export function telegramWebhookOk(actual: string): boolean {
+  const keys = [botToken(), telegramConnectionKey() || ""].filter(Boolean);
+  return keys.some((k) => safeEqual(actual, secretFor(k)));
 }
 
 export function safeEqual(a: string, b: string): boolean {
@@ -137,7 +177,7 @@ export function safeEqual(a: string, b: string): boolean {
 /* ---------------- Realtime Database (REST) ---------------- */
 
 export async function dbGet<T = any>(path: string): Promise<T | null> {
-  const res = await fetch(`${RTDB_URL}/${path}.json`);
+  const res = await fetch(`${rtdbUrl()}/${path}.json`);
   if (!res.ok) return null;
   return (await res.json()) as T | null;
 }
@@ -157,7 +197,7 @@ export async function loadBotRuntime(force = false): Promise<void> {
 
 
 async function dbWrite(method: string, path: string, value: unknown): Promise<void> {
-  const res = await fetch(`${RTDB_URL}/${path}.json`, { method, body: JSON.stringify(value) });
+  const res = await fetch(`${rtdbUrl()}/${path}.json`, { method, body: JSON.stringify(value) });
   if (!res.ok) {
     const detail = await res.text().catch(() => "");
     throw new Error(`Database write failed (${res.status}): ${detail.slice(0, 200)}`);
@@ -173,7 +213,7 @@ export async function dbPatch(path: string, value: Record<string, unknown>): Pro
 }
 
 export async function dbPush(path: string, value: unknown): Promise<void> {
-  await fetch(`${RTDB_URL}/${path}.json`, {
+  await fetch(`${rtdbUrl()}/${path}.json`, {
     method: "POST",
     body: JSON.stringify(value),
   });
@@ -269,9 +309,8 @@ export async function tgSendDocument(
   mime: string,
   caption?: string,
 ): Promise<void> {
-  const lovableKey = process.env["LOVABLE_API_KEY"];
-  const connKey = telegramConnectionKey();
-  if (!lovableKey || !connKey) return;
+  const api = tgApi("sendDocument");
+  if (!api) return;
   const form = new FormData();
   form.append("chat_id", String(chatId));
   if (caption) {
@@ -279,11 +318,7 @@ export async function tgSendDocument(
     form.append("parse_mode", "HTML");
   }
   form.append("document", new Blob([bytes as unknown as BlobPart], { type: mime }), filename);
-  const res = await fetch(`${GATEWAY}/sendDocument`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${lovableKey}`, "X-Connection-Api-Key": connKey },
-    body: form,
-  });
+  const res = await fetch(api.url, { method: "POST", headers: api.headers, body: form });
   if (!res.ok) console.error(`Telegram sendDocument failed [${res.status}]: ${await res.text()}`);
 }
 
@@ -320,9 +355,8 @@ export async function tgSendPhoto(
   try {
     const m = /^data:([^;,]+);base64,(.*)$/i.exec(photo.trim());
     if (m) {
-      const lovableKey = process.env["LOVABLE_API_KEY"];
-      const connKey = telegramConnectionKey();
-      if (!lovableKey || !connKey) return false;
+      const api = tgApi("sendPhoto");
+      if (!api) return false;
       const bytes = Buffer.from(m[2]!, "base64");
       const form = new FormData();
       form.append("chat_id", String(chatId));
@@ -333,11 +367,7 @@ export async function tgSendPhoto(
       if (keyboard) form.append("reply_markup", JSON.stringify(decorateMarkup(keyboard)));
       const ext = (m[1] || "image/jpeg").split("/")[1]?.split("+")[0] || "jpg";
       form.append("photo", new Blob([bytes as unknown as BlobPart], { type: m[1] || "image/jpeg" }), `photo.${ext}`);
-      const res = await fetch(`${GATEWAY}/sendPhoto`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${lovableKey}`, "X-Connection-Api-Key": connKey },
-        body: form,
-      });
+      const res = await fetch(api.url, { method: "POST", headers: api.headers, body: form });
       if (!res.ok) {
         console.error(`Telegram sendPhoto failed [${res.status}]: ${await res.text()}`);
         return false;
@@ -363,15 +393,12 @@ export async function tgSendPhoto(
 /** Download a Telegram file (by file_id) and return it as a data: URL. */
 export async function tgFileDataUrl(fileId: string, maxBytes = 400_000): Promise<string | null> {
   try {
-    const lovableKey = process.env["LOVABLE_API_KEY"];
-    const connKey = telegramConnectionKey();
-    if (!lovableKey || !connKey) return null;
     const info = await tg("getFile", { file_id: fileId });
     const path = info?.result?.file_path;
     if (!path) return null;
-    const res = await fetch(`${GATEWAY}/file/${path}`, {
-      headers: { Authorization: `Bearer ${lovableKey}`, "X-Connection-Api-Key": connKey },
-    });
+    const file = tgFileUrl(String(path));
+    if (!file) return null;
+    const res = await fetch(file.url, { headers: file.headers });
     if (!res.ok) return null;
     const buf = Buffer.from(await res.arrayBuffer());
     if (!buf.length || buf.length > maxBytes) return null;
