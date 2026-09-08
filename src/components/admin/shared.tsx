@@ -127,6 +127,9 @@ export const emptyProduct = {
   price: "",
   logo: "",
   link: "",
-  delivery: "manual" as "manual" | "auto" | "repeat",
+  delivery: "manual" as "manual" | "auto" | "repeat" | "supplier",
+  supplierId: "",
+  markup: "130",
 };
+
 
