@@ -2,7 +2,7 @@
 import { createHash, timingSafeEqual } from "crypto";
 
 export const RTDB_URL = "https://silvex-ai-default-rtdb.firebaseio.com";
-export const SITE_URL = "https://silvex-ai.lovable.app";
+export const SITE_URL = "https://silvex-ai.com";
 export const TELEGRAM_OWNER_IDS = [7926443195, 6898461453];
 
 const GATEWAY = "https://connector-gateway.lovable.dev/telegram";
