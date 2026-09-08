@@ -4,6 +4,8 @@ import { get, onValue, push, ref, remove, set, update } from "firebase/database"
 import { useStore, isOwnerEmail, type Product, type Category } from "@/context/StoreContext";
 import { fileToCompressedDataUrl } from "@/lib/image-upload";
 import { exportOrdersCsv, exportOrdersPdf, type ExportRow } from "@/lib/export-orders";
+import { sendSmtpMail } from "@/lib/mail.functions";
+import { emailShell } from "@/lib/mailer";
 
 
 export const Route = createFileRoute("/admin")({
@@ -1170,6 +1172,8 @@ function SettingsAdmin({
           Save payment settings
         </button>
       </div>
+
+      <SmtpAdmin siteName={cfg.siteName} />
 
       <div className="space-y-2 rounded-2xl border border-border bg-card p-4">
         <h2 className="text-sm font-black">Categories</h2>
