@@ -395,18 +395,79 @@ async function sendReviews(chatId: number) {
   await say(chatId, `⭐ <b>Reviews</b>\n\n${text}`, { inline_keyboard: rows });
 }
 
+/** Pays the buyer's referrer 2% of the purchase, capped per friend. */
+async function payReferralCommission(buyerUid: string, amount: number) {
+  try {
+    const refBy = await dbGet<string>(`users/${buyerUid}/refBy`);
+    if (!refBy || refBy === buyerUid) return;
+    const earnedSoFar = Number((await dbGet<number>(`users/${refBy}/refEarned/${buyerUid}`)) || 0);
+    const room = REFERRAL_CAP - earnedSoFar;
+    if (room <= 0) return;
+    const commission = Math.min(Math.round(Number(amount) * REFERRAL_RATE * 100) / 100, room);
+    if (commission <= 0) return;
+    const w = Number((await dbGet<number>(`users/${refBy}/wallet`)) || 0);
+    await dbPut(`users/${refBy}/wallet`, w + commission);
+    await dbPut(`users/${refBy}/refEarned/${buyerUid}`, earnedSoFar + commission);
+    await dbPush(`users/${refBy}/history`, {
+      type: "Referral commission",
+      amount: commission,
+      desc: `2% from a friend's purchase`,
+      date: new Date().toISOString(),
+    });
+    const chat = await dbGet<number>(`users/${refBy}/telegramChatId`);
+    if (chat) {
+      await tg("sendMessage", {
+        chat_id: chat,
+        text: `🎁 You earned ${money(commission)} referral commission from a friend's purchase.`,
+        parse_mode: "HTML",
+      }).catch(() => undefined);
+    }
+  } catch {
+    /* commission must never break an order */
+  }
+}
+
+/** Links a new bot user to the referrer whose code came in the /start payload. */
+async function applyStartReferral(uid: string, rawCode: string) {
+  const code = rawCode.trim().toUpperCase();
+  if (!code) return;
+  const me = (await dbGet<any>(`users/${uid}`)) || {};
+  if (me.refBy || me.usedRef || me.myRefCode === code) return;
+  const users = (await dbGet<Record<string, any>>("users")) || {};
+  const hit = Object.entries(users).find(
+    ([id, u]: [string, any]) => id !== uid && String(u?.myRefCode || "").toUpperCase() === code,
+  );
+  if (!hit) return;
+  await dbPatch(`users/${uid}`, { usedRef: code, refBy: hit[0] });
+}
+
 async function sendRefer(chatId: number) {
   const uid = await ensureUser(chatId);
   const u = (await dbGet<any>(`users/${uid}`)) || {};
   const code = u.myRefCode || "-";
   const users = (await dbGet<Record<string, any>>("users")) || {};
-  const invited = Object.values(users).filter((x: any) => x?.usedRef === code).length;
+  const invited = Object.values(users).filter(
+    (x: any) => String(x?.usedRef || "").toUpperCase() === String(code).toUpperCase(),
+  ).length;
+  const history = Object.values((await dbGet<Record<string, any>>(`users/${uid}/history`)) || {});
+  const e = referralEarnings(history as any);
   await say(
     chatId,
-    `🎁 <b>Refer & Earn</b>\n\nYour code: <code>${code}</code>\nFriends joined: <b>${invited}</b>\n\nShare this link:\n${SITE_URL}/?ref=${code}`,
+    `🎁 <b>Refer &amp; Earn</b>\n\n` +
+      `Earn <b>2% commission</b> on every purchase your friend makes (up to ${money(REFERRAL_CAP)} per friend)!\n\n` +
+      `🔗 <b>Your link:</b>\n${botReferralLink(code)}\n\n` +
+      `🤩 <b>Code:</b> <code>${code}</code>\n\n` +
+      `👥 <b>Total Referrals:</b> ${invited}\n\n` +
+      `📈 <b>Earnings</b>\n` +
+      `• Today: ${money(e.today)}\n` +
+      `• This Week: ${money(e.week)}\n` +
+      `• This Month: ${money(e.month)}\n` +
+      `• Total: ${money(e.total)}\n\n` +
+      `🌐 Website link: ${websiteReferralLink(code)}`,
     backHome,
   );
 }
+
 
 async function sendSupport(chatId: number) {
   const c = await cfg();
