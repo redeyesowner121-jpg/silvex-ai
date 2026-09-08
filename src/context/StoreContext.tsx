@@ -39,6 +39,8 @@ export type Profile = {
   myRefCode?: string;
   lastBonus?: string;
   isAdmin?: boolean;
+  isOwner?: boolean;
+  ownerRevoked?: boolean;
 };
 
 export type Category = { label: string; icon?: string };
