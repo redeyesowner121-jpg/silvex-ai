@@ -295,12 +295,12 @@ async function walletHistory(chatId: number) {
 }
 
 async function startDeposit(chatId: number) {
-  const uid = await ensureUser(chatId);
+  await ensureUser(chatId);
   const c = await cfg();
-  await setState(chatId, { k: "dep_amount" });
+  await setState(chatId, { k: "dep_hash" });
   await say(
     chatId,
-    `➕ <b>Deposit</b>\n\nSend USDT (BEP20 / Polygon) to:\n<code>${c.depositAddress || "-"}</code>\n\nNow send the amount you deposited in dollars (e.g. 25).`,
+    `➕ <b>Deposit</b>\n\nSend USDT / USDC (BEP20 or Polygon) to:\n<code>${c.depositAddress || "-"}</code>\n\nThen send the transaction hash (TXID) here. Payments confirmed within 10 minutes are credited automatically.`,
     { inline_keyboard: [[{ text: "❌ Cancel", callback_data: "home" }]] },
   );
 }
