@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useStore } from "@/context/StoreContext";
+import { Emo } from "@/components/store/Emo";
 
 export function Header() {
   const { user, profile, isAdmin, notices, openModal, siteName, emoji } = useStore();
@@ -18,7 +19,7 @@ export function Header() {
             onClick={() => openModal("notifications")}
             className="relative text-xl"
           >
-            {emoji("web.bell")}
+            <Emo k="web.bell" />
             {notices.length > 0 ? (
               <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-destructive-foreground">
                 {notices.length}
@@ -27,7 +28,7 @@ export function Header() {
           </button>
           {isAdmin ? (
             <Link to="/admin" aria-label="Admin panel" className="text-xl">
-              {emoji("web.admin")}
+              <Emo k="web.admin" />
             </Link>
           ) : null}
           {user ? (

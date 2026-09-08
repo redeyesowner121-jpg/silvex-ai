@@ -1,4 +1,5 @@
 import { useStore, type Product } from "@/context/StoreContext";
+import { Emo } from "@/components/store/Emo";
 
 export function ProductCard({ product }: { product: Product }) {
   const { openProduct, addToCart, emoji } = useStore();
@@ -14,7 +15,7 @@ export function ProductCard({ product }: { product: Product }) {
             className="h-full w-full object-cover"
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center text-2xl">{emoji("web.bag")}</div>
+          <div className="flex h-full w-full items-center justify-center text-2xl"><Emo k="web.bag" /></div>
         )}
       </button>
       <div className="flex flex-1 flex-col p-3">
