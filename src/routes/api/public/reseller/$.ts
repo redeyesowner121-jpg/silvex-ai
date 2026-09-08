@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { dbGet, dbPatch, dbPush, dbPut, siteUrl() } from "@/lib/telegram.server";
+import { dbGet, dbPatch, dbPush, dbPut, siteUrl, loadBotRuntime } from "@/lib/telegram.server";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
