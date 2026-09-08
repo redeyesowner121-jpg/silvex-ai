@@ -71,7 +71,7 @@ function Home() {
 
 
       <div className="mb-6 rounded-3xl bg-gradient-to-br from-indigo-600 to-purple-600 p-6 text-white shadow-lg">
-        <p className="text-[10px] font-bold uppercase tracking-widest opacity-80">RKR Premium</p>
+        <p className="text-[10px] font-bold uppercase tracking-widest opacity-80">{config.siteName || "SILENT SELLER"}</p>
         <h1 className="mt-2 text-3xl font-black leading-tight">{banner.title || "Digital Store"}</h1>
         <p className="mt-1 text-xs opacity-90">
           {banner.desc || "Cheapest rates & instant delivery"}
