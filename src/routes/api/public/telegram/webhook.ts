@@ -158,21 +158,21 @@ async function forceJoinBlocked(chatId: number): Promise<boolean> {
 function mainKeyboard() {
   return {
     inline_keyboard: [
-      [{ text: "🛍 View Products", callback_data: "products" }],
+      [{ text: `${be("btn.products")} View Products`, callback_data: "products" }],
       [
-        { text: "👛 My Wallet", callback_data: "wallet" },
-        { text: "👤 Profile", callback_data: "profile" },
+        { text: `${be("btn.wallet")} My Wallet`, callback_data: "wallet" },
+        { text: `${be("btn.profile")} Profile`, callback_data: "profile" },
       ],
       [
-        { text: "⭐ Reviews", callback_data: "reviews" },
-        { text: "🎁 Refer & Earn", callback_data: "refer" },
+        { text: `${be("btn.reviews")} Reviews`, callback_data: "reviews" },
+        { text: `${be("btn.refer")} Refer & Earn`, callback_data: "refer" },
       ],
       [
-        { text: "🆘 Support", callback_data: "support" },
-        { text: "🧾 My Orders", callback_data: "orders" },
+        { text: `${be("btn.support")} Support`, callback_data: "support" },
+        { text: `${be("btn.orders")} My Orders`, callback_data: "orders" },
       ],
-      [{ text: "🔑 Reseller API key", callback_data: "apikey" }],
-      [{ text: "🌐 Visit Website", url: SITE_URL }],
+      [{ text: `${be("btn.apikey")} Reseller API key`, callback_data: "apikey" }],
+      [{ text: `${be("btn.website")} Visit Website`, url: SITE_URL }],
     ],
   };
 }
@@ -181,11 +181,11 @@ async function welcome(chatId: number) {
   const name = await siteName();
   await say(
     chatId,
-    `🎬 <b>Welcome to ${name} !</b>\n\n` +
-      `🌟 Premium digital products at the cheapest prices\n` +
-      `⚡ Instant delivery\n` +
-      `🔒 Secure payments\n` +
-      `🎧 24/7 Support\n\n` +
+    `${em("norm.welcome")} <b>Welcome to ${name} !</b>\n\n` +
+      `${em("norm.star")} Premium digital products at the cheapest prices\n` +
+      `${em("norm.fast")} Instant delivery\n` +
+      `${em("norm.secure")} Secure payments\n` +
+      `${em("norm.support")} 24/7 Support\n\n` +
       `Choose an option below:`,
     mainKeyboard(),
   );
