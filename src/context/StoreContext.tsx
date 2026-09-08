@@ -41,6 +41,10 @@ export type Profile = {
   wallet?: number;
   phone?: string;
   myRefCode?: string;
+  usedRef?: string;
+  refBy?: string;
+  refEarned?: Record<string, number>;
+  history?: Record<string, { type?: string; amount?: number; date?: string; desc?: string }>;
   lastBonus?: string;
   isAdmin?: boolean;
   isOwner?: boolean;

@@ -1,8 +1,14 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { ref, update } from "firebase/database";
+import { useEffect, useMemo, useState } from "react";
+import { equalTo, get, orderByChild, query, ref, update } from "firebase/database";
 import { signOut } from "firebase/auth";
 import { useStore } from "@/context/StoreContext";
+import {
+  botReferralLink,
+  REFERRAL_CAP,
+  referralEarnings,
+  websiteReferralLink,
+} from "@/lib/referral";
 
 export const Route = createFileRoute("/profile")({
   head: () => ({
@@ -25,8 +31,21 @@ function ProfilePage() {
   const { auth, db, user, profile, wallet, isAdmin, openModal, showSuccess, notify } = useStore();
   const [phone, setPhone] = useState(profile?.phone ?? "");
   const navigate = useNavigate();
+  const [invited, setInvited] = useState(0);
+  const earnings = useMemo(
+    () => referralEarnings(Object.values(profile?.history ?? {})),
+    [profile?.history],
+  );
 
   useEffect(() => setPhone(profile?.phone ?? ""), [profile?.phone]);
+
+  useEffect(() => {
+    const code = profile?.myRefCode;
+    if (!db || !code) return;
+    get(query(ref(db, "users"), orderByChild("usedRef"), equalTo(code)))
+      .then((s) => setInvited(s.exists() ? Object.keys(s.val()).length : 0))
+      .catch(() => setInvited(0));
+  }, [db, profile?.myRefCode]);
 
   if (!user) {
     return (
@@ -77,9 +96,40 @@ function ProfilePage() {
       </div>
 
       {profile?.myRefCode ? (
-        <div className="mb-4 rounded-xl border border-dashed border-border p-3 text-center text-xs font-bold">
-          Referral code: <span className="text-primary">{profile.myRefCode}</span> — friends get you
-          $20
+        <div className="mb-4 rounded-2xl border border-border p-4">
+          <p className="mb-1 text-sm font-bold">🎁 Refer &amp; Earn</p>
+          <p className="mb-3 text-xs text-muted-foreground">
+            Earn 2% commission on every purchase your friend makes (up to ${REFERRAL_CAP} per
+            friend)!
+          </p>
+          <p className="mb-1 text-xs font-bold">
+            🤩 Code: <span className="text-primary">{profile.myRefCode}</span>
+          </p>
+          <button
+            onClick={() => {
+              navigator.clipboard?.writeText(websiteReferralLink(profile.myRefCode!));
+              notify("Referral link copied");
+            }}
+            className="mb-1 block w-full break-all rounded-lg bg-muted p-2 text-left text-[11px]"
+          >
+            🔗 {websiteReferralLink(profile.myRefCode)}
+          </button>
+          <button
+            onClick={() => {
+              navigator.clipboard?.writeText(botReferralLink(profile.myRefCode!));
+              notify("Bot link copied");
+            }}
+            className="mb-3 block w-full break-all rounded-lg bg-muted p-2 text-left text-[11px]"
+          >
+            🤖 {botReferralLink(profile.myRefCode)}
+          </button>
+          <p className="mb-1 text-xs font-bold">👥 Total referrals: {invited}</p>
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <span>• Today: ${earnings.today}</span>
+            <span>• This week: ${earnings.week}</span>
+            <span>• This month: ${earnings.month}</span>
+            <span>• Total: ${earnings.total}</span>
+          </div>
         </div>
       ) : null}
 

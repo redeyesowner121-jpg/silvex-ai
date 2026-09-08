@@ -4,6 +4,7 @@ import { get, push, ref, runTransaction, set, update } from "firebase/database";
 import { useStore } from "@/context/StoreContext";
 import { deliveryBlock, emailShell, itemsTable, sendMail } from "@/lib/mailer";
 import { notifyTelegramOrder } from "@/lib/telegram.functions";
+import { REFERRAL_CAP, REFERRAL_RATE } from "@/lib/referral";
 
 
 export const Route = createFileRoute("/cart")({
@@ -145,6 +146,31 @@ function Cart() {
         desc: `Order ${orderId.slice(-4)}`,
         date: new Date().toISOString(),
       });
+      // 2% referral commission for whoever invited this buyer (capped per friend)
+      try {
+        const refBy = profile?.refBy;
+        if (refBy && refBy !== user.uid) {
+          const earnedSnap = await get(ref(db, `users/${refBy}/refEarned/${user.uid}`));
+          const earned = Number(earnedSnap.val()) || 0;
+          const commission = Math.min(
+            Math.round(total * REFERRAL_RATE * 100) / 100,
+            REFERRAL_CAP - earned,
+          );
+          if (commission > 0) {
+            const wSnap = await get(ref(db, `users/${refBy}/wallet`));
+            await set(ref(db, `users/${refBy}/wallet`), (Number(wSnap.val()) || 0) + commission);
+            await set(ref(db, `users/${refBy}/refEarned/${user.uid}`), earned + commission);
+            await push(ref(db, `users/${refBy}/history`), {
+              type: "Referral commission",
+              amount: commission,
+              desc: "2% from a friend's purchase",
+              date: new Date().toISOString(),
+            });
+          }
+        }
+      } catch {
+        /* never block an order on commission */
+      }
       if (discount > 0) {
         await runTransaction(
           ref(db, `users/${user.uid}/used_coupons/${coupon.trim().toUpperCase()}`),

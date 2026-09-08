@@ -75,7 +75,10 @@ export function AuthModal() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [pass, setPass] = useState("");
-  const [refCode, setRefCode] = useState("");
+  const [refCode, setRefCode] = useState(() => {
+    if (typeof window === "undefined") return "";
+    return new URLSearchParams(window.location.search).get("ref")?.toUpperCase() ?? "";
+  });
   const [busy, setBusy] = useState(false);
 
   async function submit() {
@@ -87,6 +90,8 @@ export function AuthModal() {
         await updateProfile(res.user, { displayName: name });
         const myRefCode = (name.slice(0, 3) + Math.floor(100 + Math.random() * 900)).toUpperCase();
         let wallet = 0;
+        let refBy = "";
+        let usedRef = "";
         if (refCode.trim()) {
           const snap = await get(
             query(ref(db, "users"), orderByChild("myRefCode"), equalTo(refCode.trim().toUpperCase())),
@@ -94,6 +99,8 @@ export function AuthModal() {
           if (snap.exists()) {
             const key = Object.keys(snap.val())[0]!;
             const referrer = snap.val()[key];
+            refBy = key;
+            usedRef = refCode.trim().toUpperCase();
             await set(ref(db, `users/${key}/wallet`), (Number(referrer.wallet) || 0) + 20);
             await push(ref(db, `users/${key}/history`), {
               type: "Referral",
@@ -104,7 +111,13 @@ export function AuthModal() {
             wallet = 20;
           }
         }
-        await set(ref(db, `users/${res.user.uid}`), { name, email, wallet, myRefCode });
+        await set(ref(db, `users/${res.user.uid}`), {
+          name,
+          email,
+          wallet,
+          myRefCode,
+          ...(refBy ? { refBy, usedRef } : {}),
+        });
         showSuccess("Account created", "Welcome to SILENT SELLER!");
       } else {
         await signInWithEmailAndPassword(auth, email, pass);
