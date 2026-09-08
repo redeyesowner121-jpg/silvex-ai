@@ -300,7 +300,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         Array.isArray(config.categories) && config.categories.length
           ? config.categories
           : DEFAULT_CATEGORIES,
-      siteName: config.siteName || "RKR Premium",
+      siteName: config.siteName || "SILENT SELLER",
 
       banner,
       flashSale,

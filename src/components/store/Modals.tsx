@@ -105,7 +105,7 @@ export function AuthModal() {
           }
         }
         await set(ref(db, `users/${res.user.uid}`), { name, email, wallet, myRefCode });
-        showSuccess("Account created", "Welcome to RKR Premium Store!");
+        showSuccess("Account created", "Welcome to SILENT SELLER!");
       } else {
         await signInWithEmailAndPassword(auth, email, pass);
         showSuccess("Logged in", "Welcome back.");

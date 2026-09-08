@@ -7,9 +7,9 @@ import { useStore } from "@/context/StoreContext";
 export const Route = createFileRoute("/profile")({
   head: () => ({
     meta: [
-      { title: "My Profile — RKR Premium Store" },
+      { title: "My Profile — SILENT SELLER" },
       { name: "description", content: "Manage your wallet, phone number, referral code and orders." },
-      { property: "og:title", content: "My Profile — RKR Premium Store" },
+      { property: "og:title", content: "My Profile — SILENT SELLER" },
       { property: "og:description", content: "Manage your wallet, phone number, referral code and orders." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

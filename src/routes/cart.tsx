@@ -2,16 +2,17 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { get, push, ref, runTransaction, set } from "firebase/database";
 import { useStore } from "@/context/StoreContext";
+import { emailShell, sendMail } from "@/lib/mailer";
 
 export const Route = createFileRoute("/cart")({
   head: () => ({
     meta: [
-      { title: "Your Cart — RKR Premium Store" },
+      { title: "Your Cart — SILENT SELLER" },
       {
         name: "description",
         content: "Review your items, apply a promo code and pay instantly from your wallet.",
       },
-      { property: "og:title", content: "Your Cart — RKR Premium Store" },
+      { property: "og:title", content: "Your Cart — SILENT SELLER" },
       { property: "og:description", content: "Review items and pay instantly from your wallet." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -21,7 +22,7 @@ export const Route = createFileRoute("/cart")({
 });
 
 function Cart() {
-  const { db, user, cart, cartTotal, setQty, clearCart, wallet, openModal, showSuccess, notify } =
+  const { db, user, cart, cartTotal, setQty, clearCart, wallet, openModal, showSuccess, notify, siteName } =
     useStore();
   const navigate = useNavigate();
   const [coupon, setCoupon] = useState("");
@@ -141,6 +142,21 @@ function Cart() {
       await Promise.all(
         cart.map((i) => runTransaction(ref(db, `products/${i.id}/salesCount`), (c) => (c || 0) + 1)),
       );
+      if (user.email) {
+        const rows = cart
+          .map((i) => `<tr><td>${i.title} x${i.qty}</td><td align="right">$${(i.price * i.qty).toFixed(2)}</td></tr>`)
+          .join("");
+        void sendMail(db, {
+          to: user.email,
+          subject: `Order ${orderId.slice(-6)} confirmed`,
+          html: emailShell(
+            siteName,
+            delivered.length && allDelivered ? "Your order is delivered" : "Order received",
+            `<table width="100%">${rows}<tr><td><b>Total</b></td><td align="right"><b>$${total.toFixed(2)}</b></td></tr></table>
+             <p>${delivered.length && allDelivered ? "Your items are ready in My Orders." : "We will deliver it shortly. Track it in My Orders."}</p>`,
+          ),
+        });
+      }
       clearCart();
       setDiscount(0);
       showSuccess(
