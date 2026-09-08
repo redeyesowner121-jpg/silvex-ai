@@ -975,7 +975,7 @@ async function handleText(chatId: number, text: string) {
   }
   if (k === "dep_hash") {
     const uid = await ensureUser(chatId);
-    const u = await dbGet<any>(`users/${uid}`) : null;
+    const u = await dbGet<any>(`users/${uid}`);
     await dbPush("requests", {
       uid,
       name: u?.name || "",
@@ -1002,7 +1002,7 @@ async function handleText(chatId: number, text: string) {
   }
   if (k === "wd_addr") {
     const uid = await ensureUser(chatId);
-    const u = await dbGet<any>(`users/${uid}`) : null;
+    const u = await dbGet<any>(`users/${uid}`);
     await dbPush("requests", {
       uid,
       name: u?.name || "",
