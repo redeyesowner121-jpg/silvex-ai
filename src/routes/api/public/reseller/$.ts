@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { dbGet, dbPatch, dbPush, dbPut, SITE_URL } from "@/lib/telegram.server";
+import { dbGet, dbPatch, dbPush, dbPut, siteUrl() } from "@/lib/telegram.server";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -52,7 +52,7 @@ async function handle(request: Request, splat: string): Promise<Response> {
       name: user.name || null,
       balance: Number(user.wallet || 0),
       currency: "USD",
-      website: SITE_URL,
+      website: siteUrl(),
     });
   }
 

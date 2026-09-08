@@ -171,7 +171,7 @@ export function money(n: number): string {
 
 export async function notifyOwners(text: string): Promise<void> {
   await Promise.all(
-    TELEGRAM_OWNER_IDS.map((id) =>
+    ownerIds().map((id) =>
       tg("sendMessage", { chat_id: id, text, parse_mode: "HTML" }).catch(() => undefined),
     ),
   );

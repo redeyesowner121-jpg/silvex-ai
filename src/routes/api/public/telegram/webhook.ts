@@ -18,11 +18,11 @@ import {
   safeEqual,
   sendDeliveryFiles,
 
-  SITE_URL,
+  siteUrl,
   telegramWebhookSecret,
   tg,
   tgSendPhoto,
-  TELEGRAM_OWNER_IDS,
+  ownerIds,
 } from "@/lib/telegram.server";
 import {
   be,
@@ -110,7 +110,7 @@ async function setState(chatId: number, s: State) {
 }
 
 async function isBotAdmin(chatId: number): Promise<boolean> {
-  if (TELEGRAM_OWNER_IDS.includes(chatId)) return true;
+  if (ownerIds().includes(chatId)) return true;
   return Boolean(await dbGet<boolean>(`telegramAdmins/${chatId}`));
 }
 
@@ -218,7 +218,7 @@ function mainKeyboard() {
         cbtn(DOT.blue, "btn.orders", "Orders", "orders"),
       ],
       [cbtn(DOT.violet, "btn.apikey", "Reseller API key", "apikey")],
-      [{ text: `🌐 ${be("btn.website")} Visit Website`, url: SITE_URL }],
+      [{ text: `🌐 ${be("btn.website")} Visit Website`, url: siteUrl() }],
     ],
   };
 }
@@ -637,9 +637,9 @@ async function buy(chatId: number, productId: string) {
   const body = complete
     ? `✅ <b>Order delivered</b>\n\n${delivered.map((d) => `${d.title}\n<code>${d.content}</code>`).join("\n\n")}`
     : `🧾 <b>Order placed</b>\n\n${p.title}\nWe will deliver it shortly.`;
-  await say(chatId, `${body}\n\nOrder: <code>${orderId}</code>\nPaid: ${money(price)}\n\n🌐 Website: ${SITE_URL}`, {
+  await say(chatId, `${body}\n\nOrder: <code>${orderId}</code>\nPaid: ${money(price)}\n\n🌐 Website: ${siteUrl()}`, {
     inline_keyboard: [
-      [{ text: "🌐 Visit website", url: SITE_URL }],
+      [{ text: "🌐 Visit website", url: siteUrl() }],
       [{ text: "🛍 Buy more", callback_data: "products" }],
     ],
   });
@@ -678,7 +678,7 @@ async function adminHome(chatId: number) {
         { text: "⚙️ Settings", callback_data: "a:set" },
         { text: "😍 Emojis", callback_data: "a:em" },
       ],
-      [{ text: "🌐 Website admin", url: `${SITE_URL}/admin` }],
+      [{ text: "🌐 Website admin", url: `${siteUrl()}/admin` }],
     ],
   });
 }
@@ -782,8 +782,8 @@ async function adminDeliver(chatId: number, orderId: string, text: string) {
       Number(buyerChat),
       `✅ <b>Your order is delivered</b>\n\nOrder: <code>${orderId}</code>\n\n${delivered
         .map((d) => `${d.title}\n<code>${d.content}</code>`)
-        .join("\n\n")}\n\n🌐 Website: ${SITE_URL}`,
-      { inline_keyboard: [[{ text: "🌐 Visit website", url: SITE_URL }]] },
+        .join("\n\n")}\n\n🌐 Website: ${siteUrl()}`,
+      { inline_keyboard: [[{ text: "🌐 Visit website", url: siteUrl() }]] },
     ).catch(() => undefined);
     await sendDeliveryFiles(Number(buyerChat), orderId, delivered).catch(() => undefined);
   }

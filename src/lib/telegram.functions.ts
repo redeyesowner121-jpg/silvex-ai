@@ -31,7 +31,7 @@ export const notifyTelegramOrder = createServerFn({ method: "POST" })
   .inputValidator(validate)
   .handler(async ({ data }) => {
     try {
-      const { dbGet, money, notifyOwners, tg, SITE_URL } = await import("./telegram.server");
+      const { dbGet, money, notifyOwners, tg, siteUrl() } = await import("./telegram.server");
       const lines = data.items.map((i) => `• ${i.title} x${i.qty}`).join("\n");
       await notifyOwners(
         `🛒 <b>New website order</b>\n${lines}\nBuyer: ${data.email || "-"}\nTotal: ${money(data.total)}\nOrder: ${data.orderId}\nStatus: ${data.status}`,
@@ -44,9 +44,9 @@ export const notifyTelegramOrder = createServerFn({ method: "POST" })
             : "";
           await tg("sendMessage", {
             chat_id: chatId,
-            text: `🧾 <b>Order ${data.orderId}</b>\n${lines}\nTotal: ${money(data.total)}\nStatus: ${data.status}${delivered}\n\n🌐 Website: ${SITE_URL}`,
+            text: `🧾 <b>Order ${data.orderId}</b>\n${lines}\nTotal: ${money(data.total)}\nStatus: ${data.status}${delivered}\n\n🌐 Website: ${siteUrl()}`,
             parse_mode: "HTML",
-            reply_markup: { inline_keyboard: [[{ text: "🌐 Visit website", url: SITE_URL }]] },
+            reply_markup: { inline_keyboard: [[{ text: "🌐 Visit website", url: siteUrl() }]] },
           }).catch(() => undefined);
         }
       }
