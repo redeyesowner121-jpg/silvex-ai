@@ -613,7 +613,10 @@ async function adminHome(chatId: number) {
         { text: "🔒 Force join", callback_data: "a:fj" },
         { text: "⭐ Review channel", callback_data: "a:rc" },
       ],
-      [{ text: "⚙️ Settings", callback_data: "a:set" }],
+      [
+        { text: "⚙️ Settings", callback_data: "a:set" },
+        { text: "😍 Emojis", callback_data: "a:em" },
+      ],
       [{ text: "🌐 Website admin", url: `${SITE_URL}/admin` }],
     ],
   });
