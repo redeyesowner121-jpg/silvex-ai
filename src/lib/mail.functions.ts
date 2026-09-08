@@ -46,9 +46,18 @@ function validate(input: SendInput): SendInput {
 export const sendSmtpMail = createServerFn({ method: "POST" })
   .inputValidator(validate)
   .handler(async ({ data }) => {
-    const { WorkerMailer } = await import("worker-mailer");
     const { smtp } = data;
     try {
+      let WorkerMailer: typeof import("worker-mailer").WorkerMailer;
+      try {
+        ({ WorkerMailer } = await import("worker-mailer"));
+      } catch {
+        return {
+          ok: false as const,
+          error:
+            "Email sending is only available on the published site (not in preview).",
+        };
+      }
       const mailer = await WorkerMailer.connect({
         host: smtp.host,
         port: smtp.port,
@@ -57,6 +66,7 @@ export const sendSmtpMail = createServerFn({ method: "POST" })
         credentials: { username: smtp.username, password: smtp.password },
         authType: ["plain", "login"],
       });
+
       await mailer.send({
         from: smtp.fromName
           ? { name: smtp.fromName, email: smtp.fromEmail }
