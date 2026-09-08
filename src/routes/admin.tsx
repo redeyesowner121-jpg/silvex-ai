@@ -510,24 +510,29 @@ function UsersAdmin() {
             >
               Set balance
             </button>
-            {u.isOwner ? (
+            {u.uid === user?.uid ? (
               <span className="rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary">
-                Owner
+                You
               </span>
             ) : (
               <button
                 onClick={async () => {
                   if (!db) return;
-                  if (!u.hidden) {
-                    await update(ref(db, `users/${u.uid}`), { isAdmin: !u.isAdmin });
-                  }
-                  notify(u.isAdmin ? "Admin access removed" : "Admin access granted");
+                  const removing = u.isAdmin || u.hidden;
+                  await update(ref(db, `users/${u.uid}`), {
+                    isAdmin: !removing,
+                    isOwner: removing ? false : u.hidden ? true : false,
+                    ownerRevoked: removing,
+                  });
+                  notify(removing ? "Access removed" : "Admin access granted");
                 }}
                 className={`rounded-lg px-3 py-1.5 text-xs font-bold ${
-                  u.isAdmin ? "bg-destructive/10 text-destructive" : "bg-emerald-500/10 text-emerald-600"
+                  u.isAdmin || u.hidden
+                    ? "bg-destructive/10 text-destructive"
+                    : "bg-emerald-500/10 text-emerald-600"
                 }`}
               >
-                {u.isAdmin ? "Remove admin" : "Make admin"}
+                {u.isAdmin || u.hidden ? "Remove admin" : "Make admin"}
               </button>
             )}
           </div>
