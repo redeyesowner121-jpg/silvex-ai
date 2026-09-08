@@ -574,7 +574,7 @@ export function ProductModal() {
         <img
           src={product.logo}
           alt={product.title}
-          className="mb-4 h-44 w-full rounded-xl object-cover"
+          className="mb-4 aspect-[4/3] w-full rounded-xl object-cover"
         />
       ) : null}
       <div className="mb-2 flex items-start justify-between gap-3">
