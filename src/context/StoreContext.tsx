@@ -69,6 +69,8 @@ export type SiteConfig = {
   siteUrl?: string;
   /** Telegram bot username, without the @. */
   botUsername?: string;
+  /** Telegram bot token from BotFather (set in the admin panel). */
+  botToken?: string;
   /** Referral commission percent (e.g. 2) and the cap per referred friend. */
   referralRate?: number;
   referralCap?: number;
