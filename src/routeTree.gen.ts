@@ -15,6 +15,7 @@ import { Route as CartRouteImport } from './routes/cart'
 import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as ProductsRouteImport } from './routes/products'
 import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as ApiPublicResellerSplatRouteImport } from './routes/api/public/reseller/$'
 import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/public/telegram/webhook'
 
 const IndexRoute = IndexRouteImport.update({
@@ -47,6 +48,11 @@ const ProfileRoute = ProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicResellerSplatRoute = ApiPublicResellerSplatRouteImport.update({
+  id: '/api/public/reseller/$',
+  path: '/api/public/reseller/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicTelegramWebhookRoute =
   ApiPublicTelegramWebhookRouteImport.update({
     id: '/api/public/telegram/webhook',
@@ -61,6 +67,7 @@ export interface FileRoutesByFullPath {
   '/orders': typeof OrdersRoute
   '/products': typeof ProductsRoute
   '/profile': typeof ProfileRoute
+  '/api/public/reseller/$': typeof ApiPublicResellerSplatRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
 }
 export interface FileRoutesByTo {
@@ -70,6 +77,7 @@ export interface FileRoutesByTo {
   '/orders': typeof OrdersRoute
   '/products': typeof ProductsRoute
   '/profile': typeof ProfileRoute
+  '/api/public/reseller/$': typeof ApiPublicResellerSplatRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
 }
 export interface FileRoutesById {
@@ -80,6 +88,7 @@ export interface FileRoutesById {
   '/orders': typeof OrdersRoute
   '/products': typeof ProductsRoute
   '/profile': typeof ProfileRoute
+  '/api/public/reseller/$': typeof ApiPublicResellerSplatRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
 }
 export interface FileRouteTypes {
@@ -91,6 +100,7 @@ export interface FileRouteTypes {
     | '/orders'
     | '/products'
     | '/profile'
+    | '/api/public/reseller/$'
     | '/api/public/telegram/webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -100,6 +110,7 @@ export interface FileRouteTypes {
     | '/orders'
     | '/products'
     | '/profile'
+    | '/api/public/reseller/$'
     | '/api/public/telegram/webhook'
   id:
     | '__root__'
@@ -109,6 +120,7 @@ export interface FileRouteTypes {
     | '/orders'
     | '/products'
     | '/profile'
+    | '/api/public/reseller/$'
     | '/api/public/telegram/webhook'
   fileRoutesById: FileRoutesById
 }
@@ -119,6 +131,7 @@ export interface RootRouteChildren {
   OrdersRoute: typeof OrdersRoute
   ProductsRoute: typeof ProductsRoute
   ProfileRoute: typeof ProfileRoute
+  ApiPublicResellerSplatRoute: typeof ApiPublicResellerSplatRoute
   ApiPublicTelegramWebhookRoute: typeof ApiPublicTelegramWebhookRoute
 }
 
@@ -166,6 +179,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProfileRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/reseller/$': {
+      id: '/api/public/reseller/$'
+      path: '/api/public/reseller/$'
+      fullPath: '/api/public/reseller/$'
+      preLoaderRoute: typeof ApiPublicResellerSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/telegram/webhook': {
       id: '/api/public/telegram/webhook'
       path: '/api/public/telegram/webhook'
@@ -183,6 +203,7 @@ const rootRouteChildren: RootRouteChildren = {
   OrdersRoute: OrdersRoute,
   ProductsRoute: ProductsRoute,
   ProfileRoute: ProfileRoute,
+  ApiPublicResellerSplatRoute: ApiPublicResellerSplatRoute,
   ApiPublicTelegramWebhookRoute: ApiPublicTelegramWebhookRoute,
 }
 export const routeTree = rootRouteImport
