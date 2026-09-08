@@ -5,7 +5,9 @@ import { useStore, isOwnerEmail, type Product, type Category } from "@/context/S
 import { fileToCompressedDataUrl } from "@/lib/image-upload";
 import { exportOrdersCsv, exportOrdersPdf, type ExportRow } from "@/lib/export-orders";
 import { sendSmtpMail } from "@/lib/mail.functions";
-import { emailShell } from "@/lib/mailer";
+import { deliveryBlock, emailShell, sendMail } from "@/lib/mailer";
+import { notifyTelegramOrder } from "@/lib/telegram.functions";
+
 
 
 export const Route = createFileRoute("/admin")({
