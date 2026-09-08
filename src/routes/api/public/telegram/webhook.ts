@@ -7,6 +7,8 @@ import {
   money,
   notifyOwners,
   safeEqual,
+  sendDeliveryFiles,
+
   SITE_URL,
   telegramWebhookSecret,
   tg,
@@ -60,7 +62,27 @@ async function isBotAdmin(chatId: number): Promise<boolean> {
   return Boolean(await dbGet<boolean>(`telegramAdmins/${chatId}`));
 }
 
+/** Message ids we should edit instead of sending a new message (per chat). */
+const editTarget = new Map<number, number>();
+
 async function say(chatId: number, text: string, keyboard?: any) {
+  const messageId = editTarget.get(chatId);
+  if (messageId) {
+    editTarget.delete(chatId);
+    try {
+      await tg("editMessageText", {
+        chat_id: chatId,
+        message_id: messageId,
+        text,
+        parse_mode: "HTML",
+        disable_web_page_preview: true,
+        reply_markup: keyboard ?? { inline_keyboard: [] },
+      });
+      return;
+    } catch {
+      /* message too old / identical — fall back to a new message */
+    }
+  }
   await tg("sendMessage", {
     chat_id: chatId,
     text,
@@ -69,6 +91,7 @@ async function say(chatId: number, text: string, keyboard?: any) {
     ...(keyboard ? { reply_markup: keyboard } : {}),
   });
 }
+
 
 const backHome = { inline_keyboard: [[{ text: "⬅️ Menu", callback_data: "home" }]] };
 
@@ -415,6 +438,8 @@ async function buy(chatId: number, productId: string) {
       [{ text: "🛍 Buy more", callback_data: "products" }],
     ],
   });
+  if (complete) await sendDeliveryFiles(chatId, orderId, delivered);
+
   await notifyOwners(
     `🛒 <b>New Telegram order</b>\n${p.title}\nBuyer: ${user.email || chatId}\nTotal: ${money(price)}\nOrder: ${orderId}\nStatus: ${complete ? "Completed" : "Pending"}`,
   );
@@ -544,8 +569,10 @@ async function adminDeliver(chatId: number, orderId: string, text: string) {
         .join("\n\n")}\n\n🌐 Website: ${SITE_URL}`,
       { inline_keyboard: [[{ text: "🌐 Visit website", url: SITE_URL }]] },
     ).catch(() => undefined);
+    await sendDeliveryFiles(Number(buyerChat), orderId, delivered).catch(() => undefined);
   }
 }
+
 
 async function adminCancelOrder(chatId: number, orderId: string) {
   const o = await dbGet<any>(`orders/${orderId}`);
@@ -980,7 +1007,16 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
             const cq = update.callback_query;
             await tg("answerCallbackQuery", { callback_query_id: cq.id }).catch(() => undefined);
             const chatId = cq.message?.chat?.id;
-            if (chatId) await handleCallback(Number(chatId), String(cq.data || ""));
+            const messageId = cq.message?.message_id;
+            if (chatId && messageId) editTarget.set(Number(chatId), Number(messageId));
+            if (chatId) {
+              try {
+                await handleCallback(Number(chatId), String(cq.data || ""));
+              } finally {
+                editTarget.delete(Number(chatId));
+              }
+            }
+
           } else {
             const msg = update?.message ?? update?.edited_message;
             const chatId = msg?.chat?.id;
