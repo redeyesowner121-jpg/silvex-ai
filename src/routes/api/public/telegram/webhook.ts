@@ -930,6 +930,7 @@ async function emojiHome(chatId: number) {
         [{ text: "🛍 Product emojis", callback_data: "a:em:prod" }],
         [{ text: "✨ Normal emojis", callback_data: "a:em:norm" }],
         [{ text: "🔘 Button emojis", callback_data: "a:em:btn" }],
+        [{ text: "🌐 Website emojis", callback_data: "a:em:web" }],
         [{ text: "⬅️ Admin", callback_data: "a:home" }],
       ],
     },
