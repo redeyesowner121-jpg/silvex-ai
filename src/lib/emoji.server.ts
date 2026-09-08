@@ -46,7 +46,13 @@ export const EMOJI_SLOTS: Record<string, { label: string; char: string; group: E
 let store: EmojiStore = {};
 
 export async function loadEmojis(): Promise<void> {
-  store = (await dbGet<EmojiStore>(EMOJI_PATH)) || {};
+  // Only the small key/product maps are loaded — the premium artwork lives in a
+  // separate branch so the bot never downloads megabytes of images per update.
+  const [keys, products] = await Promise.all([
+    dbGet<Record<string, EmojiEntry>>(`${EMOJI_PATH}/keys`),
+    dbGet<Record<string, EmojiEntry>>(`${EMOJI_PATH}/products`),
+  ]);
+  store = { keys: keys || {}, products: products || {} };
 }
 
 function entry(key: string): EmojiEntry {
@@ -101,13 +107,17 @@ export function readEmoji(text: string, entities?: any[], sticker?: any): EmojiE
 }
 
 export async function setSlotEmoji(key: string, value: EmojiEntry): Promise<void> {
-  store.keys = { ...(store.keys || {}), [key]: value };
-  await dbPatch(`${EMOJI_PATH}/keys`, { [key]: value });
+  const { img, ...meta } = value;
+  store.keys = { ...(store.keys || {}), [key]: meta };
+  await dbPatch(`${EMOJI_PATH}/keys`, { [key]: meta });
+  if (img) await dbPut(`${EMOJI_PATH}/img/${key}`, img);
 }
 
 export async function setProductEmoji(productId: string, value: EmojiEntry): Promise<void> {
-  store.products = { ...(store.products || {}), [productId]: value };
-  await dbPut(`${EMOJI_PATH}/products/${productId}`, value);
+  const { img, ...meta } = value;
+  store.products = { ...(store.products || {}), [productId]: meta };
+  await dbPut(`${EMOJI_PATH}/products/${productId}`, meta);
+  if (img) await dbPut(`${EMOJI_PATH}/prodimg/${productId}`, img);
 }
 
 export function slotList(group: EmojiGroup): { key: string; label: string; preview: string }[] {
@@ -223,26 +233,46 @@ export async function fetchEmojiImage(id: string): Promise<string | undefined> {
  */
 export async function syncEmojiImages(): Promise<number> {
   await loadEmojis();
+  const [slotImgs, prodImgs] = await Promise.all([
+    dbGet<Record<string, string>>(`${EMOJI_PATH}/img`),
+    dbGet<Record<string, string>>(`${EMOJI_PATH}/prodimg`),
+  ]);
   let fixed = 0;
-  const patch: Record<string, EmojiEntry> = {};
+
   for (const [key, v] of Object.entries(store.keys || {})) {
-    if (!v?.id || v.img) continue;
+    if (!v?.id) continue;
+    if (v.img) {
+      // Legacy record: artwork used to sit inside the key itself.
+      await dbPut(`${EMOJI_PATH}/img/${key}`, v.img);
+      const meta = { char: v.char, id: v.id };
+      store.keys = { ...(store.keys || {}), [key]: meta };
+      await dbPut(`${EMOJI_PATH}/keys/${key}`, meta);
+      fixed++;
+      continue;
+    }
+    if (slotImgs?.[key]) continue;
     const img = await fetchEmojiImage(v.id);
     if (!img) continue;
-    patch[key] = { ...v, img };
+    await dbPut(`${EMOJI_PATH}/img/${key}`, img);
     fixed++;
   }
-  if (Object.keys(patch).length) {
-    store.keys = { ...(store.keys || {}), ...patch };
-    await dbPatch(`${EMOJI_PATH}/keys`, patch);
-  }
+
   for (const [id, v] of Object.entries(store.products || {})) {
-    if (!v?.id || v.img) continue;
+    if (!v?.id) continue;
+    if (v.img) {
+      await dbPut(`${EMOJI_PATH}/prodimg/${id}`, v.img);
+      const meta = { char: v.char, id: v.id };
+      store.products = { ...(store.products || {}), [id]: meta };
+      await dbPut(`${EMOJI_PATH}/products/${id}`, meta);
+      fixed++;
+      continue;
+    }
+    if (prodImgs?.[id]) continue;
     const img = await fetchEmojiImage(v.id);
     if (!img) continue;
-    store.products = { ...(store.products || {}), [id]: { ...v, img } };
-    await dbPut(`${EMOJI_PATH}/products/${id}`, { ...v, img });
+    await dbPut(`${EMOJI_PATH}/prodimg/${id}`, img);
     fixed++;
   }
+
   return fixed;
 }

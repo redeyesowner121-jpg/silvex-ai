@@ -145,6 +145,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [products, setProducts] = useState<Product[]>([]);
   const [config, setConfig] = useState<SiteConfig>({});
   const [emojis, setEmojis] = useState<WebEmojiMap>({});
+  const [emojiImgs, setEmojiImgs] = useState<Record<string, string>>({});
   const [banner, setBanner] = useState<Banner>({});
   const [flashSale, setFlashSale] = useState<FlashSale>(null);
   const [notices, setNotices] = useState<NoticeItem[]>([]);
@@ -205,6 +206,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       );
       unsubs.push(onValue(ref(d, "site_settings/config"), (s) => setConfig(s.val() || {})));
       unsubs.push(onValue(ref(d, "telegramEmoji/keys"), (s) => setEmojis(s.val() || {})));
+      // Premium emoji artwork can be heavy, so it loads after the first paint.
+      const loadArt = () =>
+        unsubs.push(onValue(ref(d, "telegramEmoji/img"), (s) => setEmojiImgs(s.val() || {})));
+      if (typeof requestIdleCallback === "function") requestIdleCallback(() => loadArt());
+      else setTimeout(loadArt, 1500);
       unsubs.push(onValue(ref(d, "site_settings/banner"), (s) => setBanner(s.val() || {})));
       unsubs.push(onValue(ref(d, "site_settings/flash_sale"), (s) => setFlashSale(s.val() || null)));
       unsubs.push(
@@ -326,7 +332,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           : DEFAULT_CATEGORIES,
       siteName: config.siteName || "SILENT SELLER",
       emoji: (key: string) => webEmoji(emojis, key),
-      emojiImg: (key: string) => webEmojiImg(emojis, key),
+      emojiImg: (key: string) => emojiImgs[key] || webEmojiImg(emojis, key),
 
       banner,
       flashSale,
@@ -359,6 +365,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     products,
     config,
     emojis,
+    emojiImgs,
     banner,
     flashSale,
     notices,

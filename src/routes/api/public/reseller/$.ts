@@ -129,7 +129,7 @@ async function handle(request: Request, splat: string): Promise<Response> {
         const taken = stock.slice(0, qty);
         await dbPut(`products/${productId}/stock`, stock.slice(qty));
         for (const content of taken) {
-          await dbPush(`products/${productId}/usedStock`, {
+          await dbPush(`usedStock/${productId}`, {
             content,
             orderId: "",
             email: user.email || `api:${uid}`,
