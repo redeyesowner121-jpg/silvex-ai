@@ -4,6 +4,7 @@ import { get, push, ref, runTransaction, set, update } from "firebase/database";
 import { useStore } from "@/context/StoreContext";
 import { deliveryBlock, emailShell, itemsTable, sendMail } from "@/lib/mailer";
 import { notifyTelegramOrder } from "@/lib/telegram.functions";
+import { REFERRAL_CAP, REFERRAL_RATE } from "@/lib/referral";
 
 
 export const Route = createFileRoute("/cart")({
