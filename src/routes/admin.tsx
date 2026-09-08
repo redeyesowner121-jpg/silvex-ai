@@ -442,7 +442,7 @@ type UserRow = {
 };
 
 function UsersAdmin() {
-  const { db, notify } = useStore();
+  const { db, user, notify } = useStore();
   const [users, setUsers] = useState<UserRow[]>([]);
   const [search, setSearch] = useState("");
 
@@ -458,7 +458,13 @@ function UsersAdmin() {
     );
   }, [db]);
 
-  const list = users.filter((u) =>
+  // Owners are invisible to each other: another owner looks like a normal user.
+  const disguised = users.map((u) => {
+    const otherOwner = isOwnerEmail(u.email) && u.uid !== user?.uid;
+    return otherOwner ? { ...u, isOwner: false, isAdmin: false, hidden: true } : u;
+  });
+
+  const list = disguised.filter((u) =>
     `${u.name ?? ""} ${u.email ?? ""}`.toLowerCase().includes(search.toLowerCase()),
   );
 
