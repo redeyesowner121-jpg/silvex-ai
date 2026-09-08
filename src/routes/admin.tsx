@@ -5,7 +5,9 @@ import { useStore, isOwnerEmail, type Product, type Category } from "@/context/S
 import { fileToCompressedDataUrl } from "@/lib/image-upload";
 import { exportOrdersCsv, exportOrdersPdf, type ExportRow } from "@/lib/export-orders";
 import { sendSmtpMail } from "@/lib/mail.functions";
-import { emailShell } from "@/lib/mailer";
+import { deliveryBlock, emailShell, sendMail } from "@/lib/mailer";
+import { notifyTelegramOrder } from "@/lib/telegram.functions";
+
 
 
 export const Route = createFileRoute("/admin")({
@@ -40,8 +42,11 @@ type OrderRow = {
   phone?: string;
   note?: string;
   date: string;
+  deliveryNote?: string;
+  delivered?: Array<{ title: string; content: string }>;
   items?: Array<{ id?: string; title: string; qty: number; price?: number }>;
 };
+
 
 
 type RequestRow = {
@@ -64,6 +69,11 @@ function Admin() {
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [requests, setRequests] = useState<RequestRow[]>([]);
   const [coupons, setCoupons] = useState<Array<{ code: string; type: string; value: number }>>([]);
+  const [deliverFor, setDeliverFor] = useState<OrderRow | null>(null);
+  const [deliverLines, setDeliverLines] = useState<string[]>([]);
+  const [deliverNote, setDeliverNote] = useState("");
+  const [delivering, setDelivering] = useState(false);
+
 
 
   useEffect(() => {
@@ -114,6 +124,67 @@ function Admin() {
     await update(ref(db, `orders/${o.orderId}`), { status });
     notify(`Order marked ${status}`);
   }
+
+  function openDeliver(o: OrderRow) {
+    setDeliverFor(o);
+    setDeliverLines((o.items || []).map((_, idx) => o.delivered?.[idx]?.content ?? ""));
+    setDeliverNote(o.deliveryNote ?? "");
+  }
+
+  async function completeDelivery() {
+    if (!db || !deliverFor) return;
+    const items = deliverFor.items || [];
+    const delivered = items
+      .map((it, idx) => ({ title: it.title, content: (deliverLines[idx] || "").trim() }))
+      .filter((d) => d.content);
+    if (!delivered.length && !deliverNote.trim())
+      return notify("Add the delivery details the buyer should see");
+    setDelivering(true);
+    try {
+      await update(ref(db, `orders/${deliverFor.orderId}`), {
+        delivered,
+        deliveryNote: deliverNote.trim(),
+        status: "Completed",
+        deliveredAt: new Date().toISOString(),
+      });
+      if (deliverFor.email) {
+        void sendMail(db, {
+          to: deliverFor.email,
+          subject: `${config.siteName || "SILENT SELLER"} · Order ${deliverFor.orderId.slice(-6)} delivered`,
+          html: emailShell(
+            config.siteName || "SILENT SELLER",
+            "Your order is delivered 🎉",
+            `<p>Your order has been completed. Here are your details:</p>
+             ${deliveryBlock(delivered)}
+             ${deliverNote.trim() ? `<p>${deliverNote.trim()}</p>` : ""}
+             <p style="color:#8a8ca3;font-size:12px">Order ID: ${deliverFor.orderId}</p>`,
+            {
+              preheader: "Your items are ready",
+              ctaText: "View my order",
+              ctaUrl: "https://silvex-ai.lovable.app/orders",
+            },
+          ),
+        });
+      }
+      void notifyTelegramOrder({
+        data: {
+          orderId: deliverFor.orderId,
+          email: deliverFor.email || undefined,
+          total: Number(deliverFor.total || 0),
+          status: "Completed",
+          items: items.map((i) => ({ title: i.title, qty: i.qty })),
+          delivered,
+          uid: deliverFor.uid,
+        },
+      }).catch(() => undefined);
+      setDeliverFor(null);
+      showSuccess("Delivered", "The buyer can now see the delivery details.");
+    } finally {
+      setDelivering(false);
+    }
+  }
+
+
 
   async function decideRequest(r: RequestRow, approve: boolean) {
     if (!db) return;
@@ -266,12 +337,21 @@ function Admin() {
                 ))}
               </ul>
               <p className="text-lg font-black">${o.total}</p>
+              {o.delivered?.length ? (
+                <div className="mt-2 space-y-1 rounded-xl bg-muted/60 p-2 text-[11px]">
+                  {o.delivered.map((d, idx) => (
+                    <p key={idx} className="break-all">
+                      <b>{d.title}:</b> {d.content}
+                    </p>
+                  ))}
+                </div>
+              ) : null}
               <div className="mt-3 flex gap-2">
                 <button
-                  onClick={() => setOrderStatus(o, "Completed")}
+                  onClick={() => openDeliver(o)}
                   className="flex-1 rounded-lg bg-emerald-500 py-2 text-xs font-bold text-white"
                 >
-                  Complete
+                  {o.status === "Completed" ? "Edit delivery" : "Complete delivery"}
                 </button>
                 <button
                   onClick={() => setOrderStatus(o, "Cancelled")}
@@ -280,8 +360,55 @@ function Admin() {
                   Cancel
                 </button>
               </div>
+
+              {deliverFor?.orderId === o.orderId ? (
+                <div className="mt-3 space-y-2 rounded-xl border border-border p-3">
+                  <p className="text-xs font-black">Delivery details</p>
+                  {(o.items || []).map((i, idx) => (
+                    <div key={idx}>
+                      <label className="mb-1 block text-[11px] font-bold text-muted-foreground">
+                        {i.title} × {i.qty}
+                      </label>
+                      <textarea
+                        className={input}
+                        rows={2}
+                        placeholder="Account, code or link the buyer will see"
+                        value={deliverLines[idx] ?? ""}
+                        onChange={(e) => {
+                          const next = [...deliverLines];
+                          next[idx] = e.target.value;
+                          setDeliverLines(next);
+                        }}
+                      />
+                    </div>
+                  ))}
+                  <textarea
+                    className={input}
+                    rows={2}
+                    placeholder="Note for the buyer (optional)"
+                    value={deliverNote}
+                    onChange={(e) => setDeliverNote(e.target.value)}
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      disabled={delivering}
+                      onClick={completeDelivery}
+                      className="flex-1 rounded-lg bg-emerald-500 py-2 text-xs font-bold text-white disabled:opacity-60"
+                    >
+                      {delivering ? "Sending…" : "Mark delivered & notify buyer"}
+                    </button>
+                    <button
+                      onClick={() => setDeliverFor(null)}
+                      className="rounded-lg bg-muted px-3 py-2 text-xs font-bold"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : null}
             </div>
           ))}
+
           {orders.length === 0 ? <Empty text="No orders yet." /> : null}
         </div>
       ) : null}
