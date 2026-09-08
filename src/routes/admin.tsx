@@ -1,7 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { get, onValue, push, ref, remove, set, update } from "firebase/database";
-import { useStore, type Product } from "@/context/StoreContext";
+import { useStore, type Product, type Category } from "@/context/StoreContext";
+import { fileToCompressedDataUrl } from "@/lib/image-upload";
+
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
