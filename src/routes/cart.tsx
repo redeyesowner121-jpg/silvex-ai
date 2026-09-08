@@ -131,7 +131,12 @@ function Cart() {
       );
       clearCart();
       setDiscount(0);
-      showSuccess("Order placed", "We'll deliver it shortly. Check My Orders for status.");
+      showSuccess(
+        delivered.length && allDelivered ? "Delivered!" : "Order placed",
+        delivered.length && allDelivered
+          ? "Your item is ready in My Orders."
+          : "We'll deliver it shortly. Check My Orders for status.",
+      );
       navigate({ to: "/orders" });
     } finally {
       setBusy(false);
