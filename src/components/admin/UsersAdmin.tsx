@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { get, onValue, push, ref, remove, set, update } from "firebase/database";
-import { useStore, isOwnerEmail, type Product, type Category } from "@/context/StoreContext";
+import { useStore, isOwnerEmail, isFixedOwner, type Product, type Category } from "@/context/StoreContext";
 import { fileToCompressedDataUrl } from "@/lib/image-upload";
 import { exportOrdersCsv, exportOrdersPdf, type ExportRow } from "@/lib/export-orders";
 import { sendSmtpMail } from "@/lib/mail.functions";
@@ -100,6 +100,7 @@ export function UsersAdmin() {
               <button
                 onClick={async () => {
                   if (!db) return;
+                  if (isFixedOwner(u.email)) return notify("This owner cannot be changed");
                   const removing = u.isAdmin || u.hidden;
                   await update(ref(db, `users/${u.uid}`), {
                     isAdmin: !removing,
