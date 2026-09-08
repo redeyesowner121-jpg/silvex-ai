@@ -97,6 +97,7 @@ type StoreValue = {
   config: SiteConfig;
   categories: Category[];
   siteName: string;
+  emoji: (key: string) => string;
 
   banner: Banner;
   flashSale: FlashSale;
@@ -141,6 +142,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [config, setConfig] = useState<SiteConfig>({});
+  const [emojis, setEmojis] = useState<WebEmojiMap>({});
   const [banner, setBanner] = useState<Banner>({});
   const [flashSale, setFlashSale] = useState<FlashSale>(null);
   const [notices, setNotices] = useState<NoticeItem[]>([]);
@@ -200,6 +202,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         }),
       );
       unsubs.push(onValue(ref(d, "site_settings/config"), (s) => setConfig(s.val() || {})));
+      unsubs.push(onValue(ref(d, "telegramEmoji/keys"), (s) => setEmojis(s.val() || {})));
       unsubs.push(onValue(ref(d, "site_settings/banner"), (s) => setBanner(s.val() || {})));
       unsubs.push(onValue(ref(d, "site_settings/flash_sale"), (s) => setFlashSale(s.val() || null)));
       unsubs.push(
@@ -320,6 +323,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           ? config.categories
           : DEFAULT_CATEGORIES,
       siteName: config.siteName || "SILENT SELLER",
+      emoji: (key: string) => webEmoji(emojis, key),
 
       banner,
       flashSale,
@@ -351,6 +355,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     profile,
     products,
     config,
+    emojis,
     banner,
     flashSale,
     notices,
