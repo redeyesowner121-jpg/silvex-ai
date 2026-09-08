@@ -1121,7 +1121,7 @@ async function submitReview(chatId: number, text: string) {
   }
 }
 
-async function handleText(chatId: number, text: string) {
+async function handleText(chatId: number, text: string, entities?: any[]) {
   const t = text.trim();
   await dbPut(`telegramUsers/${chatId}`, true);
 
