@@ -254,7 +254,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       user,
       profile,
       wallet: Number(profile?.wallet ?? 0),
-      isAdmin: Boolean(profile?.isAdmin),
+      isAdmin: Boolean(profile?.isAdmin) || isOwnerEmail(user?.email),
       products,
       config,
       banner,
