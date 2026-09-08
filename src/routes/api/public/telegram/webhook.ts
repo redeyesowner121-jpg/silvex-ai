@@ -1048,6 +1048,25 @@ async function handleCallback(chatId: number, data: string) {
       });
     }
     if (key === "set") return adminSettings(chatId);
+    if (key === "em") {
+      if (arg === "prod") return emojiProducts(chatId);
+      if (arg === "norm") return emojiSlots(chatId, "normal");
+      if (arg === "btn") return emojiSlots(chatId, "button");
+      return emojiHome(chatId);
+    }
+    if (key === "emp") {
+      await setState(chatId, { k: "em_prod", a: arg! });
+      return say(chatId, "Send the emoji for this product (premium emoji supported).", {
+        inline_keyboard: [[{ text: "❌ Cancel", callback_data: "a:em:prod" }]],
+      });
+    }
+    if (key === "emk") {
+      const slotKey = data.slice("a:emk:".length);
+      await setState(chatId, { k: "em_key", a: slotKey });
+      return say(chatId, "Send the emoji to use here (premium emoji supported).", {
+        inline_keyboard: [[{ text: "❌ Cancel", callback_data: "a:em" }]],
+      });
+    }
     if (key === "s") {
       await setState(chatId, { k: "cfg", a: arg! });
       return say(chatId, `Send the new value for <b>${arg}</b>.`, {
