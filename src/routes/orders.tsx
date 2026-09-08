@@ -28,6 +28,7 @@ type Order = {
   status: string;
   date: string;
   deliveryNote?: string;
+  delivered?: { title: string; content: string }[];
 };
 
 function Orders() {
