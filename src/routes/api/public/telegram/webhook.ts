@@ -35,9 +35,11 @@ import {
   syncEmojiImages,
   setProductEmoji,
   setSlotEmoji,
+  setButtonColors,
   slotList,
   EMOJI_SLOTS,
 } from "@/lib/emoji.server";
+import type { ButtonColorMap } from "@/lib/button-colors";
 
 type Product = {
   id?: string;
