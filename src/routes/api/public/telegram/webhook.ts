@@ -856,7 +856,11 @@ async function adminDecideRequest(chatId: number, id: string, approve: boolean) 
 async function adminProducts(chatId: number) {
   const all = (await dbGet<Record<string, Product>>("products")) || {};
   const list = Object.entries(all).slice(0, 30);
-  if (!list.length) return say(chatId, "No products yet.", adminBack);
+  const newBtn = [{ text: "➕ New product", callback_data: "a:pnew" }];
+  if (!list.length)
+    return say(chatId, "📦 No products yet. Add your first one.", {
+      inline_keyboard: [newBtn, [{ text: "⬅️ Admin", callback_data: "a:home" }]],
+    });
   await say(chatId, "📦 <b>Products</b>\nTap one to manage.", {
     inline_keyboard: [
       ...list.map(([id, p]) => [
@@ -865,6 +869,7 @@ async function adminProducts(chatId: number) {
           callback_data: `a:p:${id}`,
         },
       ]),
+      newBtn,
       [{ text: "⬅️ Admin", callback_data: "a:home" }],
     ],
   });
@@ -876,7 +881,7 @@ async function adminProduct(chatId: number, id: string) {
   const stock = Array.isArray(p.stock) ? p.stock.filter(Boolean).length : 0;
   await say(
     chatId,
-    `📦 <b>${p.title}</b>\nPrice: ${money(p.price || 0)}\nDelivery: ${p.delivery || "manual"}\nStock: ${stock}\nSales: ${p.salesCount || 0}`,
+    `📦 <b>${p.title}</b>\n${p.desc ? `${p.desc}\n` : ""}Price: ${money(p.price || 0)}\nDelivery: ${p.delivery || "manual"}\nStock: ${stock}\nSales: ${p.salesCount || 0}`,
     {
       inline_keyboard: [
         [
@@ -884,15 +889,24 @@ async function adminProduct(chatId: number, id: string) {
           { text: "➕ Add stock", callback_data: `a:ps:${id}` },
         ],
         [
+          { text: "✏️ Title", callback_data: `a:pt:${id}` },
+          { text: "📝 Description", callback_data: `a:pdsc:${id}` },
+        ],
+        [
           { text: "⚡ Auto", callback_data: `a:pd:${id}:auto` },
           { text: "🔁 Repeat", callback_data: `a:pd:${id}:repeat` },
           { text: "🕐 Manual", callback_data: `a:pd:${id}:manual` },
+        ],
+        [
+          { text: "🧹 Clear stock", callback_data: `a:psc:${id}` },
+          { text: "🗑 Delete", callback_data: `a:pdel:${id}` },
         ],
         [{ text: "⬅️ Products", callback_data: "a:prod" }],
       ],
     },
   );
 }
+
 
 async function adminUsers(chatId: number) {
   await setState(chatId, { k: "u_find" });
