@@ -24,16 +24,12 @@ export const Route = createFileRoute("/admin")({
 });
 
 const input = "w-full rounded-xl border border-border bg-muted/60 p-2.5 text-sm outline-none";
-const TABS = [
-  "Dashboard",
-  "Orders",
-  "Requests",
-  "Products",
-  "Coupons",
-  "Users",
-  "Settings",
-] as const;
-type Tab = (typeof TABS)[number];
+const SECTIONS = {
+  Analysis: ["Dashboard", "Orders"],
+  Management: ["Requests", "Products", "Coupons", "Users", "Settings"],
+} as const;
+type Section = keyof typeof SECTIONS;
+type Tab = (typeof SECTIONS)[Section][number];
 
 type OrderRow = {
   orderId: string;
