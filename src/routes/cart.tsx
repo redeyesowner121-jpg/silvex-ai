@@ -159,7 +159,19 @@ function Cart() {
           ),
         });
       }
+      void notifyTelegramOrder({
+        data: {
+          orderId,
+          email: user.email || undefined,
+          total,
+          status: delivered.length && allDelivered ? "Completed" : "Pending",
+          items: cart.map((i) => ({ title: i.title, qty: i.qty })),
+          delivered,
+          uid: user.uid,
+        },
+      }).catch(() => undefined);
       clearCart();
+
       setDiscount(0);
       showSuccess(
         delivered.length && allDelivered ? "Delivered!" : "Order placed",
