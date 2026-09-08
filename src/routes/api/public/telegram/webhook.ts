@@ -374,16 +374,28 @@ async function sendApiKey(chatId: number, regenerate: boolean) {
     await dbPut(`apiKeys/${key}`, uid);
     await dbPatch(`users/${uid}`, { apiKey: key, apiEnabled: true });
   }
-  const base = `${SITE_URL}/api/public/reseller`;
+  const base = `https://silvex-ai.com/api/public/reseller`;
   await say(
     chatId,
     `🔑 <b>Your reseller API key</b>\n\n<code>${key}</code>\n\n` +
-      `Send it as the <code>x-api-key</code> header. Orders are paid from your wallet.\n\n` +
-      `<code>GET  ${base}/products\nGET  ${base}/balance\nGET  ${base}/orders\nPOST ${base}/order\n     {"productId":"ID","qty":1}</code>\n\n` +
-      `⚠️ Keep it private.`,
+      `Base URL: <code>${base}</code>\n` +
+      `Auth header: <code>x-api-key: ${key}</code>\n` +
+      `Orders are paid from your wallet balance (same wallet as the bot and website).\n\n` +
+      `<b>Endpoints</b>\n` +
+      `<code>GET  /me</code> — your account\n` +
+      `<code>GET  /balance</code> — wallet balance\n` +
+      `<code>GET  /products</code> — price list + stock\n` +
+      `<code>GET  /orders</code> — your orders\n` +
+      `<code>GET  /orders/ORDER_ID</code> — one order\n` +
+      `<code>POST /order</code> — buy: <code>{"productId":"ID","qty":1}</code>\n\n` +
+      `<b>Example</b>\n` +
+      `<code>curl -X POST ${base}/order \\\n -H "x-api-key: ${key}" \\\n -H "content-type: application/json" \\\n -d '{"productId":"ID","qty":1}'</code>\n\n` +
+      `Instant items come back inside the order response; manual items stay <i>pending</i> until we deliver them (you get a message here).\n\n` +
+      `⚠️ Keep this key private — anyone with it can spend your balance.`,
     {
       inline_keyboard: [
         [{ text: "♻️ Generate new key", callback_data: "apikey_new" }],
+        [{ text: "📘 Full docs", url: "https://silvex-ai.com/api-key" }],
         [{ text: "⬅️ Menu", callback_data: "home" }],
       ],
     },
