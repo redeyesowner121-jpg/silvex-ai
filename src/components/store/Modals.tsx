@@ -325,7 +325,7 @@ export function WalletModal() {
       const claimed = await get(ref(db, `deposits/${hash}`));
       if (claimed.exists()) return notify("This transaction has already been used.");
 
-      const res = await checkDeposit({ data: { hash, chain } });
+      const res = await checkDeposit({ data: { hash, chain, address: depositAddress } });
       if (!res.ok) return notify(res.message);
 
       const base = {
