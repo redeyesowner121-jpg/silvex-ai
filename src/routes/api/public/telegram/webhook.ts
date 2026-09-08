@@ -155,24 +155,41 @@ async function forceJoinBlocked(chatId: number): Promise<boolean> {
 
 /* ---------------- user menus ---------------- */
 
+/**
+ * Telegram does not let bots pick button colours, so buttons are colour-coded
+ * with coloured markers + the admin's chosen emoji for each slot.
+ */
+const DOT = {
+  green: "🟢",
+  blue: "🔵",
+  violet: "🟣",
+  orange: "🟠",
+  red: "🔴",
+  yellow: "🟡",
+} as const;
+
+function cbtn(dot: string, key: string, label: string, data: string) {
+  return { text: `${dot} ${be(key)} ${label}`, callback_data: data };
+}
+
 function mainKeyboard() {
   return {
     inline_keyboard: [
-      [{ text: `${be("btn.products")} View Products`, callback_data: "products" }],
+      [cbtn(DOT.green, "btn.products", "View Products", "products")],
       [
-        { text: `${be("btn.wallet")} My Wallet`, callback_data: "wallet" },
-        { text: `${be("btn.profile")} Profile`, callback_data: "profile" },
+        cbtn(DOT.blue, "btn.wallet", "My Wallet", "wallet"),
+        cbtn(DOT.violet, "btn.profile", "Profile", "profile"),
       ],
       [
-        { text: `${be("btn.reviews")} Reviews`, callback_data: "reviews" },
-        { text: `${be("btn.refer")} Refer & Earn`, callback_data: "refer" },
+        cbtn(DOT.yellow, "btn.reviews", "Reviews", "reviews"),
+        cbtn(DOT.orange, "btn.refer", "Refer & Earn", "refer"),
       ],
       [
-        { text: `${be("btn.support")} Support`, callback_data: "support" },
-        { text: `${be("btn.orders")} My Orders`, callback_data: "orders" },
+        cbtn(DOT.red, "btn.support", "Support", "support"),
+        cbtn(DOT.blue, "btn.orders", "My Orders", "orders"),
       ],
-      [{ text: `${be("btn.apikey")} Reseller API key`, callback_data: "apikey" }],
-      [{ text: `${be("btn.website")} Visit Website`, url: SITE_URL }],
+      [cbtn(DOT.violet, "btn.apikey", "Reseller API key", "apikey")],
+      [{ text: `🌐 ${be("btn.website")} Visit Website`, url: SITE_URL }],
     ],
   };
 }
@@ -266,7 +283,7 @@ async function sendProducts(chatId: number) {
       ...list.map(([id, p]) => [
         { text: `${productEmojiChar(id)} ${p.title || "Item"} — ${money(p.price || 0)}`, callback_data: `p:${id}` },
       ]),
-      [{ text: `${be("btn.back")} Menu`, callback_data: "home" }],
+      [{ text: `🔵 ${be("btn.back")} Menu`, callback_data: "home" }],
     ],
   });
 }
@@ -285,10 +302,10 @@ async function sendProduct(chatId: number, id: string) {
   const text = `${productEmoji(id)} <b>${p.title || "Item"}</b>\n\n${p.desc || ""}\n\n${em("norm.money")} Price: <b>${money(p.price || 0)}</b>\n${availability}`;
   const keyboard = {
     inline_keyboard: [
-      [{ text: `${be("btn.buy")} Buy now — ${money(p.price || 0)}`, callback_data: `b:${id}` }],
+      [{ text: `🟢 ${be("btn.buy")} Buy now — ${money(p.price || 0)}`, callback_data: `b:${id}` }],
       [
-        { text: `${be("btn.back")} Products`, callback_data: "products" },
-        { text: `${be("btn.wallet")} Wallet`, callback_data: "wallet" },
+        { text: `🔵 ${be("btn.back")} Products`, callback_data: "products" },
+        { text: `🟣 ${be("btn.wallet")} Wallet`, callback_data: "wallet" },
       ],
     ],
   };
@@ -306,7 +323,7 @@ async function sendWallet(chatId: number) {
   await say(chatId, `👛 <b>Wallet</b>\n\nBalance: <b>${money(wallet)}</b>`, {
     inline_keyboard: [
       [
-        { text: "➕ Deposit", callback_data: "dep" },
+        { text: `🟢 ${be("btn.deposit")} Deposit`, callback_data: "dep" },
         { text: "➖ Withdraw", callback_data: "wd" },
       ],
       [{ text: "📜 History", callback_data: "whist" }],
@@ -532,7 +549,7 @@ async function buy(chatId: number, productId: string) {
   const wallet = Number(user.wallet || 0);
   if (wallet < price) {
     return say(chatId, `Not enough wallet balance. You have ${money(wallet)}, the item costs ${money(price)}.`, {
-      inline_keyboard: [[{ text: "➕ Deposit", callback_data: "dep" }]],
+      inline_keyboard: [[{ text: `🟢 ${be("btn.deposit")} Deposit`, callback_data: "dep" }]],
     });
   }
 
