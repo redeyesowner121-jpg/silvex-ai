@@ -83,6 +83,9 @@ type StoreValue = {
   isAdmin: boolean;
   products: Product[];
   config: SiteConfig;
+  categories: Category[];
+  siteName: string;
+
   banner: Banner;
   flashSale: FlashSale;
   notices: NoticeItem[];
