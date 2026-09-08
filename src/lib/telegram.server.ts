@@ -284,7 +284,7 @@ export async function tgSendPhoto(
         form.append("caption", caption);
         form.append("parse_mode", "HTML");
       }
-      if (keyboard) form.append("reply_markup", JSON.stringify(keyboard));
+      if (keyboard) form.append("reply_markup", JSON.stringify(decorateMarkup(keyboard)));
       const ext = (m[1] || "image/jpeg").split("/")[1]?.split("+")[0] || "jpg";
       form.append("photo", new Blob([bytes as unknown as BlobPart], { type: m[1] || "image/jpeg" }), `photo.${ext}`);
       const res = await fetch(`${GATEWAY}/sendPhoto`, {
@@ -303,7 +303,7 @@ export async function tgSendPhoto(
       chat_id: chatId,
       photo: photo.trim(),
       ...(caption ? { caption, parse_mode: "HTML" } : {}),
-      ...(keyboard ? { reply_markup: keyboard } : {}),
+      ...(keyboard ? { reply_markup: decorateMarkup(keyboard) } : {}),
     });
     return true;
   } catch (e) {
