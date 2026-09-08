@@ -80,7 +80,24 @@ export async function tg(method: string, body: Record<string, unknown>): Promise
     const msg = String((err as Error)?.message || "");
     // Bots without a Fragment username / premium owner can't use premium icons,
     // and older clients may reject the style field — retry plain instead of failing.
-    if (/custom_emoji|CUSTOM_EMOJI|icon|style/i.test(msg) && payload["reply_markup"]) {
+    if (/custom_emoji|CUSTOM_EMOJI|icon|style|entit/i.test(msg)) {
+      // Premium emoji in message text also needs a Fragment-linked bot — fall
+      // back to the plain emoji characters rather than dropping the message.
+      const plainText = (v: unknown) =>
+        typeof v === "string" ? v.replace(/<tg-emoji[^>]*>([\s\S]*?)<\/tg-emoji>/g, "$1") : v;
+      const retry: Record<string, unknown> = { ...payload };
+      if (retry["text"]) retry["text"] = plainText(retry["text"]);
+      if (retry["caption"]) retry["caption"] = plainText(retry["caption"]);
+      if (retry["reply_markup"]) {
+        const plain = stripIcons(retry["reply_markup"]);
+        retry["reply_markup"] = {
+          ...plain,
+          inline_keyboard: plain.inline_keyboard.map((row: any[]) => row.map(({ style, ...r }: any) => r)),
+        };
+      }
+      return await call(retry);
+    }
+    if (false && payload["reply_markup"]) {
       const plain = stripIcons(payload["reply_markup"]);
       const noStyle = {
         ...plain,
@@ -309,5 +326,31 @@ export async function tgSendPhoto(
   } catch (e) {
     console.error("sendPhoto error", e);
     return false;
+  }
+}
+
+/* ---------------- file download ---------------- */
+
+/** Download a Telegram file (by file_id) and return it as a data: URL. */
+export async function tgFileDataUrl(fileId: string, maxBytes = 400_000): Promise<string | null> {
+  try {
+    const lovableKey = process.env["LOVABLE_API_KEY"];
+    const connKey = telegramConnectionKey();
+    if (!lovableKey || !connKey) return null;
+    const info = await tg("getFile", { file_id: fileId });
+    const path = info?.result?.file_path;
+    if (!path) return null;
+    const res = await fetch(`${GATEWAY}/file/${path}`, {
+      headers: { Authorization: `Bearer ${lovableKey}`, "X-Connection-Api-Key": connKey },
+    });
+    if (!res.ok) return null;
+    const buf = Buffer.from(await res.arrayBuffer());
+    if (!buf.length || buf.length > maxBytes) return null;
+    const ext = String(path).split(".").pop()?.toLowerCase() || "webp";
+    const mime =
+      ext === "png" ? "image/png" : ext === "jpg" || ext === "jpeg" ? "image/jpeg" : ext === "webm" ? "video/webm" : "image/webp";
+    return `data:${mime};base64,${buf.toString("base64")}`;
+  } catch {
+    return null;
   }
 }
