@@ -68,6 +68,36 @@ function Cart() {
     setBusy(true);
     try {
       const orderId = "ORD" + Date.now();
+
+      // Deliver instantly where possible: auto = pull stock lines, repeat = same link.
+      const delivered: { title: string; content: string }[] = [];
+      let allDelivered = true;
+      for (const item of cart) {
+        const snap = await get(ref(db, `products/${item.id}`));
+        const p = snap.val() || {};
+        if (p.delivery === "repeat" && p.link) {
+          for (let n = 0; n < item.qty; n++) delivered.push({ title: item.title, content: p.link });
+          continue;
+        }
+        if (p.delivery === "auto") {
+          let taken: string[] = [];
+          await runTransaction(ref(db, `products/${item.id}/stock`), (cur) => {
+            const list: string[] = Array.isArray(cur) ? cur.filter(Boolean) : [];
+            if (list.length < item.qty) {
+              taken = [];
+              return cur;
+            }
+            taken = list.slice(0, item.qty);
+            return list.slice(item.qty);
+          });
+          if (taken.length === item.qty) {
+            taken.forEach((content) => delivered.push({ title: item.title, content }));
+            continue;
+          }
+        }
+        allDelivered = false;
+      }
+
       await set(ref(db, `users/${user.uid}/wallet`), wallet - total);
       await set(ref(db, `orders/${orderId}`), {
         orderId,
@@ -80,7 +110,8 @@ function Cart() {
         total,
         phone,
         note,
-        status: "Pending",
+        delivered,
+        status: delivered.length && allDelivered ? "Completed" : "Pending",
         date: new Date().toISOString(),
       });
       await push(ref(db, `users/${user.uid}/history`), {
