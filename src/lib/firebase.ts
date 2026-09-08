@@ -53,15 +53,13 @@ async function init(): Promise<FirebaseBundle> {
     db: firebaseDatabase.getDatabase(app),
   };
 
-  // Analytics is browser-only and optional; never let it break the app.
-  try {
-    const { isSupported, getAnalytics } = await import("firebase/analytics");
-    if (await isSupported()) getAnalytics(app);
-  } catch {
-    /* analytics unavailable */
-  }
-
   cached = bundle;
+  // Analytics is optional and must never delay products, auth, or the first paint.
+  void import("firebase/analytics")
+    .then(async ({ isSupported, getAnalytics }) => {
+      if (await isSupported()) getAnalytics(app);
+    })
+    .catch(() => undefined);
   return bundle;
 }
 
