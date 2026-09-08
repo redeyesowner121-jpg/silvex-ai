@@ -204,3 +204,53 @@ export async function sendDeliveryFiles(
     () => undefined,
   );
 }
+
+/* ---------------- photos ---------------- */
+
+/** Send a product photo. Accepts an http(s) URL or a data: URL (uploaded image). */
+export async function tgSendPhoto(
+  chatId: number,
+  photo: string,
+  caption?: string,
+  keyboard?: unknown,
+): Promise<boolean> {
+  try {
+    const m = /^data:([^;,]+);base64,(.*)$/i.exec(photo.trim());
+    if (m) {
+      const lovableKey = process.env["LOVABLE_API_KEY"];
+      const connKey = telegramConnectionKey();
+      if (!lovableKey || !connKey) return false;
+      const bytes = Buffer.from(m[2]!, "base64");
+      const form = new FormData();
+      form.append("chat_id", String(chatId));
+      if (caption) {
+        form.append("caption", caption);
+        form.append("parse_mode", "HTML");
+      }
+      if (keyboard) form.append("reply_markup", JSON.stringify(keyboard));
+      const ext = (m[1] || "image/jpeg").split("/")[1]?.split("+")[0] || "jpg";
+      form.append("photo", new Blob([bytes as unknown as BlobPart], { type: m[1] }), `photo.${ext}`);
+      const res = await fetch(`${GATEWAY}/sendPhoto`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${lovableKey}`, "X-Connection-Api-Key": connKey },
+        body: form,
+      });
+      if (!res.ok) {
+        console.error(`Telegram sendPhoto failed [${res.status}]: ${await res.text()}`);
+        return false;
+      }
+      return true;
+    }
+    if (!/^https?:\/\//i.test(photo.trim())) return false;
+    await tg("sendPhoto", {
+      chat_id: chatId,
+      photo: photo.trim(),
+      ...(caption ? { caption, parse_mode: "HTML" } : {}),
+      ...(keyboard ? { reply_markup: keyboard } : {}),
+    });
+    return true;
+  } catch (e) {
+    console.error("sendPhoto error", e);
+    return false;
+  }
+}
