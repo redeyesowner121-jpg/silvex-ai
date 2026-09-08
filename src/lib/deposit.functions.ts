@@ -84,8 +84,9 @@ export const checkDeposit = createServerFn({ method: "POST" })
   })
 
   .handler(async ({ data }): Promise<DepositCheck> => {
-    const { hash, chain } = data;
+    const { hash, chain, address } = data;
     const conf = CHAINS[chain];
+
     const fail = (message: string): DepositCheck => ({
       ok: false,
       status: "failed",
@@ -104,7 +105,7 @@ export const checkDeposit = createServerFn({ method: "POST" })
     const timestamp = Number(BigInt(block?.timestamp ?? "0x0")) * 1000;
     const ageMinutes = Math.max(0, Math.round((Date.now() - timestamp) / 60000));
 
-    const target = DEPOSIT_ADDRESS.toLowerCase().slice(2);
+    const target = address.toLowerCase().slice(2);
     let amount = 0;
     let symbol: string | null = null;
 
