@@ -13,6 +13,7 @@ import type { Auth, User } from "firebase/auth";
 import type { Database } from "firebase/database";
 import { toast } from "sonner";
 import { getFirebase } from "@/lib/firebase";
+import { webEmoji, type WebEmojiMap } from "@/lib/web-emoji";
 
 export type Product = {
   id: string;
