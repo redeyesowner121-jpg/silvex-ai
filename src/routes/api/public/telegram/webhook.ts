@@ -1015,9 +1015,13 @@ async function handleText(chatId: number, text: string) {
   const t = text.trim();
   await dbPut(`telegramUsers/${chatId}`, true);
 
-  if (t === "/start" || t === "/menu") {
+  if (t === "/start" || t === "/menu" || t.startsWith("/start ")) {
     await setState(chatId, null);
     if (await forceJoinBlocked(chatId)) return;
+    if (t.startsWith("/start ")) {
+      const uid = await ensureUser(chatId);
+      await applyStartReferral(uid, t.slice(7));
+    }
     return welcome(chatId);
   }
   if (await forceJoinBlocked(chatId)) return;
