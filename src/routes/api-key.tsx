@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { ref, update, set } from "firebase/database";
 import { useStore } from "@/context/StoreContext";
+import { websiteUrl } from "@/lib/referral";
 
 export const Route = createFileRoute("/api-key")({
   head: () => ({
@@ -24,7 +25,7 @@ function newKey() {
 }
 
 function ApiKeyPage() {
-  const { db, user, profile, openModal, showSuccess, notify } = useStore();
+  const { db, user, profile, config, openModal, showSuccess, notify } = useStore();
   const [busy, setBusy] = useState(false);
   const key = (profile as any)?.apiKey as string | undefined;
 
@@ -57,7 +58,7 @@ function ApiKeyPage() {
     }
   }
 
-  const base = "https://silvex-ai.com/api/public/reseller";
+  const base = `${(config.siteUrl || websiteUrl()).replace(/\/+$/, "")}/api/public/reseller`;
 
   return (
     <div className="mx-auto max-w-md px-4 py-5">

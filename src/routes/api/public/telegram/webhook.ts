@@ -3,8 +3,10 @@ import { DEFAULT_DEPOSIT_ADDRESS, verifyDepositAnyChain } from "@/lib/deposit.se
 import {
   botReferralLink,
   referralEarnings,
-  REFERRAL_CAP,
-  REFERRAL_RATE,
+  referralCap,
+  applyReferralConfig,
+  referralPercent,
+  referralRate,
   websiteReferralLink,
 } from "@/lib/referral";
 import {
@@ -17,11 +19,12 @@ import {
   safeEqual,
   sendDeliveryFiles,
 
-  SITE_URL,
+  siteUrl,
   telegramWebhookSecret,
   tg,
   tgSendPhoto,
-  TELEGRAM_OWNER_IDS,
+  ownerIds,
+  applyBotConfig,
 } from "@/lib/telegram.server";
 import {
   be,
@@ -72,6 +75,8 @@ async function cfg(): Promise<Cfg> {
   if (cachedCfg && Date.now() - cfgLoadedAt < BOT_CACHE_MS) return cachedCfg;
   cachedCfg = (await dbGet<Cfg>(CFG)) || {};
   cfgLoadedAt = Date.now();
+  applyBotConfig(cachedCfg as any);
+  applyReferralConfig(cachedCfg as any);
   return cachedCfg;
 }
 async function siteName(): Promise<string> {
@@ -109,7 +114,7 @@ async function setState(chatId: number, s: State) {
 }
 
 async function isBotAdmin(chatId: number): Promise<boolean> {
-  if (TELEGRAM_OWNER_IDS.includes(chatId)) return true;
+  if (ownerIds().includes(chatId)) return true;
   return Boolean(await dbGet<boolean>(`telegramAdmins/${chatId}`));
 }
 
@@ -217,7 +222,7 @@ function mainKeyboard() {
         cbtn(DOT.blue, "btn.orders", "Orders", "orders"),
       ],
       [cbtn(DOT.violet, "btn.apikey", "Reseller API key", "apikey")],
-      [{ text: `🌐 ${be("btn.website")} Visit Website`, url: SITE_URL }],
+      [{ text: `🌐 ${be("btn.website")} Visit Website`, url: siteUrl() }],
     ],
   };
 }
@@ -419,7 +424,7 @@ async function sendApiKey(chatId: number, regenerate: boolean) {
     await dbPut(`apiKeys/${key}`, uid);
     await dbPatch(`users/${uid}`, { apiKey: key, apiEnabled: true });
   }
-  const base = `https://silvex-ai.com/api/public/reseller`;
+  const base = `${siteUrl()}/api/public/reseller`;
   await say(
     chatId,
     `🔑 <b>Your reseller API key</b>\n\n<code>${key}</code>\n\n` +
@@ -440,7 +445,7 @@ async function sendApiKey(chatId: number, regenerate: boolean) {
     {
       inline_keyboard: [
         [{ text: "♻️ Generate new key", callback_data: "apikey_new" }],
-        [{ text: "📘 Full docs", url: "https://silvex-ai.com/api-key" }],
+        [{ text: "📘 Full docs", url: `${siteUrl()}/api-key` }],
         [{ text: "⬅️ Menu", callback_data: "home" }],
       ],
     },
@@ -488,9 +493,9 @@ async function payReferralCommission(buyerUid: string, amount: number) {
     const refBy = await dbGet<string>(`users/${buyerUid}/refBy`);
     if (!refBy || refBy === buyerUid) return;
     const earnedSoFar = Number((await dbGet<number>(`users/${refBy}/refEarned/${buyerUid}`)) || 0);
-    const room = REFERRAL_CAP - earnedSoFar;
+    const room = referralCap() - earnedSoFar;
     if (room <= 0) return;
-    const commission = Math.min(Math.round(Number(amount) * REFERRAL_RATE * 100) / 100, room);
+    const commission = Math.min(Math.round(Number(amount) * referralRate() * 100) / 100, room);
     if (commission <= 0) return;
     const w = Number((await dbGet<number>(`users/${refBy}/wallet`)) || 0);
     await dbPut(`users/${refBy}/wallet`, w + commission);
@@ -541,7 +546,7 @@ async function sendRefer(chatId: number) {
   await say(
     chatId,
     `🎁 <b>Refer &amp; Earn</b>\n\n` +
-      `Earn <b>2% commission</b> on every purchase your friend makes (up to ${money(REFERRAL_CAP)} per friend)!\n\n` +
+      `Earn <b>${referralPercent()}% commission</b> on every purchase your friend makes (up to ${money(referralCap())} per friend)!\n\n` +
       `🔗 <b>Your link:</b>\n${botReferralLink(code)}\n\n` +
       `🤩 <b>Code:</b> <code>${code}</code>\n\n` +
       `👥 <b>Total Referrals:</b> ${invited}\n\n` +
@@ -636,9 +641,9 @@ async function buy(chatId: number, productId: string) {
   const body = complete
     ? `✅ <b>Order delivered</b>\n\n${delivered.map((d) => `${d.title}\n<code>${d.content}</code>`).join("\n\n")}`
     : `🧾 <b>Order placed</b>\n\n${p.title}\nWe will deliver it shortly.`;
-  await say(chatId, `${body}\n\nOrder: <code>${orderId}</code>\nPaid: ${money(price)}\n\n🌐 Website: ${SITE_URL}`, {
+  await say(chatId, `${body}\n\nOrder: <code>${orderId}</code>\nPaid: ${money(price)}\n\n🌐 Website: ${siteUrl()}`, {
     inline_keyboard: [
-      [{ text: "🌐 Visit website", url: SITE_URL }],
+      [{ text: "🌐 Visit website", url: siteUrl() }],
       [{ text: "🛍 Buy more", callback_data: "products" }],
     ],
   });
@@ -677,7 +682,7 @@ async function adminHome(chatId: number) {
         { text: "⚙️ Settings", callback_data: "a:set" },
         { text: "😍 Emojis", callback_data: "a:em" },
       ],
-      [{ text: "🌐 Website admin", url: `${SITE_URL}/admin` }],
+      [{ text: "🌐 Website admin", url: `${siteUrl()}/admin` }],
     ],
   });
 }
@@ -781,8 +786,8 @@ async function adminDeliver(chatId: number, orderId: string, text: string) {
       Number(buyerChat),
       `✅ <b>Your order is delivered</b>\n\nOrder: <code>${orderId}</code>\n\n${delivered
         .map((d) => `${d.title}\n<code>${d.content}</code>`)
-        .join("\n\n")}\n\n🌐 Website: ${SITE_URL}`,
-      { inline_keyboard: [[{ text: "🌐 Visit website", url: SITE_URL }]] },
+        .join("\n\n")}\n\n🌐 Website: ${siteUrl()}`,
+      { inline_keyboard: [[{ text: "🌐 Visit website", url: siteUrl() }]] },
     ).catch(() => undefined);
     await sendDeliveryFiles(Number(buyerChat), orderId, delivered).catch(() => undefined);
   }
@@ -1013,7 +1018,7 @@ async function emojiSlots(chatId: number, group: "button" | "normal" | "web") {
     group === "button"
       ? "🔘 <b>Button emojis</b>"
       : group === "web"
-        ? "🌐 <b>Website emojis</b>\nThese show on silvex-ai.com."
+        ? "🌐 <b>Website emojis</b>\nThese show on your website."
         : "✨ <b>Normal emojis</b>";
   await say(chatId, `${heading}\nChoose a slot, then send the emoji.`, {
     inline_keyboard: [

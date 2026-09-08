@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { dbGet, dbPatch, dbPush, dbPut, SITE_URL } from "@/lib/telegram.server";
+import { dbGet, dbPatch, dbPush, dbPut, siteUrl, loadBotRuntime } from "@/lib/telegram.server";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -41,6 +41,7 @@ function publicProduct(id: string, p: any) {
 
 async function handle(request: Request, splat: string): Promise<Response> {
   const path = (splat || "").replace(/^\/+|\/+$/g, "");
+  await loadBotRuntime().catch(() => undefined);
   const account = await resolveKey(request);
   if (!account) return json({ ok: false, error: "Invalid or missing API key" }, 401);
   const { uid, user } = account;
@@ -52,7 +53,7 @@ async function handle(request: Request, splat: string): Promise<Response> {
       name: user.name || null,
       balance: Number(user.wallet || 0),
       currency: "USD",
-      website: SITE_URL,
+      website: siteUrl(),
     });
   }
 

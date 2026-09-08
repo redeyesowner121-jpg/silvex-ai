@@ -13,6 +13,7 @@ import type { Auth, User } from "firebase/auth";
 import type { Database } from "firebase/database";
 import { toast } from "sonner";
 import { getFirebase } from "@/lib/firebase";
+import { applyReferralConfig } from "@/lib/referral";
 import { webEmoji, webEmojiImg, type WebEmojiMap } from "@/lib/web-emoji";
 
 export type Product = {
@@ -64,6 +65,17 @@ export type SiteConfig = {
   minOrder?: number;
   lowStockAlert?: number;
   categories?: Category[];
+  /** Public website address, used for links, referrals and the reseller API. */
+  siteUrl?: string;
+  /** Telegram bot username, without the @. */
+  botUsername?: string;
+  /** Referral commission percent (e.g. 2) and the cap per referred friend. */
+  referralRate?: number;
+  referralCap?: number;
+  /** Emails that always keep owner access, comma separated in the admin panel. */
+  ownerEmails?: string;
+  /** Telegram numeric IDs of the bot owners, comma separated. */
+  telegramOwners?: string;
 };
 
 export const DEFAULT_CATEGORIES: Category[] = [
@@ -129,11 +141,22 @@ g.__rkrStoreContext = StoreContext;
 
 const CART_KEY = "rkr_cart_v1";
 
-/** Store owners: always admin, cannot be removed. */
-export const OWNER_EMAILS = ["red.eyes.owner121@gmail.com", "mohiuddinarif0278@gmail.com"];
+/** Store owners: always admin, cannot be removed. Editable from the admin panel. */
+export const DEFAULT_OWNER_EMAILS = [
+  "red.eyes.owner121@gmail.com",
+  "mohiuddinarif0278@gmail.com",
+];
+let ownerEmails = DEFAULT_OWNER_EMAILS;
+
+export function applyOwnerEmails(list?: string | string[] | null) {
+  const parsed = (Array.isArray(list) ? list : String(list ?? "").split(/[,\s]+/))
+    .map((e) => String(e).trim().toLowerCase())
+    .filter(Boolean);
+  if (parsed.length) ownerEmails = parsed;
+}
 
 export function isOwnerEmail(email?: string | null) {
-  return Boolean(email && OWNER_EMAILS.includes(email.toLowerCase()));
+  return Boolean(email && ownerEmails.includes(email.toLowerCase()));
 }
 
 export function StoreProvider({ children }: { children: ReactNode }) {
@@ -204,7 +227,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           );
         }),
       );
-      unsubs.push(onValue(ref(d, "site_settings/config"), (s) => setConfig(s.val() || {})));
+      unsubs.push(onValue(ref(d, "site_settings/config"), (s) => {
+          const c = (s.val() || {}) as SiteConfig;
+          applyOwnerEmails(c.ownerEmails);
+          applyReferralConfig(c);
+          setConfig(c);
+        }));
       // Slot names hold dots, stored as "~" because Firebase keys can't have dots.
       const decodeKeys = (v: Record<string, any> | null) =>
         Object.fromEntries(Object.entries(v || {}).map(([k, val]) => [k.split("~").join("."), val]));

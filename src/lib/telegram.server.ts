@@ -2,8 +2,28 @@
 import { createHash, timingSafeEqual } from "crypto";
 
 export const RTDB_URL = "https://silvex-ai-default-rtdb.firebaseio.com";
-export const SITE_URL = "https://silvex-ai.com";
-export const TELEGRAM_OWNER_IDS = [7926443195, 6898461453];
+
+/** Fallbacks only — the web admin panel overrides these from site_settings/config. */
+const DEFAULT_SITE_URL = "https://silvex-ai.com";
+const DEFAULT_OWNER_IDS = [7926443195, 6898461453];
+
+let runtimeSiteUrl = DEFAULT_SITE_URL;
+let runtimeOwnerIds = DEFAULT_OWNER_IDS;
+
+export function applyBotConfig(c?: { siteUrl?: string; telegramOwners?: string | number[] } | null) {
+  if (!c) return;
+  if (c.siteUrl) runtimeSiteUrl = String(c.siteUrl).trim().replace(/\/+$/, "");
+  const raw = c.telegramOwners;
+  const ids = (Array.isArray(raw) ? raw : String(raw ?? "").split(/[,\s]+/))
+    .map((v) => Number(String(v).trim()))
+    .filter((n) => Number.isFinite(n) && n > 0);
+  if (ids.length) runtimeOwnerIds = ids;
+}
+
+export const SITE_URL_DEFAULT = DEFAULT_SITE_URL;
+export const siteUrl = () => runtimeSiteUrl;
+export const ownerIds = () => runtimeOwnerIds;
+
 
 const GATEWAY = "https://connector-gateway.lovable.dev/telegram";
 
@@ -122,6 +142,20 @@ export async function dbGet<T = any>(path: string): Promise<T | null> {
   return (await res.json()) as T | null;
 }
 
+let runtimeLoadedAt = 0;
+
+/** Pull the admin-managed settings (site link, owners, referral) into this worker. */
+export async function loadBotRuntime(force = false): Promise<void> {
+  if (!force && Date.now() - runtimeLoadedAt < 30_000) return;
+  const c = await dbGet<any>("site_settings/config").catch(() => null);
+  runtimeLoadedAt = Date.now();
+  applyBotConfig(c);
+  const { applyReferralConfig } = await import("./referral");
+  applyReferralConfig(c);
+}
+
+
+
 async function dbWrite(method: string, path: string, value: unknown): Promise<void> {
   const res = await fetch(`${RTDB_URL}/${path}.json`, { method, body: JSON.stringify(value) });
   if (!res.ok) {
@@ -151,7 +185,7 @@ export function money(n: number): string {
 
 export async function notifyOwners(text: string): Promise<void> {
   await Promise.all(
-    TELEGRAM_OWNER_IDS.map((id) =>
+    ownerIds().map((id) =>
       tg("sendMessage", { chat_id: id, text, parse_mode: "HTML" }).catch(() => undefined),
     ),
   );

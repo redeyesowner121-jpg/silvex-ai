@@ -4,7 +4,7 @@ import { get, push, ref, runTransaction, set, update } from "firebase/database";
 import { useStore } from "@/context/StoreContext";
 import { deliveryBlock, emailShell, itemsTable, sendMail } from "@/lib/mailer";
 import { notifyTelegramOrder } from "@/lib/telegram.functions";
-import { REFERRAL_CAP, REFERRAL_RATE } from "@/lib/referral";
+import { referralCap, referralRate } from "@/lib/referral";
 import { Emo } from "@/components/store/Emo";
 
 
@@ -154,8 +154,8 @@ function Cart() {
           const earnedSnap = await get(ref(db, `users/${refBy}/refEarned/${user.uid}`));
           const earned = Number(earnedSnap.val()) || 0;
           const commission = Math.min(
-            Math.round(total * REFERRAL_RATE * 100) / 100,
-            REFERRAL_CAP - earned,
+            Math.round(total * referralRate() * 100) / 100,
+            referralCap() - earned,
           );
           if (commission > 0) {
             const wSnap = await get(ref(db, `users/${refBy}/wallet`));
