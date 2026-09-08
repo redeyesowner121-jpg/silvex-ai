@@ -1438,6 +1438,36 @@ async function handleText(chatId: number, text: string, entities?: any[], sticke
       await say(chatId, `✅ Added ${lines.length} stock items.`);
       return adminProduct(chatId, state.a!);
     }
+    if (k === "p_new") {
+      const [rawTitle = "", rawPrice = "", ...rest] = t.split("|");
+      const title = rawTitle.trim();
+      const price = Number(String(rawPrice).replace(/[^0-9.]/g, "")) || 0;
+      if (!title || !price)
+        return say(chatId, "❌ Send it as: <code>Title | price | description</code>");
+      const id = `p${Date.now().toString(36)}`;
+      await dbPut(`products/${id}`, {
+        id,
+        title,
+        price,
+        desc: rest.join("|").trim(),
+        delivery: "manual",
+        stock: [],
+        salesCount: 0,
+      });
+      await setState(chatId, null);
+      await say(chatId, `✅ Product created: <b>${title}</b> — ${money(price)}`);
+      return adminProduct(chatId, id);
+    }
+    if (k === "p_title") {
+      await dbPatch(`products/${state.a}`, { title: t.trim() });
+      await setState(chatId, null);
+      return adminProduct(chatId, state.a!);
+    }
+    if (k === "p_desc") {
+      await dbPatch(`products/${state.a}`, { desc: t.trim() });
+      await setState(chatId, null);
+      return adminProduct(chatId, state.a!);
+    }
     if (k === "u_find") return adminFindUser(chatId, t);
     if (k === "u_wallet") {
       await dbPut(`users/${state.a}/wallet`, Number(t) || 0);
