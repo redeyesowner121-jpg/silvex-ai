@@ -88,9 +88,15 @@ export function sellPrice(supplier: number, markup: number): number {
  * Refresh price and stock of every product linked to the supplier.
  * Returns the products that changed.
  */
-export async function syncSupplierProducts(): Promise<{
+export async function syncSupplierProducts(force = true): Promise<{
   updated: { id: string; title: string; price: number; stock: number }[];
 }> {
+  if (!force) {
+    const last = await dbGet<string>("site_settings/supplier_synced_at");
+    if (last && Date.now() - new Date(last).getTime() < 5 * 60 * 1000) return { updated: [] };
+  }
+  await dbPatch("site_settings", { supplier_synced_at: new Date().toISOString() });
+
   const [products, list] = await Promise.all([
     dbGet<Record<string, any>>("products"),
     supplierProducts(),
