@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
-import { get, push, ref, runTransaction, set } from "firebase/database";
+import { useEffect, useState } from "react";
+import { get, push, ref, runTransaction, set, update } from "firebase/database";
 import { useStore } from "@/context/StoreContext";
 import { deliveryBlock, emailShell, itemsTable, sendMail } from "@/lib/mailer";
 import { notifyTelegramOrder } from "@/lib/telegram.functions";
@@ -24,15 +24,21 @@ export const Route = createFileRoute("/cart")({
 });
 
 function Cart() {
-  const { db, user, cart, cartTotal, setQty, clearCart, wallet, openModal, showSuccess, notify, siteName } =
+  const { db, user, profile, cart, cartTotal, setQty, clearCart, wallet, openModal, showSuccess, notify, siteName } =
     useStore();
   const navigate = useNavigate();
   const [coupon, setCoupon] = useState("");
   const [discount, setDiscount] = useState(0);
   const [couponMsg, setCouponMsg] = useState("");
-  const [phone, setPhone] = useState("");
+  const [phone, setPhone] = useState(profile?.phone ?? "");
+  const [editPhone, setEditPhone] = useState(false);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
+
+  // Remember the WhatsApp number: once saved on the profile it is reused automatically.
+  useEffect(() => {
+    if (profile?.phone) setPhone(profile.phone);
+  }, [profile?.phone]);
 
   const total = Math.max(0, cartTotal - discount);
 
@@ -70,6 +76,10 @@ function Cart() {
     if (wallet < total) return notify("Not enough wallet balance");
     setBusy(true);
     try {
+      if (phone !== (profile?.phone ?? "")) {
+        await update(ref(db, `users/${user.uid}`), { phone });
+      }
+
       const orderId = "ORD" + Date.now();
 
       // Deliver instantly where possible: auto = pull stock lines, repeat = same link.
@@ -264,12 +274,27 @@ function Cart() {
             {couponMsg ? (
               <p className="mb-3 text-center text-xs font-bold text-primary">{couponMsg}</p>
             ) : null}
-            <input
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="WhatsApp number (required)"
-              className="mb-3 w-full rounded-xl border border-border bg-muted/60 p-3 text-sm outline-none"
-            />
+            {profile?.phone && !editPhone ? (
+              <div className="mb-3 flex items-center gap-2 rounded-xl border border-border bg-muted/60 p-3">
+                <p className="flex-1 text-sm">
+                  <span className="text-muted-foreground">WhatsApp: </span>
+                  <span className="font-bold">{profile.phone}</span>
+                </p>
+                <button
+                  onClick={() => setEditPhone(true)}
+                  className="rounded-lg bg-foreground px-3 py-1.5 text-xs font-bold text-background"
+                >
+                  Change
+                </button>
+              </div>
+            ) : (
+              <input
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="WhatsApp number (required)"
+                className="mb-3 w-full rounded-xl border border-border bg-muted/60 p-3 text-sm outline-none"
+              />
+            )}
             <input
               value={note}
               onChange={(e) => setNote(e.target.value)}
