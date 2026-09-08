@@ -80,9 +80,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "RKR Premium Store" },
+      { title: "SILENT SELLER" },
       { name: "description", content: "Premium digital products at the cheapest rates." },
-      { property: "og:title", content: "RKR Premium Store" },
+      { property: "og:title", content: "SILENT SELLER" },
       { property: "og:description", content: "Premium digital products at the cheapest rates." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

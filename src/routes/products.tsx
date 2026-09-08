@@ -12,13 +12,13 @@ export const Route = createFileRoute("/products")({
   }),
   head: () => ({
     meta: [
-      { title: "Shop Digital Products — RKR Premium Store" },
+      { title: "Shop Digital Products — SILENT SELLER" },
       {
         name: "description",
         content:
           "Browse premium subscriptions, services, methods and free digital products with instant delivery.",
       },
-      { property: "og:title", content: "Shop Digital Products — RKR Premium Store" },
+      { property: "og:title", content: "Shop Digital Products — SILENT SELLER" },
       {
         property: "og:description",
         content: "Browse premium subscriptions, services, methods and free digital products.",

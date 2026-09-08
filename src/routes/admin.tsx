@@ -11,10 +11,10 @@ import { emailShell } from "@/lib/mailer";
 export const Route = createFileRoute("/admin")({
   head: () => ({
     meta: [
-      { title: "Admin Panel — RKR Premium Store" },
+      { title: "Admin Panel — SILENT SELLER" },
       { name: "description", content: "Manage products, orders, wallet requests and store settings." },
-      { property: "og:title", content: "Admin Panel — RKR Premium Store" },
-      { property: "og:description", content: "Store management for RKR Premium Store admins." },
+      { property: "og:title", content: "Admin Panel — SILENT SELLER" },
+      { property: "og:description", content: "Store management for SILENT SELLER admins." },
       { property: "og:type", content: "website" },
       { name: "robots", content: "noindex" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -1060,7 +1060,7 @@ function SettingsAdmin({
     qr: config.qr ?? "",
     fee: String(config.fee ?? 25),
     marquee: config.marquee ?? "",
-    siteName: config.siteName ?? "RKR Premium",
+    siteName: config.siteName ?? "SILENT SELLER",
     siteTagline: config.siteTagline ?? "",
     depositAddress: config.depositAddress ?? "",
     supportLink: config.supportLink ?? "",

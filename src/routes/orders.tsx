@@ -7,12 +7,12 @@ import type { CartItem } from "@/context/StoreContext";
 export const Route = createFileRoute("/orders")({
   head: () => ({
     meta: [
-      { title: "My Orders — RKR Premium Store" },
+      { title: "My Orders — SILENT SELLER" },
       {
         name: "description",
-        content: "Track your RKR Premium Store orders, delivery status and wallet refunds.",
+        content: "Track your SILENT SELLER orders, delivery status and wallet refunds.",
       },
-      { property: "og:title", content: "My Orders — RKR Premium Store" },
+      { property: "og:title", content: "My Orders — SILENT SELLER" },
       { property: "og:description", content: "Track your orders and refunds in one place." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
