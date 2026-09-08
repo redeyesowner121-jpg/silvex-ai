@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { get, push, ref, runTransaction, set } from "firebase/database";
 import { useStore } from "@/context/StoreContext";
-import { emailShell, sendMail } from "@/lib/mailer";
+import { deliveryBlock, emailShell, itemsTable, sendMail } from "@/lib/mailer";
 import { notifyTelegramOrder } from "@/lib/telegram.functions";
 
 
