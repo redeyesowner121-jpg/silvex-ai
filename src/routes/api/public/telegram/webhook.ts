@@ -60,7 +60,27 @@ async function isBotAdmin(chatId: number): Promise<boolean> {
   return Boolean(await dbGet<boolean>(`telegramAdmins/${chatId}`));
 }
 
+/** Message ids we should edit instead of sending a new message (per chat). */
+const editTarget = new Map<number, number>();
+
 async function say(chatId: number, text: string, keyboard?: any) {
+  const messageId = editTarget.get(chatId);
+  if (messageId) {
+    editTarget.delete(chatId);
+    try {
+      await tg("editMessageText", {
+        chat_id: chatId,
+        message_id: messageId,
+        text,
+        parse_mode: "HTML",
+        disable_web_page_preview: true,
+        reply_markup: keyboard ?? { inline_keyboard: [] },
+      });
+      return;
+    } catch {
+      /* message too old / identical — fall back to a new message */
+    }
+  }
   await tg("sendMessage", {
     chat_id: chatId,
     text,
@@ -69,6 +89,7 @@ async function say(chatId: number, text: string, keyboard?: any) {
     ...(keyboard ? { reply_markup: keyboard } : {}),
   });
 }
+
 
 const backHome = { inline_keyboard: [[{ text: "⬅️ Menu", callback_data: "home" }]] };
 
