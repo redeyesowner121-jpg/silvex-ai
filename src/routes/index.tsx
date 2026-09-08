@@ -65,36 +65,11 @@ function Home() {
   } = useStore();
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
-  const [claiming, setClaiming] = useState(false);
 
   const saleActive = Boolean(flashSale?.endTime && flashSale.endTime > Date.now());
   const saleProduct = products.find((p) => p.id === flashSale?.pid);
   const countdown = useCountdown(flashSale?.endTime);
-  const claimedToday = profile?.lastBonus === new Date().toDateString();
 
-  async function claimBonus() {
-    if (!user) return openModal("auth");
-    if (!db || claiming) return;
-    setClaiming(true);
-    try {
-      const today = new Date().toDateString();
-      const last = await get(ref(db, `users/${user.uid}/lastBonus`));
-      if (last.val() === today) return notify("Already claimed today!");
-      const bonus = Number((Math.random() * 1.5 + 0.5).toFixed(2));
-      const w = await get(ref(db, `users/${user.uid}/wallet`));
-      await set(ref(db, `users/${user.uid}/wallet`), (Number(w.val()) || 0) + bonus);
-      await set(ref(db, `users/${user.uid}/lastBonus`), today);
-      await push(ref(db, `users/${user.uid}/history`), {
-        type: "Login Reward",
-        amount: bonus,
-        desc: "Daily bonus",
-        date: new Date().toISOString(),
-      });
-      showSuccess("Bonus claimed", `You received $${bonus} daily reward!`);
-    } finally {
-      setClaiming(false);
-    }
-  }
 
   const trending = [...products]
     .sort((a, b) => (b.salesCount ?? 0) - (a.salesCount ?? 0))
@@ -108,17 +83,6 @@ function Home() {
         </div>
       </div>
 
-      <button
-        onClick={claimBonus}
-        disabled={claimedToday}
-        className={`mb-6 w-full rounded-2xl p-4 text-sm font-bold shadow-sm ${
-          claimedToday
-            ? "border border-emerald-200 bg-emerald-50 text-emerald-600"
-            : "btn-grad text-white"
-        }`}
-      >
-        {claimedToday ? "✅ Daily bonus collected" : "🎁 Claim your daily bonus"}
-      </button>
 
       <div className="mb-6 rounded-3xl bg-gradient-to-br from-indigo-600 to-purple-600 p-6 text-white shadow-lg">
         <p className="text-[10px] font-bold uppercase tracking-widest opacity-80">RKR Premium</p>
