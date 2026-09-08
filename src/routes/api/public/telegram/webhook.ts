@@ -1012,7 +1012,7 @@ async function saveEmojiFromMessage(
   await setSlotEmoji(state.a!, saved);
   await setState(chatId, null);
   await say(chatId, `✅ Emoji saved: ${saved.char}${saved.id ? " (premium ✨)" : ""}${note}`);
-  return emojiSlots(chatId, EMOJI_SLOTS[state.a!]?.group === "button" ? "button" : "normal");
+  return emojiSlots(chatId, EMOJI_SLOTS[state.a!]?.group ?? "normal");
 }
 
 
@@ -1114,6 +1114,7 @@ async function handleCallback(chatId: number, data: string) {
       if (arg === "prod") return emojiProducts(chatId);
       if (arg === "norm") return emojiSlots(chatId, "normal");
       if (arg === "btn") return emojiSlots(chatId, "button");
+      if (arg === "web") return emojiSlots(chatId, "web");
       return emojiHome(chatId);
     }
     if (key === "emp") {
