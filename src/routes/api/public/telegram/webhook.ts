@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { DEFAULT_DEPOSIT_ADDRESS, verifyDepositAnyChain } from "@/lib/deposit.server";
 import {
   dbGet,
   dbPatch,
