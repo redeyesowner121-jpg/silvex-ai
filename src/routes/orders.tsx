@@ -7,12 +7,12 @@ import type { CartItem } from "@/context/StoreContext";
 export const Route = createFileRoute("/orders")({
   head: () => ({
     meta: [
-      { title: "My Orders — SILENT SELLER" },
+      { title: "Orders — SILENT SELLER" },
       {
         name: "description",
         content: "Track your SILENT SELLER orders, delivery status and wallet refunds.",
       },
-      { property: "og:title", content: "My Orders — SILENT SELLER" },
+      { property: "og:title", content: "Orders — SILENT SELLER" },
       { property: "og:description", content: "Track your orders and refunds in one place." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -76,7 +76,7 @@ function Orders() {
 
   return (
     <div className="fade-in">
-      <h1 className="mb-4 text-2xl font-black">My orders</h1>
+      <h1 className="mb-4 text-2xl font-black">Orders</h1>
       <p className="mb-4 text-xs text-muted-foreground">Wallet balance: ${wallet}</p>
       {orders.length === 0 ? (
         <p className="rounded-2xl bg-card p-6 text-center text-xs text-muted-foreground shadow-sm">

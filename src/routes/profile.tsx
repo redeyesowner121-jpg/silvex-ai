@@ -155,7 +155,7 @@ function ProfilePage() {
           onClick={() => navigate({ to: "/orders" })}
           className="flex w-full justify-between rounded-xl border border-border p-3.5 text-sm font-bold"
         >
-          <span><Emo k="web.orders" /> My orders</span>
+          <span><Emo k="web.orders" /> Orders</span>
           <span>›</span>
         </button>
         <button

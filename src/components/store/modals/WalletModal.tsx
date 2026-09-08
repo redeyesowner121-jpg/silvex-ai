@@ -127,7 +127,7 @@ export function WalletModal() {
   }
 
   return (
-    <Sheet onClose={closeModal} title="My wallet">
+    <Sheet onClose={closeModal} title="Wallet">
       <div className="mb-6 rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-600 p-6 text-center text-white shadow-lg">
         <p className="text-xs font-bold uppercase tracking-widest opacity-80">Available balance</p>
         <div className="mt-1 text-4xl font-black">${wallet}</div>
