@@ -4,6 +4,7 @@ import {
   botReferralLink,
   referralEarnings,
   referralCap,
+  applyReferralConfig,
   referralPercent,
   referralRate,
   websiteReferralLink,
@@ -23,6 +24,7 @@ import {
   tg,
   tgSendPhoto,
   ownerIds,
+  applyBotConfig,
 } from "@/lib/telegram.server";
 import {
   be,
@@ -73,6 +75,8 @@ async function cfg(): Promise<Cfg> {
   if (cachedCfg && Date.now() - cfgLoadedAt < BOT_CACHE_MS) return cachedCfg;
   cachedCfg = (await dbGet<Cfg>(CFG)) || {};
   cfgLoadedAt = Date.now();
+  applyBotConfig(cachedCfg as any);
+  applyReferralConfig(cachedCfg as any);
   return cachedCfg;
 }
 async function siteName(): Promise<string> {
