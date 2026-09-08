@@ -10,15 +10,21 @@ import { notifyTelegramOrder } from "@/lib/telegram.functions";
 
 
 import { input, Stat, Empty, ImageField, emptyProduct, type OrderRow } from "@/components/admin/shared";
+import { fetchSupplierCatalogue, syncSupplier } from "@/lib/supplier.functions";
+
+type SupItem = { id: number; name: string; price: number; stock: number; unlimited_stock?: boolean; description?: string };
 
 export function ProductsAdmin({ products }: { products: Product[] }) {
   const { db, notify, categories, config } = useStore();
   const [form, setForm] = useState(emptyProduct);
   const [bulk, setBulk] = useState("");
   const [viewing, setViewing] = useState<string | null>(null);
+  const [supplier, setSupplier] = useState<SupItem[]>([]);
+  const [supBusy, setSupBusy] = useState(false);
   const [usedMap, setUsedMap] = useState<
     Record<string, Record<string, { content: string; orderId?: string; email?: string; date?: string }>>
   >({});
+
 
   const editing = products.find((p) => p.id === form.id);
   const stockCount = Array.isArray(editing?.stock) ? editing.stock.filter(Boolean).length : 0;
