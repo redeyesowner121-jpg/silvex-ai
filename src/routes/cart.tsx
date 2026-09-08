@@ -187,7 +187,7 @@ function Cart() {
           subject: `${siteName} · Order ${orderId.slice(-6)} ${done ? "delivered" : "received"}`,
           html: emailShell(
             siteName,
-            done ? "Your order is delivered 🎉" : "Order received ✅",
+            done ? `Your order is delivered ${emoji("web.party")}` : `Order received ${emoji("web.ok")}`,
             `<p>Hi${user.displayName ? " " + user.displayName : ""}, thanks for your purchase.</p>
              ${itemsTable(
                cart.map((i) => ({ title: i.title, qty: i.qty, amount: i.price * i.qty })),
@@ -261,7 +261,7 @@ function Cart() {
                   <img src={i.logo} alt="" className="h-14 w-14 rounded-xl object-cover" />
                 ) : (
                   <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-muted">
-                    🛍️
+                    {emoji("web.bag")}
                   </div>
                 )}
                 <div className="flex-1">

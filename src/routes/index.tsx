@@ -87,7 +87,7 @@ function Home() {
       {saleActive && saleProduct ? (
         <div className="mb-6 rounded-2xl border border-destructive/20 bg-card p-4 shadow-lg">
           <div className="mb-3 flex items-center justify-between">
-            <span className="text-xs font-black text-destructive">⚡ FLASH SALE</span>
+            <span className="text-xs font-black text-destructive">{emoji("web.flash")} FLASH SALE</span>
             <span className="rounded bg-destructive/10 px-2 py-1 font-mono text-xs font-bold text-destructive">
               {countdown}
             </span>
@@ -119,7 +119,7 @@ function Home() {
         }}
         className="mb-6 flex items-center gap-2 rounded-xl bg-card p-3 shadow-sm"
       >
-        <span>🔍</span>
+        <span>{emoji("web.search")}</span>
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}

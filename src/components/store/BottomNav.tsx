@@ -2,15 +2,15 @@ import { Link } from "@tanstack/react-router";
 import { useStore } from "@/context/StoreContext";
 
 const items = [
-  { to: "/", label: "Home", icon: "🏠" },
-  { to: "/products", label: "Shop", icon: "🛍️" },
-  { to: "/cart", label: "Cart", icon: "🛒" },
-  { to: "/orders", label: "Orders", icon: "📦" },
-  { to: "/profile", label: "Profile", icon: "👤" },
+  { to: "/", label: "Home", key: "web.home" },
+  { to: "/products", label: "Shop", key: "web.shop" },
+  { to: "/cart", label: "Cart", key: "web.cart" },
+  { to: "/orders", label: "Orders", key: "web.orders" },
+  { to: "/profile", label: "Profile", key: "web.profile" },
 ] as const;
 
 export function BottomNav() {
-  const { cartCount } = useStore();
+  const { cartCount, emoji } = useStore();
 
   return (
     <nav className="fixed bottom-0 left-0 z-40 w-full border-t border-border bg-card">
@@ -23,7 +23,7 @@ export function BottomNav() {
             activeOptions={{ exact: item.to === "/" }}
             className="relative flex flex-1 flex-col items-center gap-0.5 py-1 text-[10px] font-bold text-muted-foreground"
           >
-            <span className="text-lg leading-none">{item.icon}</span>
+            <span className="text-lg leading-none">{emoji(item.key)}</span>
             {item.label}
             {item.to === "/cart" && cartCount > 0 ? (
               <span className="absolute right-3 top-0 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[9px] text-destructive-foreground">
