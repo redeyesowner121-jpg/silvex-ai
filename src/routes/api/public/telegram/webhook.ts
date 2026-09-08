@@ -16,7 +16,6 @@ import {
   dbPut,
   money,
   notifyOwners,
-  safeEqual,
   sendDeliveryFiles,
 
   siteUrl,
