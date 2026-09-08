@@ -59,6 +59,7 @@ type RequestRow = {
 
 function Admin() {
   const { db, isAdmin, ready, user, products, config, banner, notify, showSuccess } = useStore();
+  const [section, setSection] = useState<Section>("Analysis");
   const [tab, setTab] = useState<Tab>("Dashboard");
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [requests, setRequests] = useState<RequestRow[]>([]);
@@ -191,8 +192,24 @@ function Admin() {
   return (
     <div className="fade-in">
       <h1 className="mb-4 text-2xl font-black">Admin panel</h1>
+      <div className="mb-3 grid grid-cols-2 gap-2 rounded-2xl bg-muted/60 p-1">
+        {(Object.keys(SECTIONS) as Section[]).map((s) => (
+          <button
+            key={s}
+            onClick={() => {
+              setSection(s);
+              setTab(SECTIONS[s][0]);
+            }}
+            className={`rounded-xl py-2.5 text-sm font-black transition ${
+              section === s ? "btn-grad" : "text-muted-foreground"
+            }`}
+          >
+            {s}
+          </button>
+        ))}
+      </div>
       <div className="no-scrollbar mb-5 flex gap-2 overflow-x-auto">
-        {TABS.map((t) => (
+        {SECTIONS[section].map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
