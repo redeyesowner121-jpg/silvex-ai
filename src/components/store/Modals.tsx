@@ -293,7 +293,10 @@ export function WalletModal() {
   const { db, user, wallet, profile, config, closeModal, showSuccess, notify } = useStore();
   const [tab, setTab] = useState<"deposit" | "withdraw" | "history">("deposit");
   const [amount, setAmount] = useState("");
-  const [utr, setUtr] = useState("");
+  const [txHash, setTxHash] = useState("");
+  const [chain, setChain] = useState<"bep20" | "polygon">("bep20");
+  const [checking, setChecking] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [upi, setUpi] = useState("");
   const [history, setHistory] = useState<
     Array<{ id: string; type: string; amount: number; desc: string; date: string }>
@@ -314,22 +317,51 @@ export function WalletModal() {
 
   async function submitDeposit() {
     if (!db || !user) return;
-    const amt = Number(amount);
-    if (!amt || !utr) return notify("Enter amount and transaction ID");
-    await push(ref(db, "requests"), {
-      uid: user.uid,
-      name: profile?.name ?? user.email,
-      email: user.email,
-      type: "Deposit",
-      amount: amt,
-      utr,
-      status: "Pending",
-      date: new Date().toISOString(),
-    });
-    setAmount("");
-    setUtr("");
-    closeModal();
-    showSuccess("Request sent", "Your balance is added after admin approval.");
+    const hash = txHash.trim();
+    if (!/^0x[0-9a-fA-F]{64}$/.test(hash)) return notify("Paste the full transaction hash");
+    setChecking(true);
+    try {
+      const claimed = await get(ref(db, `deposits/${hash}`));
+      if (claimed.exists()) return notify("This transaction has already been used.");
+
+      const res = await checkDeposit({ data: { hash, chain } });
+      if (!res.ok) return notify(res.message);
+
+      const base = {
+        uid: user.uid,
+        name: profile?.name ?? user.email,
+        email: user.email,
+        amount: res.amount,
+        symbol: res.symbol,
+        chain: res.chain,
+        txHash: hash,
+        date: new Date().toISOString(),
+      };
+
+      if (res.status === "credited") {
+        await set(ref(db, `deposits/${hash}`), { ...base, status: "Credited" });
+        const w = await get(ref(db, `users/${user.uid}/wallet`));
+        await set(ref(db, `users/${user.uid}/wallet`), (Number(w.val()) || 0) + res.amount);
+        await push(ref(db, `users/${user.uid}/history`), {
+          type: "Deposit",
+          amount: res.amount,
+          desc: `${res.symbol} on ${res.chain}`,
+          date: base.date,
+        });
+        closeModal();
+        showSuccess("Balance added", `$${res.amount} credited to your wallet.`);
+      } else {
+        await set(ref(db, `deposits/${hash}`), { ...base, status: "Pending" });
+        await push(ref(db, "requests"), { ...base, type: "Deposit", utr: hash, status: "Pending" });
+        closeModal();
+        showSuccess("Sent for review", res.message);
+      }
+      setTxHash("");
+    } catch (e) {
+      notify(e instanceof Error ? e.message : "Could not check that transaction");
+    } finally {
+      setChecking(false);
+    }
   }
 
   async function submitWithdraw() {
