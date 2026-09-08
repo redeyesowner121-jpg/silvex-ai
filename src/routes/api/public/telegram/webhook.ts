@@ -20,6 +20,7 @@ import {
   SITE_URL,
   telegramWebhookSecret,
   tg,
+  tgSendPhoto,
   TELEGRAM_OWNER_IDS,
 } from "@/lib/telegram.server";
 
@@ -28,6 +29,7 @@ type Product = {
   title?: string;
   desc?: string;
   price?: number;
+  logo?: string;
   link?: string;
   delivery?: "auto" | "repeat" | "manual";
   stock?: string[];
@@ -265,16 +267,19 @@ async function sendProduct(chatId: number, id: string) {
       : p.delivery === "repeat"
         ? "⚡ Instant delivery"
         : "🕐 Manual delivery";
-  await say(
-    chatId,
-    `<b>${p.title || "Item"}</b>\n\n${p.desc || ""}\n\n💵 Price: <b>${money(p.price || 0)}</b>\n${availability}`,
-    {
-      inline_keyboard: [
-        [{ text: `Buy now — ${money(p.price || 0)}`, callback_data: `b:${id}` }],
-        [{ text: "⬅️ Products", callback_data: "products" }],
-      ],
-    },
-  );
+  const text = `<b>${p.title || "Item"}</b>\n\n${p.desc || ""}\n\n💵 Price: <b>${money(p.price || 0)}</b>\n${availability}`;
+  const keyboard = {
+    inline_keyboard: [
+      [{ text: `Buy now — ${money(p.price || 0)}`, callback_data: `b:${id}` }],
+      [{ text: "⬅️ Products", callback_data: "products" }],
+    ],
+  };
+  if (p.logo) {
+    editTarget.delete(chatId);
+    const sent = await tgSendPhoto(chatId, p.logo, text, keyboard);
+    if (sent) return;
+  }
+  await say(chatId, text, keyboard);
 }
 
 async function sendWallet(chatId: number) {
