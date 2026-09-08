@@ -67,6 +67,11 @@ function Admin() {
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [requests, setRequests] = useState<RequestRow[]>([]);
   const [coupons, setCoupons] = useState<Array<{ code: string; type: string; value: number }>>([]);
+  const [deliverFor, setDeliverFor] = useState<OrderRow | null>(null);
+  const [deliverLines, setDeliverLines] = useState<string[]>([]);
+  const [deliverNote, setDeliverNote] = useState("");
+  const [delivering, setDelivering] = useState(false);
+
 
 
   useEffect(() => {
