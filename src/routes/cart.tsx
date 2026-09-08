@@ -5,6 +5,7 @@ import { useStore } from "@/context/StoreContext";
 import { deliveryBlock, emailShell, itemsTable, sendMail } from "@/lib/mailer";
 import { notifyTelegramOrder } from "@/lib/telegram.functions";
 import { REFERRAL_CAP, REFERRAL_RATE } from "@/lib/referral";
+import { Emo } from "@/components/store/Emo";
 
 
 export const Route = createFileRoute("/cart")({
@@ -261,7 +262,7 @@ function Cart() {
                   <img src={i.logo} alt="" className="h-14 w-14 rounded-xl object-cover" />
                 ) : (
                   <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-muted">
-                    {emoji("web.bag")}
+                    <Emo k="web.bag" />
                   </div>
                 )}
                 <div className="flex-1">

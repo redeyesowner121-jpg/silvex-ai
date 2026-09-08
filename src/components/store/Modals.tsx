@@ -23,6 +23,7 @@ import {
 } from "firebase/database";
 import { useStore } from "@/context/StoreContext";
 import { checkDeposit, DEPOSIT_ADDRESS } from "@/lib/deposit.functions";
+import { Emo } from "@/components/store/Emo";
 
 function Sheet({
   onClose,
@@ -353,14 +354,14 @@ export function ProfileModal() {
           }}
           className="flex w-full justify-between rounded-xl border border-border p-3.5 text-sm font-bold"
         >
-          <span>{emoji("web.orders")} My orders</span>
+          <span><Emo k="web.orders" /> My orders</span>
           <span>›</span>
         </button>
         <button
           onClick={() => openModal("suggestion")}
           className="flex w-full justify-between rounded-xl border border-border p-3.5 text-sm font-bold"
         >
-          <span>{emoji("web.idea")} Request a product</span>
+          <span><Emo k="web.idea" /> Request a product</span>
           <span>›</span>
         </button>
       </div>

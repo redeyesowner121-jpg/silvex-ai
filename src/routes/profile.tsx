@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { equalTo, get, orderByChild, query, ref, update } from "firebase/database";
 import { signOut } from "firebase/auth";
 import { useStore } from "@/context/StoreContext";
+import { Emo } from "@/components/store/Emo";
 import {
   botReferralLink,
   REFERRAL_CAP,
@@ -97,13 +98,13 @@ function ProfilePage() {
 
       {profile?.myRefCode ? (
         <div className="mb-4 rounded-2xl border border-border p-4">
-          <p className="mb-1 text-sm font-bold">{emoji("web.gift")} Refer &amp; Earn</p>
+          <p className="mb-1 text-sm font-bold"><Emo k="web.gift" /> Refer &amp; Earn</p>
           <p className="mb-3 text-xs text-muted-foreground">
             Earn 2% commission on every purchase your friend makes (up to ${REFERRAL_CAP} per
             friend)!
           </p>
           <p className="mb-1 text-xs font-bold">
-            {emoji("web.code")} Code: <span className="text-primary">{profile.myRefCode}</span>
+            <Emo k="web.code" /> Code: <span className="text-primary">{profile.myRefCode}</span>
           </p>
           <button
             onClick={() => {
@@ -112,7 +113,7 @@ function ProfilePage() {
             }}
             className="mb-1 block w-full break-all rounded-lg bg-muted p-2 text-left text-[11px]"
           >
-            {emoji("web.link")} {websiteReferralLink(profile.myRefCode)}
+            <Emo k="web.link" /> {websiteReferralLink(profile.myRefCode)}
           </button>
           <button
             onClick={() => {
@@ -121,9 +122,9 @@ function ProfilePage() {
             }}
             className="mb-3 block w-full break-all rounded-lg bg-muted p-2 text-left text-[11px]"
           >
-            {emoji("web.bot")} {botReferralLink(profile.myRefCode)}
+            <Emo k="web.bot" /> {botReferralLink(profile.myRefCode)}
           </button>
-          <p className="mb-1 text-xs font-bold">{emoji("web.users")} Total referrals: {invited}</p>
+          <p className="mb-1 text-xs font-bold"><Emo k="web.users" /> Total referrals: {invited}</p>
           <div className="grid grid-cols-2 gap-2 text-xs">
             <span>• Today: ${earnings.today}</span>
             <span>• This week: ${earnings.week}</span>
@@ -154,28 +155,28 @@ function ProfilePage() {
           onClick={() => navigate({ to: "/orders" })}
           className="flex w-full justify-between rounded-xl border border-border p-3.5 text-sm font-bold"
         >
-          <span>{emoji("web.orders")} My orders</span>
+          <span><Emo k="web.orders" /> My orders</span>
           <span>›</span>
         </button>
         <button
           onClick={() => openModal("wallet")}
           className="flex w-full justify-between rounded-xl border border-border p-3.5 text-sm font-bold"
         >
-          <span>{emoji("web.wallet")} Wallet & deposits</span>
+          <span><Emo k="web.wallet" /> Wallet & deposits</span>
           <span>›</span>
         </button>
         <Link
           to="/api-key"
           className="flex w-full justify-between rounded-xl border border-border p-3.5 text-sm font-bold"
         >
-          <span>{emoji("web.key")} Reseller API key</span>
+          <span><Emo k="web.key" /> Reseller API key</span>
           <span>›</span>
         </Link>
         <button
           onClick={() => openModal("suggestion")}
           className="flex w-full justify-between rounded-xl border border-border p-3.5 text-sm font-bold"
         >
-          <span>{emoji("web.idea")} Request a product</span>
+          <span><Emo k="web.idea" /> Request a product</span>
           <span>›</span>
         </button>
 
@@ -184,7 +185,7 @@ function ProfilePage() {
             to="/admin"
             className="flex w-full justify-between rounded-xl border border-border p-3.5 text-sm font-bold"
           >
-            <span>{emoji("web.admin")} Admin panel</span>
+            <span><Emo k="web.admin" /> Admin panel</span>
             <span>›</span>
           </Link>
         ) : null}

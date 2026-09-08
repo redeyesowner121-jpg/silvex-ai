@@ -1,8 +1,8 @@
 /** Server-only emoji registry for the Telegram bot and the website. */
-import { dbGet, dbPatch, dbPut, setKeyboardDecorator } from "./telegram.server";
+import { dbGet, dbPatch, dbPut, setKeyboardDecorator, tg, tgFileDataUrl } from "./telegram.server";
 import { WEB_EMOJI_SLOTS } from "./web-emoji";
 
-export type EmojiEntry = { id?: string; char: string };
+export type EmojiEntry = { id?: string; char: string; img?: string };
 export type EmojiStore = {
   keys?: Record<string, EmojiEntry>;
   products?: Record<string, EmojiEntry>;
@@ -195,3 +195,23 @@ export function decorateKeyboard(markup: any): any {
 }
 
 setKeyboardDecorator(decorateKeyboard);
+
+/* ---------------- premium emoji artwork (for the website) ---------------- */
+
+/**
+ * The website can't render Telegram custom emojis, so grab the sticker image
+ * once when the admin sets it and store it as a data URL next to the emoji.
+ */
+export async function fetchEmojiImage(id: string): Promise<string | undefined> {
+  try {
+    const res = await tg("getCustomEmojiStickers", { custom_emoji_ids: [id] });
+    const st = res?.result?.[0];
+    if (!st) return undefined;
+    // Animated (.tgs) emojis have no still frame we can use except the thumbnail.
+    const fileId = st.is_animated ? st.thumbnail?.file_id : st.file_id || st.thumbnail?.file_id;
+    if (!fileId) return undefined;
+    return (await tgFileDataUrl(String(fileId))) || undefined;
+  } catch {
+    return undefined;
+  }
+}

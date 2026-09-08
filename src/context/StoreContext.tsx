@@ -13,7 +13,7 @@ import type { Auth, User } from "firebase/auth";
 import type { Database } from "firebase/database";
 import { toast } from "sonner";
 import { getFirebase } from "@/lib/firebase";
-import { webEmoji, type WebEmojiMap } from "@/lib/web-emoji";
+import { webEmoji, webEmojiImg, type WebEmojiMap } from "@/lib/web-emoji";
 
 export type Product = {
   id: string;
@@ -99,6 +99,7 @@ type StoreValue = {
   categories: Category[];
   siteName: string;
   emoji: (key: string) => string;
+  emojiImg: (key: string) => string;
 
   banner: Banner;
   flashSale: FlashSale;
@@ -325,6 +326,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           : DEFAULT_CATEGORIES,
       siteName: config.siteName || "SILENT SELLER",
       emoji: (key: string) => webEmoji(emojis, key),
+      emojiImg: (key: string) => webEmojiImg(emojis, key),
 
       banner,
       flashSale,
