@@ -569,8 +569,10 @@ async function adminDeliver(chatId: number, orderId: string, text: string) {
         .join("\n\n")}\n\n🌐 Website: ${SITE_URL}`,
       { inline_keyboard: [[{ text: "🌐 Visit website", url: SITE_URL }]] },
     ).catch(() => undefined);
+    await sendDeliveryFiles(Number(buyerChat), orderId, delivered).catch(() => undefined);
   }
 }
+
 
 async function adminCancelOrder(chatId: number, orderId: string) {
   const o = await dbGet<any>(`orders/${orderId}`);
