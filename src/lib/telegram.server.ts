@@ -142,6 +142,20 @@ export async function dbGet<T = any>(path: string): Promise<T | null> {
   return (await res.json()) as T | null;
 }
 
+let runtimeLoadedAt = 0;
+
+/** Pull the admin-managed settings (site link, owners, referral) into this worker. */
+export async function loadBotRuntime(force = false): Promise<void> {
+  if (!force && Date.now() - runtimeLoadedAt < 30_000) return;
+  const c = await dbGet<any>("site_settings/config").catch(() => null);
+  runtimeLoadedAt = Date.now();
+  applyBotConfig(c);
+  const { applyReferralConfig } = await import("./referral");
+  applyReferralConfig(c);
+}
+
+
+
 async function dbWrite(method: string, path: string, value: unknown): Promise<void> {
   const res = await fetch(`${RTDB_URL}/${path}.json`, { method, body: JSON.stringify(value) });
   if (!res.ok) {
