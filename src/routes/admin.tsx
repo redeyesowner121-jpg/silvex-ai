@@ -303,11 +303,16 @@ const emptyProduct = {
   price: "",
   logo: "",
   link: "",
+  delivery: "manual" as "manual" | "auto" | "repeat",
 };
 
 function ProductsAdmin({ products }: { products: Product[] }) {
   const { db, notify, categories } = useStore();
   const [form, setForm] = useState(emptyProduct);
+  const [bulk, setBulk] = useState("");
+
+  const editing = products.find((p) => p.id === form.id);
+  const stockCount = Array.isArray(editing?.stock) ? editing.stock.filter(Boolean).length : 0;
 
   async function save() {
     if (!db || !form.title || !form.price) return notify("Title and price are required");
@@ -321,6 +326,20 @@ function ProductsAdmin({ products }: { products: Product[] }) {
       notify("Product added");
     }
     setForm(emptyProduct);
+    setBulk("");
+  }
+
+  async function addStock() {
+    if (!db || !form.id) return notify("Save the product first, then add stock");
+    const lines = bulk
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean);
+    if (!lines.length) return notify("Paste at least one line");
+    const current = Array.isArray(editing?.stock) ? editing.stock.filter(Boolean) : [];
+    await set(ref(db, `products/${form.id}/stock`), [...current, ...lines]);
+    setBulk("");
+    notify(`${lines.length} stock added`);
   }
 
   return (
@@ -359,12 +378,58 @@ function ProductsAdmin({ products }: { products: Product[] }) {
           value={form.logo}
           onChange={(logo) => setForm({ ...form, logo })}
         />
+        <select
+          className={input}
+          value={form.delivery}
+          onChange={(e) =>
+            setForm({ ...form, delivery: e.target.value as typeof form.delivery })
+          }
+        >
+          <option value="manual">Manual delivery (admin sends it)</option>
+          <option value="auto">Auto delivery from stock (1 line = 1 stock)</option>
+          <option value="repeat">Repeated delivery (same link every order)</option>
+        </select>
         <input
           className={input}
-          placeholder="Delivery link / content"
+          placeholder={
+            form.delivery === "repeat" ? "Link sent to every buyer" : "Delivery link / content"
+          }
           value={form.link}
           onChange={(e) => setForm({ ...form, link: e.target.value })}
         />
+        {form.delivery === "auto" ? (
+          <div className="space-y-2 rounded-xl bg-muted/50 p-3">
+            <p className="text-xs font-bold">
+              Stock available: {stockCount}
+              {form.id ? "" : " — save the product first to add stock"}
+            </p>
+            <textarea
+              className={`${input} min-h-24`}
+              placeholder={"Paste stock, one per line\nline1\nline2"}
+              value={bulk}
+              onChange={(e) => setBulk(e.target.value)}
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={addStock}
+                className="rounded-lg bg-emerald-500/10 px-3 py-1.5 text-xs font-bold text-emerald-600"
+              >
+                Add stock
+              </button>
+              {stockCount ? (
+                <button
+                  onClick={async () => {
+                    if (db && form.id && confirm("Clear all stock?"))
+                      await set(ref(db, `products/${form.id}/stock`), null);
+                  }}
+                  className="rounded-lg bg-destructive/10 px-3 py-1.5 text-xs font-bold text-destructive"
+                >
+                  Clear stock
+                </button>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
         <div className="flex gap-2">
           <button onClick={save} className="btn-grad flex-1 rounded-xl py-2.5 text-sm font-bold">
             {form.id ? "Save changes" : "Save product"}
@@ -393,7 +458,12 @@ function ProductsAdmin({ products }: { products: Product[] }) {
               <div className="min-w-0">
                 <p className="truncate text-sm font-bold">{p.title}</p>
                 <p className="text-xs text-muted-foreground">
-                  ${p.price} · {p.type} · {p.salesCount ?? 0} sold
+                  ${p.price} · {p.type} · {p.salesCount ?? 0} sold ·{" "}
+                  {p.delivery === "auto"
+                    ? `${(p.stock || []).filter(Boolean).length} in stock`
+                    : p.delivery === "repeat"
+                      ? "repeated"
+                      : "manual"}
                 </p>
               </div>
             </div>
@@ -408,6 +478,7 @@ function ProductsAdmin({ products }: { products: Product[] }) {
                     price: String(p.price),
                     logo: p.logo ?? "",
                     link: p.link ?? "",
+                    delivery: p.delivery ?? "manual",
                   })
                 }
                 className="rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary"

@@ -28,6 +28,7 @@ type Order = {
   status: string;
   date: string;
   deliveryNote?: string;
+  delivered?: { title: string; content: string }[];
 };
 
 function Orders() {
@@ -111,6 +112,24 @@ function Orders() {
                   </li>
                 ))}
               </ul>
+              {(o.delivered || []).length ? (
+                <div className="mb-2 space-y-2 rounded-xl bg-emerald-50 p-3">
+                  <p className="text-xs font-black text-emerald-700">Your delivery</p>
+                  {(o.delivered || []).map((d, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <p className="min-w-0 flex-1 break-all text-xs font-medium text-emerald-800">
+                        {d.content}
+                      </p>
+                      <button
+                        onClick={() => navigator.clipboard?.writeText(d.content)}
+                        className="shrink-0 rounded-lg bg-emerald-600 px-2 py-1 text-[10px] font-bold text-white"
+                      >
+                        Copy
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
               {o.deliveryNote ? (
                 <div className="mb-2 rounded-xl bg-emerald-50 p-3 text-xs font-medium text-emerald-700">
                   {o.deliveryNote}

@@ -23,6 +23,9 @@ export type Product = {
   type?: string;
   link?: string;
   salesCount?: number;
+  /** auto = deliver one stock line per unit, repeat = same link every time, manual = admin delivers */
+  delivery?: "auto" | "repeat" | "manual";
+  stock?: string[];
 };
 
 export type CartItem = Product & {
