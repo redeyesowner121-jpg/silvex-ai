@@ -2,8 +2,28 @@
 import { createHash, timingSafeEqual } from "crypto";
 
 export const RTDB_URL = "https://silvex-ai-default-rtdb.firebaseio.com";
-export const SITE_URL = "https://silvex-ai.com";
-export const TELEGRAM_OWNER_IDS = [7926443195, 6898461453];
+
+/** Fallbacks only — the web admin panel overrides these from site_settings/config. */
+const DEFAULT_SITE_URL = "https://silvex-ai.com";
+const DEFAULT_OWNER_IDS = [7926443195, 6898461453];
+
+let runtimeSiteUrl = DEFAULT_SITE_URL;
+let runtimeOwnerIds = DEFAULT_OWNER_IDS;
+
+export function applyBotConfig(c?: { siteUrl?: string; telegramOwners?: string | number[] } | null) {
+  if (!c) return;
+  if (c.siteUrl) runtimeSiteUrl = String(c.siteUrl).trim().replace(/\/+$/, "");
+  const raw = c.telegramOwners;
+  const ids = (Array.isArray(raw) ? raw : String(raw ?? "").split(/[,\s]+/))
+    .map((v) => Number(String(v).trim()))
+    .filter((n) => Number.isFinite(n) && n > 0);
+  if (ids.length) runtimeOwnerIds = ids;
+}
+
+export const SITE_URL_DEFAULT = DEFAULT_SITE_URL;
+export const siteUrl = () => runtimeSiteUrl;
+export const ownerIds = () => runtimeOwnerIds;
+
 
 const GATEWAY = "https://connector-gateway.lovable.dev/telegram";
 
