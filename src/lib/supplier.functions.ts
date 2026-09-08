@@ -45,3 +45,13 @@ export const buyFromSupplier = createServerFn({ method: "POST" })
       return { ok: false as const, error: (err as Error).message, items: [] };
     }
   });
+
+/** Cheap background refresh (runs at most once every 5 minutes). */
+export const autoSyncSupplier = createServerFn({ method: "POST" }).handler(async () => {
+  const { syncSupplierProducts } = await import("./supplier.server");
+  try {
+    return { ok: true as const, ...(await syncSupplierProducts(false)) };
+  } catch {
+    return { ok: false as const, updated: [] };
+  }
+});
