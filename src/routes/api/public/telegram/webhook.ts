@@ -1152,6 +1152,31 @@ async function handleCallback(chatId: number, data: string) {
       await dbPatch(`products/${arg}`, { delivery: arg2 });
       return adminProduct(chatId, arg!);
     }
+    if (key === "pnew") {
+      await setState(chatId, { k: "p_new" });
+      return say(
+        chatId,
+        "🆕 <b>New product</b>\n\nSend it as:\n<code>Title | price | description</code>\n\nExample:\n<code>Netflix 1 Month | 3.5 | Private profile, 30 days warranty</code>",
+        { inline_keyboard: [[{ text: "❌ Cancel", callback_data: "a:prod" }]] },
+      );
+    }
+    if (key === "pt") {
+      await setState(chatId, { k: "p_title", a: arg! });
+      return say(chatId, "Send the new product title.");
+    }
+    if (key === "pdsc") {
+      await setState(chatId, { k: "p_desc", a: arg! });
+      return say(chatId, "Send the new product description.");
+    }
+    if (key === "psc") {
+      await dbPut(`products/${arg}/stock`, []);
+      return adminProduct(chatId, arg!);
+    }
+    if (key === "pdel") {
+      await dbPut(`products/${arg}`, null);
+      await say(chatId, "🗑 Product deleted.");
+      return adminProducts(chatId);
+    }
     if (key === "users") return adminUsers(chatId);
     if (key === "u") return adminUser(chatId, arg!);
     if (key === "uw") {
