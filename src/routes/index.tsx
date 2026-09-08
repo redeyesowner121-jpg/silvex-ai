@@ -25,12 +25,8 @@ export const Route = createFileRoute("/")({
   component: Home,
 });
 
-const CATEGORIES = [
-  { label: "Service", icon: "⚡" },
-  { label: "Method", icon: "📘" },
-  { label: "Earning", icon: "💸" },
-  { label: "Free", icon: "🎁" },
-];
+
+
 
 function useCountdown(endTime?: number) {
   const [left, setLeft] = useState("00:00:00");
