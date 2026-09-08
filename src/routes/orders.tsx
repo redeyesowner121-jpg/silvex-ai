@@ -76,7 +76,7 @@ function Orders() {
   return (
     <div className="fade-in">
       <h1 className="mb-4 text-2xl font-black">My orders</h1>
-      <p className="mb-4 text-xs text-muted-foreground">Wallet balance: ₹{wallet}</p>
+      <p className="mb-4 text-xs text-muted-foreground">Wallet balance: ${wallet}</p>
       {orders.length === 0 ? (
         <p className="rounded-2xl bg-card p-6 text-center text-xs text-muted-foreground shadow-sm">
           No orders yet.
@@ -107,7 +107,7 @@ function Orders() {
                     <span className="line-clamp-1">
                       {i.title} × {i.qty}
                     </span>
-                    <span className="font-bold">₹{i.price * i.qty}</span>
+                    <span className="font-bold">${i.price * i.qty}</span>
                   </li>
                 ))}
               </ul>
@@ -120,7 +120,7 @@ function Orders() {
                 <span className="text-xs text-muted-foreground">
                   {new Date(o.date).toLocaleString()}
                 </span>
-                <span className="text-lg font-black">₹{o.total}</span>
+                <span className="text-lg font-black">${o.total}</span>
               </div>
               {o.status === "Pending" ? (
                 <button

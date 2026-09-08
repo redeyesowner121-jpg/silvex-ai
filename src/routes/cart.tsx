@@ -45,7 +45,7 @@ function Cart() {
     const c = snap.val();
     if (cartTotal < Number(c.minOrder || 0)) {
       setDiscount(0);
-      return setCouponMsg(`Minimum order ₹${c.minOrder}`);
+      return setCouponMsg(`Minimum order $${c.minOrder}`);
     }
     const used = await get(ref(db, `users/${user.uid}/used_coupons/${code}`));
     if ((Number(used.val()) || 0) >= Number(c.maxUsage || 1)) {
@@ -57,7 +57,7 @@ function Cart() {
         ? Math.round((cartTotal * Number(c.value)) / 100)
         : Number(c.value);
     setDiscount(value);
-    setCouponMsg(`Coupon applied: −₹${value}`);
+    setCouponMsg(`Coupon applied: −$${value}`);
   }
 
   async function checkout() {
@@ -134,7 +134,7 @@ function Cart() {
                   {i.discountLabel ? (
                     <span className="text-[10px] font-bold text-destructive">{i.discountLabel}</span>
                   ) : null}
-                  <p className="text-sm font-black">₹{i.price}</p>
+                  <p className="text-sm font-black">${i.price}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
@@ -158,7 +158,7 @@ function Cart() {
           <div className="rounded-3xl border border-border bg-card p-5 shadow-sm">
             <div className="mb-4 flex items-center justify-between">
               <span className="text-sm font-bold text-muted-foreground">Total payable</span>
-              <span className="text-3xl font-black text-primary">₹{total}</span>
+              <span className="text-3xl font-black text-primary">${total}</span>
             </div>
             <div className="mb-2 flex gap-2">
               <input
@@ -190,7 +190,7 @@ function Cart() {
               className="mb-5 w-full rounded-xl border border-border bg-muted/60 p-3 text-sm outline-none"
             />
             <p className="mb-3 text-center text-xs text-muted-foreground">
-              Wallet balance: <span className="font-bold">₹{wallet}</span>
+              Wallet balance: <span className="font-bold">${wallet}</span>
             </p>
             <button
               onClick={checkout}

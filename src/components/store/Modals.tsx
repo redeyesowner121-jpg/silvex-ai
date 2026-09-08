@@ -227,7 +227,7 @@ export function ProfileModal() {
       <div className="mb-6 flex items-center justify-between rounded-2xl bg-foreground p-5 text-background shadow-lg">
         <div>
           <p className="text-[10px] font-bold uppercase opacity-70">Wallet balance</p>
-          <p className="text-2xl font-bold">₹{wallet}</p>
+          <p className="text-2xl font-bold">${wallet}</p>
         </div>
         <button
           onClick={() => openModal("wallet")}
@@ -239,7 +239,7 @@ export function ProfileModal() {
       {profile?.myRefCode ? (
         <div className="mb-4 rounded-xl border border-dashed border-border p-3 text-center text-xs font-bold">
           Referral code: <span className="text-primary">{profile.myRefCode}</span> — friends get you
-          ₹20
+          $20
         </div>
       ) : null}
       <label className="mb-1 ml-1 block text-xs font-bold text-muted-foreground">Phone number</label>
@@ -392,7 +392,7 @@ export function WalletModal() {
     <Sheet onClose={closeModal} title="My wallet">
       <div className="mb-6 rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-600 p-6 text-center text-white shadow-lg">
         <p className="text-xs font-bold uppercase tracking-widest opacity-80">Available balance</p>
-        <div className="mt-1 text-4xl font-black">₹{wallet}</div>
+        <div className="mt-1 text-4xl font-black">${wallet}</div>
       </div>
       <div className="mb-4 flex rounded-xl bg-muted p-1">
         {(["deposit", "withdraw", "history"] as const).map((t) => (
@@ -504,7 +504,7 @@ export function WalletModal() {
                   <p className="text-xs font-bold">{h.type}</p>
                   <p className="text-[11px] text-muted-foreground">{h.desc}</p>
                 </div>
-                <span className="text-sm font-black">₹{h.amount}</span>
+                <span className="text-sm font-black">${h.amount}</span>
               </div>
             ))
           )}
@@ -570,7 +570,7 @@ export function ProductModal() {
           ) : null}
           <h3 className="mt-1 text-xl font-bold leading-tight">{product.title}</h3>
         </div>
-        <div className="text-xl font-black text-primary">₹{product.price}</div>
+        <div className="text-xl font-black text-primary">${product.price}</div>
       </div>
       {product.desc ? (
         <p className="mb-4 rounded-xl bg-muted/60 p-3 text-sm text-muted-foreground">{product.desc}</p>
@@ -625,7 +625,7 @@ export function ProductModal() {
         }}
         className="btn-grad mt-5 w-full rounded-xl py-3 text-sm font-bold"
       >
-        Add to cart · ₹{product.price}
+        Add to cart · ${product.price}
       </button>
     </Sheet>
   );
