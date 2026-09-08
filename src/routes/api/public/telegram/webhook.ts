@@ -23,6 +23,19 @@ import {
   tgSendPhoto,
   TELEGRAM_OWNER_IDS,
 } from "@/lib/telegram.server";
+import {
+  be,
+  collectEmojis,
+  e as em,
+  loadEmojis,
+  productEmoji,
+  productEmojiChar,
+  readEmoji,
+  setProductEmoji,
+  setSlotEmoji,
+  slotList,
+  EMOJI_SLOTS,
+} from "@/lib/emoji.server";
 
 type Product = {
   id?: string;
