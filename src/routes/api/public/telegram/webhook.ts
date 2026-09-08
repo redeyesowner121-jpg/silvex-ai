@@ -31,6 +31,7 @@ import {
   productEmoji,
   productEmojiChar,
   readEmoji,
+  fetchEmojiImage,
   setProductEmoji,
   setSlotEmoji,
   slotList,
@@ -986,9 +987,11 @@ async function saveEmojiFromMessage(
 
   // Premium emojis only render if this bot is allowed to use them. Test it once
   // right here, and silently keep the plain emoji if Telegram refuses.
-  let saved = value;
+  const saved: typeof value = { ...value };
   let note = "";
   if (value.id) {
+    // Keep the premium id no matter what: messages fall back to the plain emoji
+    // automatically if Telegram refuses to render it for this bot.
     const ok = await tg("sendMessage", {
       chat_id: chatId,
       text: `<tg-emoji emoji-id="${value.id}">${value.char}</tg-emoji> premium emoji check`,
@@ -997,10 +1000,13 @@ async function saveEmojiFromMessage(
       .then(() => true)
       .catch(() => false);
     if (!ok) {
-      saved = { char: value.char };
       note =
-        "\n\n⚠️ Telegram refused this premium emoji for the bot, so the normal emoji was saved instead. Premium emojis need a bot linked to a Fragment username.";
+        "\n\n⚠️ Telegram won't render this premium emoji inside bot messages (that needs a bot linked to a Fragment username), so the bot shows the normal emoji — but the website will show the premium artwork.";
     }
+    // Grab the emoji artwork so the website can display the real premium emoji.
+    const img = await fetchEmojiImage(value.id);
+    if (img) saved.img = img;
+    else note += "\n\n⚠️ Could not download this emoji's image for the website.";
   }
 
   if (state.k === "em_prod") {
