@@ -123,6 +123,67 @@ function Admin() {
     notify(`Order marked ${status}`);
   }
 
+  function openDeliver(o: OrderRow) {
+    setDeliverFor(o);
+    setDeliverLines((o.items || []).map((_, idx) => o.delivered?.[idx]?.content ?? ""));
+    setDeliverNote(o.deliveryNote ?? "");
+  }
+
+  async function completeDelivery() {
+    if (!db || !deliverFor) return;
+    const items = deliverFor.items || [];
+    const delivered = items
+      .map((it, idx) => ({ title: it.title, content: (deliverLines[idx] || "").trim() }))
+      .filter((d) => d.content);
+    if (!delivered.length && !deliverNote.trim())
+      return notify("Add the delivery details the buyer should see");
+    setDelivering(true);
+    try {
+      await update(ref(db, `orders/${deliverFor.orderId}`), {
+        delivered,
+        deliveryNote: deliverNote.trim(),
+        status: "Completed",
+        deliveredAt: new Date().toISOString(),
+      });
+      if (deliverFor.email) {
+        void sendMail(db, {
+          to: deliverFor.email,
+          subject: `${config.siteName || "SILENT SELLER"} · Order ${deliverFor.orderId.slice(-6)} delivered`,
+          html: emailShell(
+            config.siteName || "SILENT SELLER",
+            "Your order is delivered 🎉",
+            `<p>Your order has been completed. Here are your details:</p>
+             ${deliveryBlock(delivered)}
+             ${deliverNote.trim() ? `<p>${deliverNote.trim()}</p>` : ""}
+             <p style="color:#8a8ca3;font-size:12px">Order ID: ${deliverFor.orderId}</p>`,
+            {
+              preheader: "Your items are ready",
+              ctaText: "View my order",
+              ctaUrl: "https://silvex-ai.lovable.app/orders",
+            },
+          ),
+        });
+      }
+      void notifyTelegramOrder({
+        data: {
+          orderId: deliverFor.orderId,
+          email: deliverFor.email || undefined,
+          total: Number(deliverFor.total || 0),
+          status: "Completed",
+          items: items.map((i) => ({ title: i.title, qty: i.qty })),
+          delivered,
+          uid: deliverFor.uid,
+        },
+      }).catch(() => undefined);
+      setDeliverFor(null);
+      showSuccess("Delivered", "The buyer can now see the delivery details.");
+    } finally {
+      setDelivering(false);
+    }
+  }
+
+
+
   async function decideRequest(r: RequestRow, approve: boolean) {
     if (!db) return;
     if (approve) {
