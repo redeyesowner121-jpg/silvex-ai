@@ -736,6 +736,7 @@ function SettingsAdmin({
     depositAddress: config.depositAddress ?? "",
     supportLink: config.supportLink ?? "",
     minOrder: String(config.minOrder ?? 0),
+    lowStockAlert: String((config as { lowStockAlert?: number }).lowStockAlert ?? 5),
   });
   const [cats, setCats] = useState<Category[]>(liveCategories);
   const [bn, setBn] = useState({
@@ -757,6 +758,7 @@ function SettingsAdmin({
       depositAddress: cfg.depositAddress.trim(),
       supportLink: cfg.supportLink,
       minOrder: Number(cfg.minOrder || 0),
+      lowStockAlert: Number(cfg.lowStockAlert || 0),
       ...extra,
     });
     notify("Settings saved");
@@ -817,6 +819,12 @@ function SettingsAdmin({
           placeholder="Minimum order ($)"
           value={cfg.minOrder}
           onChange={(e) => setCfg({ ...cfg, minOrder: e.target.value })}
+        />
+        <input
+          className={input}
+          placeholder="Low stock alert at (units left)"
+          value={cfg.lowStockAlert}
+          onChange={(e) => setCfg({ ...cfg, lowStockAlert: e.target.value })}
         />
         <ImageField
           label="Payment QR photo"
