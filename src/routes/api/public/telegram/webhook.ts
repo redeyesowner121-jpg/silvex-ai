@@ -424,7 +424,7 @@ async function sendApiKey(chatId: number, regenerate: boolean) {
     await dbPut(`apiKeys/${key}`, uid);
     await dbPatch(`users/${uid}`, { apiKey: key, apiEnabled: true });
   }
-  const base = `https://silvex-ai.com/api/public/reseller`;
+  const base = `${siteUrl()}/api/public/reseller`;
   await say(
     chatId,
     `🔑 <b>Your reseller API key</b>\n\n<code>${key}</code>\n\n` +
@@ -445,7 +445,7 @@ async function sendApiKey(chatId: number, regenerate: boolean) {
     {
       inline_keyboard: [
         [{ text: "♻️ Generate new key", callback_data: "apikey_new" }],
-        [{ text: "📘 Full docs", url: "https://silvex-ai.com/api-key" }],
+        [{ text: "📘 Full docs", url: `${siteUrl()}/api-key` }],
         [{ text: "⬅️ Menu", callback_data: "home" }],
       ],
     },
@@ -1018,7 +1018,7 @@ async function emojiSlots(chatId: number, group: "button" | "normal" | "web") {
     group === "button"
       ? "🔘 <b>Button emojis</b>"
       : group === "web"
-        ? "🌐 <b>Website emojis</b>\nThese show on silvex-ai.com."
+        ? "🌐 <b>Website emojis</b>\nThese show on your website."
         : "✨ <b>Normal emojis</b>";
   await say(chatId, `${heading}\nChoose a slot, then send the emoji.`, {
     inline_keyboard: [

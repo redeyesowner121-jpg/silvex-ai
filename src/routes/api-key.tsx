@@ -57,7 +57,7 @@ function ApiKeyPage() {
     }
   }
 
-  const base = "https://silvex-ai.com/api/public/reseller";
+  const base = `${(config.siteUrl || websiteUrl()).replace(/\/+$/, "")}/api/public/reseller`;
 
   return (
     <div className="mx-auto max-w-md px-4 py-5">
