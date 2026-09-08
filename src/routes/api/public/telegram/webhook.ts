@@ -950,18 +950,44 @@ async function saveEmojiFromMessage(
   state: { k: string; a?: string },
   text: string,
   entities?: any[],
+  sticker?: any,
 ) {
-  const value = readEmoji(text, entities);
-  if (!value) return say(chatId, "Send a single emoji (premium emojis work too).");
+  const value = readEmoji(text, entities, sticker);
+  if (!value) {
+    return say(
+      chatId,
+      "Send a single emoji. Premium (custom) emojis work too — send it as a normal message or forward the emoji sticker.",
+    );
+  }
+
+  // Premium emojis only render if this bot is allowed to use them. Test it once
+  // right here, and silently keep the plain emoji if Telegram refuses.
+  let saved = value;
+  let note = "";
+  if (value.id) {
+    const ok = await tg("sendMessage", {
+      chat_id: chatId,
+      text: `<tg-emoji emoji-id="${value.id}">${value.char}</tg-emoji> premium emoji check`,
+      parse_mode: "HTML",
+    })
+      .then(() => true)
+      .catch(() => false);
+    if (!ok) {
+      saved = { char: value.char };
+      note =
+        "\n\n⚠️ Telegram refused this premium emoji for the bot, so the normal emoji was saved instead. Premium emojis need a bot linked to a Fragment username.";
+    }
+  }
+
   if (state.k === "em_prod") {
-    await setProductEmoji(state.a!, value);
+    await setProductEmoji(state.a!, saved);
     await setState(chatId, null);
-    await say(chatId, `✅ Product emoji saved: ${value.char}${value.id ? " (premium)" : ""}`);
+    await say(chatId, `✅ Product emoji saved: ${saved.char}${saved.id ? " (premium ✨)" : ""}${note}`);
     return emojiProducts(chatId);
   }
-  await setSlotEmoji(state.a!, value);
+  await setSlotEmoji(state.a!, saved);
   await setState(chatId, null);
-  await say(chatId, `✅ Emoji saved: ${value.char}${value.id ? " (premium)" : ""}`);
+  await say(chatId, `✅ Emoji saved: ${saved.char}${saved.id ? " (premium ✨)" : ""}${note}`);
   return emojiSlots(chatId, EMOJI_SLOTS[state.a!]?.group === "button" ? "button" : "normal");
 }
 
@@ -1133,7 +1159,7 @@ async function submitReview(chatId: number, text: string) {
   }
 }
 
-async function handleText(chatId: number, text: string, entities?: any[]) {
+async function handleText(chatId: number, text: string, entities?: any[], sticker?: any) {
   const t = text.trim();
   await dbPut(`telegramUsers/${chatId}`, true);
 
@@ -1257,7 +1283,8 @@ async function handleText(chatId: number, text: string, entities?: any[]) {
   if (k === "review") return submitReview(chatId, t);
 
   if (state && (await isBotAdmin(chatId))) {
-    if (k === "em_prod" || k === "em_key") return saveEmojiFromMessage(chatId, state, text, entities);
+    if (k === "em_prod" || k === "em_key")
+      return saveEmojiFromMessage(chatId, state, text, entities, sticker);
     if (k === "deliver") return adminDeliver(chatId, state.a!, t);
     if (k === "bc") return broadcast(chatId, t);
     if (k === "cfg") {
@@ -1317,7 +1344,13 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
           } else {
             const msg = update?.message ?? update?.edited_message;
             const chatId = msg?.chat?.id;
-            if (chatId) await handleText(Number(chatId), String(msg.text || ""), msg.entities);
+            if (chatId)
+              await handleText(
+                Number(chatId),
+                String(msg.text ?? msg.caption ?? ""),
+                msg.entities ?? msg.caption_entities,
+                msg.sticker,
+              );
           }
         } catch (err) {
           console.error("telegram webhook error", err);
