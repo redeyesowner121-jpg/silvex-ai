@@ -81,12 +81,45 @@ export function AuthModal() {
   });
   const [busy, setBusy] = useState(false);
 
+  function friendly(e: unknown) {
+    const code = (e as { code?: string })?.code || "";
+    const map: Record<string, string> = {
+      "auth/invalid-email": "That email address doesn't look right.",
+      "auth/missing-password": "Please enter your password.",
+      "auth/weak-password": "Password must be at least 6 characters.",
+      "auth/email-already-in-use": "This email already has an account. Try logging in instead.",
+      "auth/invalid-credential": "Wrong email or password.",
+      "auth/invalid-login-credentials": "Wrong email or password.",
+      "auth/wrong-password": "Wrong email or password.",
+      "auth/user-not-found": "No account with this email. Create one first.",
+      "auth/too-many-requests": "Too many attempts. Please wait a minute and try again.",
+      "auth/network-request-failed": "Network problem. Check your connection and try again.",
+      "auth/popup-blocked": "Your browser blocked the Google window. Redirecting instead…",
+      "auth/operation-not-allowed": "Google sign-in is not switched on yet for this store.",
+      "auth/unauthorized-domain": "This website address is not allowed for Google sign-in yet.",
+    };
+    return map[code] || (e instanceof Error ? e.message : "Something went wrong");
+  }
+
   async function submit() {
     if (!auth || !db) return;
+    const mail = email.trim().toLowerCase();
+    if (!mail || !pass) {
+      notify("Please enter your email and password.");
+      return;
+    }
+    if (mode === "signup" && pass.length < 6) {
+      notify("Password must be at least 6 characters.");
+      return;
+    }
+    if (mode === "signup" && !name.trim()) {
+      notify("Please enter your name.");
+      return;
+    }
     setBusy(true);
     try {
       if (mode === "signup") {
-        const res = await createUserWithEmailAndPassword(auth, email, pass);
+        const res = await createUserWithEmailAndPassword(auth, mail, pass);
         await updateProfile(res.user, { displayName: name });
         const myRefCode = (name.slice(0, 3) + Math.floor(100 + Math.random() * 900)).toUpperCase();
         let wallet = 0;
