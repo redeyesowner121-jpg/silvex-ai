@@ -171,15 +171,83 @@ export function ProductsAdmin({ products }: { products: Product[] }) {
           <option value="manual">Manual delivery (admin sends it)</option>
           <option value="auto">Auto delivery from stock (1 line = 1 stock)</option>
           <option value="repeat">Repeated delivery (same link every order)</option>
+          <option value="supplier">Supplier shop (auto buy + auto price/stock)</option>
         </select>
-        <input
-          className={input}
-          placeholder={
-            form.delivery === "repeat" ? "Link sent to every buyer" : "Delivery link / content"
-          }
-          value={form.link}
-          onChange={(e) => setForm({ ...form, link: e.target.value })}
-        />
+        {form.delivery === "supplier" ? (
+          <div className="space-y-2 rounded-xl bg-muted/50 p-3">
+            <div className="flex gap-2">
+              <button
+                onClick={loadSupplier}
+                disabled={supBusy}
+                className="rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary disabled:opacity-60"
+              >
+                Load supplier products
+              </button>
+              <button
+                onClick={runSync}
+                disabled={supBusy}
+                className="rounded-lg bg-emerald-500/10 px-3 py-1.5 text-xs font-bold text-emerald-600 disabled:opacity-60"
+              >
+                Sync prices & stock
+              </button>
+            </div>
+            {supplier.length ? (
+              <select
+                className={input}
+                value={form.supplierId}
+                onChange={(e) => {
+                  const sid = e.target.value;
+                  const sp = supplier.find((s) => String(s.id) === sid);
+                  setForm({
+                    ...form,
+                    supplierId: sid,
+                    ...(sp
+                      ? {
+                          title: form.title || sp.name,
+                          desc: form.desc || sp.description || "",
+                          price: String(Math.ceil(sp.price * (Number(form.markup) || 130)) / 100),
+                        }
+                      : {}),
+                  });
+                }}
+              >
+                <option value="">Choose supplier product…</option>
+                {supplier.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    #{s.id} · {s.name} · ${s.price} · {s.unlimited_stock ? "∞" : s.stock} in stock
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                className={input}
+                placeholder="Supplier product ID"
+                value={form.supplierId}
+                onChange={(e) => setForm({ ...form, supplierId: e.target.value })}
+              />
+            )}
+            <input
+              className={input}
+              placeholder="Price percent (130 = supplier price +30%)"
+              value={form.markup}
+              onChange={(e) => setForm({ ...form, markup: e.target.value })}
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Price and stock follow the supplier automatically. Orders are bought and delivered
+              instantly from the supplier.
+            </p>
+          </div>
+        ) : (
+          <input
+            className={input}
+            placeholder={
+              form.delivery === "repeat" ? "Link sent to every buyer" : "Delivery link / content"
+            }
+            value={form.link}
+            onChange={(e) => setForm({ ...form, link: e.target.value })}
+          />
+        )}
+
         {form.delivery === "auto" ? (
           <div className="space-y-2 rounded-xl bg-muted/50 p-3">
             <p className="text-xs font-bold">
