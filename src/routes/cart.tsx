@@ -156,7 +156,7 @@ function Cart() {
       );
       if (user.email) {
         const done = Boolean(delivered.length && allDelivered);
-        void sendMail(db, {
+        sendMail(db, {
           to: user.email,
           subject: `${siteName} · Order ${orderId.slice(-6)} ${done ? "delivered" : "received"}`,
           html: emailShell(
@@ -175,6 +175,18 @@ function Cart() {
               ctaUrl: "https://silvex-ai.lovable.app/orders",
             },
           ),
+          ...(done
+            ? {
+                receipt: {
+                  orderId,
+                  siteName,
+                  total,
+                  items: delivered,
+                },
+              }
+            : {}),
+        }).then((r) => {
+          if (!r.ok) notify(`Email not sent: ${r.error}`);
         });
       }
 

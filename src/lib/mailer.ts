@@ -1,5 +1,5 @@
 import { get, ref, type Database } from "firebase/database";
-import { sendSmtpMail, type SmtpSettings } from "./mail.functions";
+import { sendSmtpMail, type MailReceipt, type SmtpSettings } from "./mail.functions";
 
 export type MailConfig = SmtpSettings & { enabled?: boolean };
 
@@ -86,7 +86,7 @@ export function deliveryBlock(items: { title: string; content: string }[]) {
 /** Fire-and-forget mail send; never throws into the UI flow. */
 export async function sendMail(
   db: Database | null,
-  opts: { to: string; subject: string; html: string },
+  opts: { to: string; subject: string; html: string; receipt?: MailReceipt },
 ) {
   try {
     const smtp = await loadMailConfig(db);
