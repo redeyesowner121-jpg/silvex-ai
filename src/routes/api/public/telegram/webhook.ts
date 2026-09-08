@@ -1287,6 +1287,7 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
 
         const update = await request.json();
         try {
+          await loadEmojis().catch(() => undefined);
           if (update?.callback_query) {
             const cq = update.callback_query;
             await tg("answerCallbackQuery", { callback_query_id: cq.id }).catch(() => undefined);
@@ -1304,7 +1305,7 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
           } else {
             const msg = update?.message ?? update?.edited_message;
             const chatId = msg?.chat?.id;
-            if (chatId) await handleText(Number(chatId), String(msg.text || ""));
+            if (chatId) await handleText(Number(chatId), String(msg.text || ""), msg.entities);
           }
         } catch (err) {
           console.error("telegram webhook error", err);
