@@ -565,7 +565,7 @@ async function buy(chatId: number, productId: string) {
     if (stock.length >= 1) {
       const taken = stock[0] as string;
       await dbPut(`products/${productId}/stock`, stock.slice(1));
-      await dbPush(`products/${productId}/usedStock`, {
+      await dbPush(`usedStock/${productId}`, {
         content: taken,
         orderId: "",
         email: user.email || `tg:${chatId}`,

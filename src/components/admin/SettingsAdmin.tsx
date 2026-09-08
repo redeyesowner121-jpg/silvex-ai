@@ -1,0 +1,446 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { get, onValue, push, ref, remove, set, update } from "firebase/database";
+import { useStore, isOwnerEmail, type Product, type Category } from "@/context/StoreContext";
+import { fileToCompressedDataUrl } from "@/lib/image-upload";
+import { exportOrdersCsv, exportOrdersPdf, type ExportRow } from "@/lib/export-orders";
+import { sendSmtpMail } from "@/lib/mail.functions";
+import { deliveryBlock, emailShell, sendMail } from "@/lib/mailer";
+import { notifyTelegramOrder } from "@/lib/telegram.functions";
+
+
+import { input, Stat, Empty, ImageField, type OrderRow } from "@/components/admin/shared";
+
+export function SettingsAdmin({
+  config,
+  banner,
+}: {
+  config: {
+    qr?: string;
+    fee?: number;
+    marquee?: string;
+    siteName?: string;
+    siteTagline?: string;
+    depositAddress?: string;
+    supportLink?: string;
+    minOrder?: number;
+    categories?: Category[];
+  };
+  banner: { title?: string; desc?: string; link?: string };
+}) {
+  const { db, products, notify, categories: liveCategories } = useStore();
+  const [cfg, setCfg] = useState({
+    qr: config.qr ?? "",
+    fee: String(config.fee ?? 25),
+    marquee: config.marquee ?? "",
+    siteName: config.siteName ?? "SILENT SELLER",
+    siteTagline: config.siteTagline ?? "",
+    depositAddress: config.depositAddress ?? "",
+    supportLink: config.supportLink ?? "",
+    minOrder: String(config.minOrder ?? 0),
+    lowStockAlert: String((config as { lowStockAlert?: number }).lowStockAlert ?? 5),
+  });
+  const [cats, setCats] = useState<Category[]>(liveCategories);
+  const [bn, setBn] = useState({
+    title: banner.title ?? "",
+    desc: banner.desc ?? "",
+    link: banner.link ?? "",
+  });
+  const [notice, setNotice] = useState("");
+  const [fs, setFs] = useState({ pid: "", price: "", hours: "2" });
+
+  async function saveConfig(extra: Record<string, unknown> = {}) {
+    if (!db) return;
+    await update(ref(db, "site_settings/config"), {
+      qr: cfg.qr,
+      fee: Number(cfg.fee || 0),
+      marquee: cfg.marquee,
+      siteName: cfg.siteName,
+      siteTagline: cfg.siteTagline,
+      depositAddress: cfg.depositAddress.trim(),
+      supportLink: cfg.supportLink,
+      minOrder: Number(cfg.minOrder || 0),
+      lowStockAlert: Number(cfg.lowStockAlert || 0),
+      ...extra,
+    });
+    notify("Settings saved");
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-2 rounded-2xl border border-border bg-card p-4">
+        <h2 className="text-sm font-black">Store identity</h2>
+        <input
+          className={input}
+          placeholder="Website name"
+          value={cfg.siteName}
+          onChange={(e) => setCfg({ ...cfg, siteName: e.target.value })}
+        />
+        <input
+          className={input}
+          placeholder="Tagline"
+          value={cfg.siteTagline}
+          onChange={(e) => setCfg({ ...cfg, siteTagline: e.target.value })}
+        />
+        <input
+          className={input}
+          placeholder="Support / WhatsApp link"
+          value={cfg.supportLink}
+          onChange={(e) => setCfg({ ...cfg, supportLink: e.target.value })}
+        />
+        <input
+          className={input}
+          placeholder="Scrolling notice text"
+          value={cfg.marquee}
+          onChange={(e) => setCfg({ ...cfg, marquee: e.target.value })}
+        />
+        <button
+          onClick={() => saveConfig()}
+          className="btn-grad w-full rounded-xl py-2.5 text-sm font-bold"
+        >
+          Save identity
+        </button>
+      </div>
+
+      <div className="space-y-2 rounded-2xl border border-border bg-card p-4">
+        <h2 className="text-sm font-black">Payments</h2>
+        <input
+          className={`${input} font-mono text-xs`}
+          placeholder="Crypto deposit address (0x...)"
+          value={cfg.depositAddress}
+          onChange={(e) => setCfg({ ...cfg, depositAddress: e.target.value })}
+        />
+        <input
+          className={input}
+          placeholder="Withdraw fee (%)"
+          value={cfg.fee}
+          onChange={(e) => setCfg({ ...cfg, fee: e.target.value })}
+        />
+        <input
+          className={input}
+          placeholder="Minimum order ($)"
+          value={cfg.minOrder}
+          onChange={(e) => setCfg({ ...cfg, minOrder: e.target.value })}
+        />
+        <input
+          className={input}
+          placeholder="Low stock alert at (units left)"
+          value={cfg.lowStockAlert}
+          onChange={(e) => setCfg({ ...cfg, lowStockAlert: e.target.value })}
+        />
+        <ImageField
+          label="Payment QR photo"
+          value={cfg.qr}
+          onChange={(qr) => setCfg({ ...cfg, qr })}
+        />
+        <button
+          onClick={async () => {
+            const addr = cfg.depositAddress.trim();
+            if (addr && !/^0x[0-9a-fA-F]{40}$/.test(addr))
+              return notify("That deposit address does not look right");
+            await saveConfig();
+          }}
+          className="btn-grad w-full rounded-xl py-2.5 text-sm font-bold"
+        >
+          Save payment settings
+        </button>
+      </div>
+
+      <SmtpAdmin siteName={cfg.siteName} />
+
+      <div className="space-y-2 rounded-2xl border border-border bg-card p-4">
+        <h2 className="text-sm font-black">Categories</h2>
+        {cats.map((c, i) => (
+          <div key={i} className="flex gap-2">
+            <input
+              className={`${input} w-16 text-center`}
+              value={c.icon ?? ""}
+              placeholder="🙂"
+              onChange={(e) =>
+                setCats(cats.map((x, xi) => (xi === i ? { ...x, icon: e.target.value } : x)))
+              }
+            />
+            <input
+              className={input}
+              value={c.label}
+              placeholder="Name"
+              onChange={(e) =>
+                setCats(cats.map((x, xi) => (xi === i ? { ...x, label: e.target.value } : x)))
+              }
+            />
+            <button
+              onClick={() => setCats(cats.filter((_, xi) => xi !== i))}
+              className="rounded-xl bg-destructive/10 px-3 text-xs font-bold text-destructive"
+            >
+              ✕
+            </button>
+          </div>
+        ))}
+        <button
+          onClick={() => setCats([...cats, { label: "", icon: "✨" }])}
+          className="w-full rounded-xl bg-muted py-2 text-xs font-bold"
+        >
+          + Add category
+        </button>
+        <button
+          onClick={() =>
+            saveConfig({ categories: cats.filter((c) => c.label.trim()) })
+          }
+          className="btn-grad w-full rounded-xl py-2.5 text-sm font-bold"
+        >
+          Save categories
+        </button>
+      </div>
+
+
+      <div className="space-y-2 rounded-2xl border border-border bg-card p-4">
+        <h2 className="text-sm font-black">Home banner</h2>
+        <input
+          className={input}
+          placeholder="Title"
+          value={bn.title}
+          onChange={(e) => setBn({ ...bn, title: e.target.value })}
+        />
+        <input
+          className={input}
+          placeholder="Description"
+          value={bn.desc}
+          onChange={(e) => setBn({ ...bn, desc: e.target.value })}
+        />
+        <button
+          onClick={async () => {
+            if (!db) return;
+            await set(ref(db, "site_settings/banner"), bn);
+            notify("Banner updated");
+          }}
+          className="btn-grad w-full rounded-xl py-2.5 text-sm font-bold"
+        >
+          Update banner
+        </button>
+      </div>
+
+      <div className="space-y-2 rounded-2xl border border-border bg-card p-4">
+        <h2 className="text-sm font-black">Flash sale</h2>
+        <select
+          className={input}
+          value={fs.pid}
+          onChange={(e) => setFs({ ...fs, pid: e.target.value })}
+        >
+          <option value="">Select product</option>
+          {products.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.title} (${p.price})
+            </option>
+          ))}
+        </select>
+        <input
+          className={input}
+          placeholder="Sale price"
+          value={fs.price}
+          onChange={(e) => setFs({ ...fs, price: e.target.value })}
+        />
+        <input
+          className={input}
+          placeholder="Duration (hours)"
+          value={fs.hours}
+          onChange={(e) => setFs({ ...fs, hours: e.target.value })}
+        />
+        <div className="flex gap-2">
+          <button
+            onClick={async () => {
+              if (!db || !fs.pid || !fs.price) return notify("Pick a product and price");
+              await set(ref(db, "site_settings/flash_sale"), {
+                pid: fs.pid,
+                price: Number(fs.price),
+                endTime: Date.now() + Number(fs.hours || 1) * 3600000,
+              });
+              notify("Flash sale started");
+            }}
+            className="flex-1 rounded-xl bg-destructive py-2.5 text-sm font-bold text-destructive-foreground"
+          >
+            Start sale
+          </button>
+          <button
+            onClick={async () => db && (await remove(ref(db, "site_settings/flash_sale")))}
+            className="rounded-xl bg-muted px-4 text-sm font-bold"
+          >
+            Stop
+          </button>
+        </div>
+      </div>
+
+      <div className="space-y-2 rounded-2xl border border-border bg-card p-4">
+        <h2 className="text-sm font-black">Send notification</h2>
+        <input
+          className={input}
+          placeholder="Message..."
+          value={notice}
+          onChange={(e) => setNotice(e.target.value)}
+        />
+        <button
+          onClick={async () => {
+            if (!db || !notice) return;
+            await push(ref(db, "notifications"), { msg: notice, date: new Date().toISOString() });
+            setNotice("");
+            notify("Notification sent");
+          }}
+          className="btn-grad w-full rounded-xl py-2.5 text-sm font-bold"
+        >
+          Send to everyone
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function SmtpAdmin({ siteName }: { siteName: string }) {
+  const { db, notify } = useStore();
+  const [s, setS] = useState({
+    enabled: false,
+    host: "mail.spacemail.com",
+    port: "465",
+    secure: true,
+    username: "",
+    password: "",
+    fromEmail: "",
+    fromName: siteName,
+  });
+  const [testTo, setTestTo] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!db) return;
+    get(ref(db, "site_settings/smtp")).then((snap) => {
+      const v = snap.val();
+      if (v)
+        setS((prev) => ({
+          ...prev,
+          ...v,
+          port: String(v.port ?? 465),
+          secure: Boolean(v.secure ?? true),
+          enabled: Boolean(v.enabled),
+        }));
+    });
+  }, [db]);
+
+  async function save() {
+    if (!db) return;
+    await set(ref(db, "site_settings/smtp"), {
+      enabled: s.enabled,
+      host: s.host.trim(),
+      port: Number(s.port || 465),
+      secure: s.secure,
+      username: s.username.trim(),
+      password: s.password,
+      fromEmail: s.fromEmail.trim(),
+      fromName: s.fromName,
+    });
+    notify("Email settings saved");
+  }
+
+  async function sendTest() {
+    const to = testTo.trim();
+    if (!to) return notify("Enter an address to test");
+    setBusy(true);
+    try {
+      const res = await sendSmtpMail({
+        data: {
+          smtp: {
+            host: s.host.trim(),
+            port: Number(s.port || 465),
+            secure: s.secure,
+            username: s.username.trim(),
+            password: s.password,
+            fromEmail: s.fromEmail.trim(),
+            fromName: s.fromName,
+          },
+          to,
+          subject: `Test email from ${siteName}`,
+          html: emailShell(siteName, "It works!", "<p>Your mail settings are working.</p>"),
+        },
+      });
+      notify(res.ok ? "Test email sent" : `Failed: ${res.error}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="space-y-2 rounded-2xl border border-border bg-card p-4">
+      <h2 className="text-sm font-black">Email (Spacemail / SMTP)</h2>
+      <label className="flex items-center gap-2 text-xs font-bold">
+        <input
+          type="checkbox"
+          checked={s.enabled}
+          onChange={(e) => setS({ ...s, enabled: e.target.checked })}
+        />
+        Send emails to customers
+      </label>
+      <input
+        className={input}
+        placeholder="SMTP host (mail.spacemail.com)"
+        value={s.host}
+        onChange={(e) => setS({ ...s, host: e.target.value })}
+      />
+      <div className="flex gap-2">
+        <input
+          className={input}
+          placeholder="Port (465)"
+          value={s.port}
+          onChange={(e) => setS({ ...s, port: e.target.value })}
+        />
+        <label className="flex shrink-0 items-center gap-2 text-xs font-bold">
+          <input
+            type="checkbox"
+            checked={s.secure}
+            onChange={(e) => setS({ ...s, secure: e.target.checked })}
+          />
+          SSL
+        </label>
+      </div>
+      <input
+        className={input}
+        placeholder="Mailbox / username"
+        value={s.username}
+        onChange={(e) => setS({ ...s, username: e.target.value })}
+      />
+      <input
+        className={input}
+        type="password"
+        placeholder="Mailbox password"
+        value={s.password}
+        onChange={(e) => setS({ ...s, password: e.target.value })}
+      />
+      <input
+        className={input}
+        placeholder="From address (no-reply@yourdomain.com)"
+        value={s.fromEmail}
+        onChange={(e) => setS({ ...s, fromEmail: e.target.value })}
+      />
+      <input
+        className={input}
+        placeholder="From name"
+        value={s.fromName}
+        onChange={(e) => setS({ ...s, fromName: e.target.value })}
+      />
+      <button onClick={save} className="btn-grad w-full rounded-xl py-2.5 text-sm font-bold">
+        Save email settings
+      </button>
+      <div className="flex gap-2 pt-1">
+        <input
+          className={input}
+          placeholder="Send test email to..."
+          value={testTo}
+          onChange={(e) => setTestTo(e.target.value)}
+        />
+        <button
+          disabled={busy}
+          onClick={sendTest}
+          className="shrink-0 rounded-xl border border-border px-3 text-xs font-bold disabled:opacity-50"
+        >
+          {busy ? "Sending..." : "Test"}
+        </button>
+      </div>
+    </div>
+  );
+}

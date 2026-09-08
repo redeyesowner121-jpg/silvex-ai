@@ -110,7 +110,7 @@ function Cart() {
             // keep a record of used stock for the admin
             await Promise.all(
               taken.map((content) =>
-                push(ref(db, `products/${item.id}/usedStock`), {
+                push(ref(db, `usedStock/${item.id}`), {
                   content,
                   orderId,
                   email: user.email || "",
