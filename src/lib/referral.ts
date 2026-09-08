@@ -1,15 +1,45 @@
-/** Referral programme: 2% of every purchase a referred friend makes, capped per friend. */
-export const REFERRAL_RATE = 0.02;
-/** Maximum total commission one friend can earn you. */
-export const REFERRAL_CAP = 201;
-export const BOT_USERNAME = "silvexaibot";
-export const WEBSITE_URL = "https://silvex-ai.com";
+/**
+ * Referral programme. Every value here is a fallback only — the admin panel
+ * (Settings → Referral & links) overrides them from site_settings/config.
+ */
+export const REFERRAL_DEFAULTS = {
+  rate: 0.02,
+  cap: 201,
+  botUsername: "silvexaibot",
+  websiteUrl: "https://silvex-ai.com",
+};
+
+let settings = { ...REFERRAL_DEFAULTS };
+
+export type ReferralConfig = {
+  referralRate?: number | string;
+  referralCap?: number | string;
+  botUsername?: string;
+  siteUrl?: string;
+};
+
+/** Apply admin settings (percent values such as 2 are read as 2%). */
+export function applyReferralConfig(c?: ReferralConfig | null) {
+  if (!c) return;
+  const rate = Number(c.referralRate);
+  if (Number.isFinite(rate) && rate > 0) settings.rate = rate > 1 ? rate / 100 : rate;
+  const cap = Number(c.referralCap);
+  if (Number.isFinite(cap) && cap > 0) settings.cap = cap;
+  if (c.botUsername) settings.botUsername = String(c.botUsername).trim().replace(/^@/, "");
+  if (c.siteUrl) settings.websiteUrl = String(c.siteUrl).trim().replace(/\/+$/, "");
+}
+
+export const referralRate = () => settings.rate;
+export const referralCap = () => settings.cap;
+export const referralPercent = () => Math.round(settings.rate * 10000) / 100;
+export const websiteUrl = () => settings.websiteUrl;
+export const botUsername = () => settings.botUsername;
 
 export function websiteReferralLink(code: string) {
-  return `${WEBSITE_URL}/?ref=${code}`;
+  return `${websiteUrl()}/?ref=${code}`;
 }
 export function botReferralLink(code: string) {
-  return `https://t.me/${BOT_USERNAME}?start=${code}`;
+  return `https://t.me/${botUsername()}?start=${code}`;
 }
 
 export type HistoryEntry = { type?: string; amount?: number; date?: string };
