@@ -1,7 +1,7 @@
 import { useStore, type Product } from "@/context/StoreContext";
 
 export function ProductCard({ product }: { product: Product }) {
-  const { openProduct, addToCart } = useStore();
+  const { openProduct, addToCart, emoji } = useStore();
 
   return (
     <div className="flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
@@ -14,7 +14,7 @@ export function ProductCard({ product }: { product: Product }) {
             className="h-full w-full object-cover"
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center text-2xl">🛍️</div>
+          <div className="flex h-full w-full items-center justify-center text-2xl">{emoji("web.bag")}</div>
         )}
       </button>
       <div className="flex flex-1 flex-col p-3">

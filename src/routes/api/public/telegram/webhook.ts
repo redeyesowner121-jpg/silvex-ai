@@ -930,6 +930,7 @@ async function emojiHome(chatId: number) {
         [{ text: "🛍 Product emojis", callback_data: "a:em:prod" }],
         [{ text: "✨ Normal emojis", callback_data: "a:em:norm" }],
         [{ text: "🔘 Button emojis", callback_data: "a:em:btn" }],
+        [{ text: "🌐 Website emojis", callback_data: "a:em:web" }],
         [{ text: "⬅️ Admin", callback_data: "a:home" }],
       ],
     },
@@ -950,11 +951,17 @@ async function emojiProducts(chatId: number) {
   });
 }
 
-async function emojiSlots(chatId: number, group: "button" | "normal") {
+async function emojiSlots(chatId: number, group: "button" | "normal" | "web") {
   const all = (await dbGet<Record<string, Product>>("products")) || {};
   await collectEmojis(Object.values(all).flatMap((p) => [p.title || "", p.desc || ""])).catch(() => undefined);
   const list = slotList(group).slice(0, 45);
-  await say(chatId, `${group === "button" ? "🔘 <b>Button emojis</b>" : "✨ <b>Normal emojis</b>"}\nChoose a slot, then send the emoji.`, {
+  const heading =
+    group === "button"
+      ? "🔘 <b>Button emojis</b>"
+      : group === "web"
+        ? "🌐 <b>Website emojis</b>\nThese show on silvex-ai.com."
+        : "✨ <b>Normal emojis</b>";
+  await say(chatId, `${heading}\nChoose a slot, then send the emoji.`, {
     inline_keyboard: [
       ...list.map((s) => [{ text: `${s.preview} ${s.label}`, callback_data: `a:emk:${s.key}` }]),
       [{ text: "⬅️ Emojis", callback_data: "a:em" }],
@@ -1005,7 +1012,7 @@ async function saveEmojiFromMessage(
   await setSlotEmoji(state.a!, saved);
   await setState(chatId, null);
   await say(chatId, `✅ Emoji saved: ${saved.char}${saved.id ? " (premium ✨)" : ""}${note}`);
-  return emojiSlots(chatId, EMOJI_SLOTS[state.a!]?.group === "button" ? "button" : "normal");
+  return emojiSlots(chatId, EMOJI_SLOTS[state.a!]?.group ?? "normal");
 }
 
 
@@ -1107,6 +1114,7 @@ async function handleCallback(chatId: number, data: string) {
       if (arg === "prod") return emojiProducts(chatId);
       if (arg === "norm") return emojiSlots(chatId, "normal");
       if (arg === "btn") return emojiSlots(chatId, "button");
+      if (arg === "web") return emojiSlots(chatId, "web");
       return emojiHome(chatId);
     }
     if (key === "emp") {

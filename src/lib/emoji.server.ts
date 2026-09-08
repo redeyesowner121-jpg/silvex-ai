@@ -1,5 +1,6 @@
-/** Server-only emoji registry for the Telegram bot (normal, button and product emojis). */
+/** Server-only emoji registry for the Telegram bot and the website. */
 import { dbGet, dbPatch, dbPut } from "./telegram.server";
+import { WEB_EMOJI_SLOTS } from "./web-emoji";
 
 export type EmojiEntry = { id?: string; char: string };
 export type EmojiStore = {
@@ -10,7 +11,12 @@ export type EmojiStore = {
 export const EMOJI_PATH = "telegramEmoji";
 
 /** Built-in slots the admin can override with premium (custom) emojis. */
-export const EMOJI_SLOTS: Record<string, { label: string; char: string; group: "button" | "normal" }> = {
+export type EmojiGroup = "button" | "normal" | "web";
+
+export const EMOJI_SLOTS: Record<string, { label: string; char: string; group: EmojiGroup }> = {
+  ...Object.fromEntries(
+    Object.entries(WEB_EMOJI_SLOTS).map(([key, v]) => [key, { ...v, group: "web" as const }]),
+  ),
   "btn.products": { label: "Products button", char: "🛍", group: "button" },
   "btn.wallet": { label: "Wallet button", char: "👛", group: "button" },
   "btn.profile": { label: "Profile button", char: "👤", group: "button" },
@@ -103,7 +109,7 @@ export async function setProductEmoji(productId: string, value: EmojiEntry): Pro
   await dbPut(`${EMOJI_PATH}/products/${productId}`, value);
 }
 
-export function slotList(group: "button" | "normal"): { key: string; label: string; preview: string }[] {
+export function slotList(group: EmojiGroup): { key: string; label: string; preview: string }[] {
   const built = Object.entries(EMOJI_SLOTS)
     .filter(([, v]) => v.group === group)
     .map(([key, v]) => ({ key, label: v.label, preview: entry(key).char }));

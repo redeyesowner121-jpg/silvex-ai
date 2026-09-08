@@ -28,7 +28,7 @@ const inputCls =
   "w-full rounded-xl border border-border bg-card px-4 py-3 text-sm outline-none focus:border-primary";
 
 function ProfilePage() {
-  const { auth, db, user, profile, wallet, isAdmin, openModal, showSuccess, notify } = useStore();
+  const { auth, db, user, profile, wallet, isAdmin, openModal, showSuccess, notify, emoji } = useStore();
   const [phone, setPhone] = useState(profile?.phone ?? "");
   const navigate = useNavigate();
   const [invited, setInvited] = useState(0);
@@ -97,13 +97,13 @@ function ProfilePage() {
 
       {profile?.myRefCode ? (
         <div className="mb-4 rounded-2xl border border-border p-4">
-          <p className="mb-1 text-sm font-bold">🎁 Refer &amp; Earn</p>
+          <p className="mb-1 text-sm font-bold">{emoji("web.gift")} Refer &amp; Earn</p>
           <p className="mb-3 text-xs text-muted-foreground">
             Earn 2% commission on every purchase your friend makes (up to ${REFERRAL_CAP} per
             friend)!
           </p>
           <p className="mb-1 text-xs font-bold">
-            🤩 Code: <span className="text-primary">{profile.myRefCode}</span>
+            {emoji("web.code")} Code: <span className="text-primary">{profile.myRefCode}</span>
           </p>
           <button
             onClick={() => {
@@ -112,7 +112,7 @@ function ProfilePage() {
             }}
             className="mb-1 block w-full break-all rounded-lg bg-muted p-2 text-left text-[11px]"
           >
-            🔗 {websiteReferralLink(profile.myRefCode)}
+            {emoji("web.link")} {websiteReferralLink(profile.myRefCode)}
           </button>
           <button
             onClick={() => {
@@ -121,9 +121,9 @@ function ProfilePage() {
             }}
             className="mb-3 block w-full break-all rounded-lg bg-muted p-2 text-left text-[11px]"
           >
-            🤖 {botReferralLink(profile.myRefCode)}
+            {emoji("web.bot")} {botReferralLink(profile.myRefCode)}
           </button>
-          <p className="mb-1 text-xs font-bold">👥 Total referrals: {invited}</p>
+          <p className="mb-1 text-xs font-bold">{emoji("web.users")} Total referrals: {invited}</p>
           <div className="grid grid-cols-2 gap-2 text-xs">
             <span>• Today: ${earnings.today}</span>
             <span>• This week: ${earnings.week}</span>
@@ -154,28 +154,28 @@ function ProfilePage() {
           onClick={() => navigate({ to: "/orders" })}
           className="flex w-full justify-between rounded-xl border border-border p-3.5 text-sm font-bold"
         >
-          <span>📦 My orders</span>
+          <span>{emoji("web.orders")} My orders</span>
           <span>›</span>
         </button>
         <button
           onClick={() => openModal("wallet")}
           className="flex w-full justify-between rounded-xl border border-border p-3.5 text-sm font-bold"
         >
-          <span>💳 Wallet & deposits</span>
+          <span>{emoji("web.wallet")} Wallet & deposits</span>
           <span>›</span>
         </button>
         <Link
           to="/api-key"
           className="flex w-full justify-between rounded-xl border border-border p-3.5 text-sm font-bold"
         >
-          <span>🔑 Reseller API key</span>
+          <span>{emoji("web.key")} Reseller API key</span>
           <span>›</span>
         </Link>
         <button
           onClick={() => openModal("suggestion")}
           className="flex w-full justify-between rounded-xl border border-border p-3.5 text-sm font-bold"
         >
-          <span>💡 Request a product</span>
+          <span>{emoji("web.idea")} Request a product</span>
           <span>›</span>
         </button>
 
@@ -184,7 +184,7 @@ function ProfilePage() {
             to="/admin"
             className="flex w-full justify-between rounded-xl border border-border p-3.5 text-sm font-bold"
           >
-            <span>🛠️ Admin panel</span>
+            <span>{emoji("web.admin")} Admin panel</span>
             <span>›</span>
           </Link>
         ) : null}

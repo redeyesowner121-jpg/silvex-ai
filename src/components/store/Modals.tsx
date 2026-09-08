@@ -287,7 +287,7 @@ export function AuthModal() {
 }
 
 export function ProfileModal() {
-  const { auth, db, user, profile, wallet, closeModal, openModal, showSuccess, notify } = useStore();
+  const { auth, db, user, profile, wallet, closeModal, openModal, showSuccess, notify, emoji } = useStore();
   const [phone, setPhone] = useState(profile?.phone ?? "");
   const navigate = useNavigate();
 
@@ -353,14 +353,14 @@ export function ProfileModal() {
           }}
           className="flex w-full justify-between rounded-xl border border-border p-3.5 text-sm font-bold"
         >
-          <span>📦 My orders</span>
+          <span>{emoji("web.orders")} My orders</span>
           <span>›</span>
         </button>
         <button
           onClick={() => openModal("suggestion")}
           className="flex w-full justify-between rounded-xl border border-border p-3.5 text-sm font-bold"
         >
-          <span>💡 Request a product</span>
+          <span>{emoji("web.idea")} Request a product</span>
           <span>›</span>
         </button>
       </div>
