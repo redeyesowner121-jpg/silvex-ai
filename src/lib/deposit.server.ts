@@ -1,0 +1,159 @@
+/** Server-only on-chain deposit verification (BEP20 + Polygon USDT/USDC). */
+
+export const DEFAULT_DEPOSIT_ADDRESS = "0x4c1506bd7a564ad416925997f4f75f79c3da07f2";
+
+const TRANSFER_TOPIC =
+  "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
+
+export type ChainKey = "bep20" | "polygon";
+
+export const CHAINS: Record<
+  ChainKey,
+  { label: string; rpc: string[]; tokens: Record<string, { symbol: string; decimals: number }> }
+> = {
+  bep20: {
+    label: "BNB Chain (BEP20)",
+    rpc: ["https://bsc-dataseed.binance.org", "https://bsc-rpc.publicnode.com"],
+    tokens: {
+      "0x55d398326f99059ff775485246999027b3197955": { symbol: "USDT", decimals: 18 },
+      "0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d": { symbol: "USDC", decimals: 18 },
+    },
+  },
+  polygon: {
+    label: "Polygon",
+    rpc: ["https://polygon-bor-rpc.publicnode.com", "https://1rpc.io/matic"],
+    tokens: {
+      "0xc2132d05d31c914a87c6611c10748aeb04b58e8f": { symbol: "USDT", decimals: 6 },
+      "0x2791bca1f2de4661ed88a30c99a7a9449aa84174": { symbol: "USDC", decimals: 6 },
+      "0x3c499c542cef5e3811e1192ce70d8cc03d5c3359": { symbol: "USDC", decimals: 6 },
+    },
+  },
+};
+
+async function rpc(chain: ChainKey, method: string, params: unknown[]): Promise<any> {
+  let lastError: unknown = null;
+  for (const url of CHAINS[chain].rpc) {
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+      });
+      const json = (await res.json()) as { result?: unknown; error?: { message: string } };
+      if (json.error) throw new Error(json.error.message);
+      return json.result;
+    } catch (e) {
+      lastError = e;
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error("Network unavailable");
+}
+
+function toAmount(hexData: string, decimals: number) {
+  const raw = BigInt(hexData.length > 2 ? hexData : "0x0");
+  const denom = 10n ** BigInt(decimals);
+  const whole = raw / denom;
+  const frac = ((raw % denom) * 100n) / denom;
+  return Number(whole) + Number(frac) / 100;
+}
+
+export type DepositCheck = {
+  ok: boolean;
+  status: "credited" | "manual" | "failed";
+  amount: number;
+  symbol: string | null;
+  chain: string;
+  ageMinutes: number;
+  message: string;
+};
+
+/** Checks one chain for a stablecoin transfer to the deposit address. */
+export async function verifyDepositOnChain(
+  hash: string,
+  chain: ChainKey,
+  address: string,
+): Promise<DepositCheck> {
+  const conf = CHAINS[chain];
+  const fail = (message: string): DepositCheck => ({
+    ok: false,
+    status: "failed",
+    amount: 0,
+    symbol: null,
+    chain: conf.label,
+    ageMinutes: 0,
+    message,
+  });
+
+  const receipt = await rpc(chain, "eth_getTransactionReceipt", [hash]);
+  if (!receipt) return fail("Transaction not found on this network yet. Check the network and try again.");
+  if (receipt.status !== "0x1") return fail("That transaction failed on-chain.");
+
+  const block = await rpc(chain, "eth_getBlockByNumber", [receipt.blockNumber, false]);
+  const timestamp = Number(BigInt(block?.timestamp ?? "0x0")) * 1000;
+  const ageMinutes = Math.max(0, Math.round((Date.now() - timestamp) / 60000));
+
+  const target = address.toLowerCase().slice(2);
+  let amount = 0;
+  let symbol: string | null = null;
+
+  for (const log of (receipt.logs ?? []) as Array<{ address: string; topics: string[]; data: string }>) {
+    const token = conf.tokens[log.address?.toLowerCase() ?? ""];
+    if (!token) continue;
+    if (log.topics?.[0]?.toLowerCase() !== TRANSFER_TOPIC) continue;
+    const to = log.topics[2]?.toLowerCase() ?? "";
+    if (!to.endsWith(target)) continue;
+    amount += toAmount(log.data, token.decimals);
+    symbol = token.symbol;
+  }
+
+  if (amount <= 0) {
+    return fail("No USDT/USDC payment to our deposit address was found in this transaction.");
+  }
+
+  if (ageMinutes > 10) {
+    return {
+      ok: true,
+      status: "manual",
+      amount: Math.round(amount * 100) / 100,
+      symbol,
+      chain: conf.label,
+      ageMinutes,
+      message: `Payment found, but it is ${ageMinutes} minutes old, so an admin will approve it.`,
+    };
+  }
+
+  return {
+    ok: true,
+    status: "credited",
+    amount: Math.round(amount * 100) / 100,
+    symbol,
+    chain: conf.label,
+    ageMinutes,
+    message: "Payment verified on-chain.",
+  };
+}
+
+/** Tries every supported network and returns the first match. */
+export async function verifyDepositAnyChain(hash: string, address: string): Promise<DepositCheck> {
+  let last: DepositCheck | null = null;
+  for (const chain of Object.keys(CHAINS) as ChainKey[]) {
+    try {
+      const res = await verifyDepositOnChain(hash, chain, address);
+      if (res.ok) return res;
+      last = res;
+    } catch {
+      /* try next network */
+    }
+  }
+  return (
+    last ?? {
+      ok: false,
+      status: "failed",
+      amount: 0,
+      symbol: null,
+      chain: "-",
+      ageMinutes: 0,
+      message: "Could not read that transaction. Try again in a minute.",
+    }
+  );
+}
