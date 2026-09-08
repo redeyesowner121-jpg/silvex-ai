@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { get, onValue, push, ref, remove, set, update } from "firebase/database";
 import { useStore, isOwnerEmail, type Product, type Category } from "@/context/StoreContext";
 import { fileToCompressedDataUrl } from "@/lib/image-upload";
+import { exportOrdersCsv, exportOrdersPdf, type ExportRow } from "@/lib/export-orders";
 
 
 export const Route = createFileRoute("/admin")({
@@ -21,7 +22,15 @@ export const Route = createFileRoute("/admin")({
 });
 
 const input = "w-full rounded-xl border border-border bg-muted/60 p-2.5 text-sm outline-none";
-const TABS = ["Orders", "Requests", "Products", "Coupons", "Users", "Settings"] as const;
+const TABS = [
+  "Dashboard",
+  "Orders",
+  "Requests",
+  "Products",
+  "Coupons",
+  "Users",
+  "Settings",
+] as const;
 type Tab = (typeof TABS)[number];
 
 type OrderRow = {
@@ -33,8 +42,9 @@ type OrderRow = {
   phone?: string;
   note?: string;
   date: string;
-  items?: Array<{ title: string; qty: number }>;
+  items?: Array<{ id?: string; title: string; qty: number; price?: number }>;
 };
+
 
 type RequestRow = {
   id: string;
@@ -51,10 +61,11 @@ type RequestRow = {
 
 function Admin() {
   const { db, isAdmin, ready, user, products, config, banner, notify, showSuccess } = useStore();
-  const [tab, setTab] = useState<Tab>("Orders");
+  const [tab, setTab] = useState<Tab>("Dashboard");
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [requests, setRequests] = useState<RequestRow[]>([]);
   const [coupons, setCoupons] = useState<Array<{ code: string; type: string; value: number }>>([]);
+
 
   useEffect(() => {
     if (!db || !isAdmin) return;
@@ -124,6 +135,61 @@ function Admin() {
     notify(approve ? "Approved" : "Rejected");
   }
 
+  function deliveryOf(item: { id?: string; title: string }) {
+    const p = products.find((x) => x.id === item.id || x.title === item.title);
+    return p?.delivery === "auto"
+      ? "Auto stock"
+      : p?.delivery === "repeat"
+        ? "Repeated"
+        : "Manual";
+  }
+
+  function exportRows(): ExportRow[] {
+    const rows: ExportRow[] = [];
+    orders.forEach((o) => {
+      const items = o.items || [];
+      if (!items.length) {
+        rows.push({
+          orderId: o.orderId,
+          date: o.date,
+          buyer: o.email || o.uid,
+          product: "—",
+          delivery: "—",
+          amount: Number(o.total) || 0,
+          status: o.status,
+        });
+        return;
+      }
+      items.forEach((i, idx) => {
+        const amount =
+          i.price != null
+            ? Number(i.price) * Number(i.qty || 1)
+            : idx === 0
+              ? Number(o.total) || 0
+              : 0;
+        rows.push({
+          orderId: o.orderId,
+          date: o.date,
+          buyer: o.email || o.uid,
+          product: `${i.title} × ${i.qty}`,
+          delivery: deliveryOf(i),
+          amount,
+          status: o.status,
+        });
+      });
+    });
+    return rows;
+  }
+
+  async function refreshOrders() {
+    if (!db) return;
+    const s = await get(ref(db, "orders"));
+    setOrders(
+      (Object.values(s.val() || {}) as OrderRow[]).sort((a, b) => (a.date < b.date ? 1 : -1)),
+    );
+    notify("Dashboard refreshed");
+  }
+
   return (
     <div className="fade-in">
       <h1 className="mb-4 text-2xl font-black">Admin panel</h1>
@@ -141,8 +207,33 @@ function Admin() {
         ))}
       </div>
 
+      {tab === "Dashboard" ? (
+        <Dashboard orders={orders} products={products} config={config} onRefresh={refreshOrders} />
+      ) : null}
+
       {tab === "Orders" ? (
         <div className="space-y-3">
+          <div className="flex gap-2">
+            <button
+              onClick={() => exportOrdersCsv(exportRows(), `orders-${Date.now()}.csv`)}
+              className="flex-1 rounded-xl bg-card py-2.5 text-xs font-bold shadow-sm"
+            >
+              ⬇ Download CSV
+            </button>
+            <button
+              onClick={async () => {
+                await exportOrdersPdf(
+                  exportRows(),
+                  `${config.siteName || "Store"} — orders report`,
+                  `orders-${Date.now()}.pdf`,
+                );
+              }}
+              className="flex-1 rounded-xl bg-card py-2.5 text-xs font-bold shadow-sm"
+            >
+              ⬇ Download PDF
+            </button>
+          </div>
+
           {orders.map((o) => (
             <div key={o.orderId} className="rounded-2xl border border-border bg-card p-4">
               <div className="flex justify-between text-xs font-bold">
@@ -233,7 +324,140 @@ function Admin() {
   );
 }
 
+function Dashboard({
+  orders,
+  products,
+  config,
+  onRefresh,
+}: {
+  orders: OrderRow[];
+  products: Product[];
+  config: { lowStockAlert?: number };
+  onRefresh: () => void | Promise<void>;
+}) {
+  const threshold = Number(config.lowStockAlert ?? 5);
+  const autoProducts = products.filter((p) => p.delivery === "auto");
+  const totalStock = autoProducts.reduce((s, p) => s + (p.stock || []).filter(Boolean).length, 0);
+  const usedStock = autoProducts.reduce((s, p) => s + Object.keys(p.usedStock || {}).length, 0);
+  const lowStock = autoProducts.filter(
+    (p) => (p.stock || []).filter(Boolean).length <= threshold,
+  );
+
+  const valid = orders.filter((o) => o.status !== "Cancelled");
+  const now = Date.now();
+  const since = (days: number) => now - days * 86400000;
+  const sum = (list: OrderRow[]) => list.reduce((s, o) => s + (Number(o.total) || 0), 0);
+  const inRange = (from: number, to = now) =>
+    valid.filter((o) => {
+      const t = new Date(o.date).getTime();
+      return t >= from && t < to;
+    });
+
+  const thisWeek = inRange(since(7));
+  const lastWeek = inRange(since(14), since(7));
+  const today = inRange(since(1));
+  const pending = orders.filter((o) => o.status === "Pending").length;
+
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    start.setDate(start.getDate() - (6 - i));
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+    const list = inRange(start.getTime(), end.getTime());
+    return {
+      label: start.toLocaleDateString(undefined, { weekday: "short" }),
+      total: sum(list),
+      count: list.length,
+    };
+  });
+  const peak = Math.max(1, ...days.map((d) => d.total));
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-black">Overview</h2>
+        <button
+          onClick={() => onRefresh()}
+          className="rounded-lg bg-card px-3 py-1.5 text-xs font-bold shadow-sm"
+        >
+          ↻ Refresh
+        </button>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <Stat label="Available stock" value={String(totalStock)} />
+        <Stat label="Used stock" value={String(usedStock)} />
+        <Stat label="This week" value={`$${sum(thisWeek)}`} sub={`${thisWeek.length} orders`} />
+        <Stat label="Today" value={`$${sum(today)}`} sub={`${today.length} orders`} />
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <Stat label="Last week" value={`$${sum(lastWeek)}`} sub={`${lastWeek.length} orders`} />
+        <Stat label="All time" value={`$${sum(valid)}`} sub={`${valid.length} orders`} />
+        <Stat label="Pending orders" value={String(pending)} />
+        <Stat label="Low stock items" value={String(lowStock.length)} />
+      </div>
+
+      <div className="rounded-2xl border border-border bg-card p-4">
+        <h3 className="mb-3 text-sm font-black">Last 7 days</h3>
+        <div className="flex h-32 items-end gap-2">
+          {days.map((d) => (
+            <div key={d.label} className="flex flex-1 flex-col items-center gap-1">
+              <span className="text-[10px] font-bold text-muted-foreground">
+                {d.total ? `$${d.total}` : ""}
+              </span>
+              <div
+                className="w-full rounded-t-md bg-primary/70"
+                style={{ height: `${Math.max(4, (d.total / peak) * 90)}px` }}
+              />
+              <span className="text-[10px] text-muted-foreground">{d.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-border bg-card p-4">
+        <h3 className="mb-2 text-sm font-black">
+          Low stock products{" "}
+          <span className="text-xs font-normal text-muted-foreground">
+            ({threshold} or fewer left)
+          </span>
+        </h3>
+        {lowStock.length ? (
+          <div className="space-y-1">
+            {lowStock.map((p) => (
+              <div
+                key={p.id}
+                className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2 text-xs font-bold"
+              >
+                <span className="truncate">{p.title}</span>
+                <span className="text-destructive">
+                  {(p.stock || []).filter(Boolean).length} left
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground">All auto-delivery products are stocked.</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
+  return (
+    <div className="rounded-2xl border border-border bg-card p-3">
+      <p className="text-[11px] font-bold text-muted-foreground">{label}</p>
+      <p className="text-xl font-black">{value}</p>
+      {sub ? <p className="text-[10px] text-muted-foreground">{sub}</p> : null}
+    </div>
+  );
+}
+
 function Empty({ text }: { text: string }) {
+
   return (
     <p className="rounded-2xl bg-card p-6 text-center text-xs text-muted-foreground shadow-sm">
       {text}
