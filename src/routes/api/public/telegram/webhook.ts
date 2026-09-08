@@ -890,6 +890,70 @@ async function adminSettings(chatId: number) {
   );
 }
 
+/* ---------------- emoji setup (/setemoji) ---------------- */
+
+async function emojiHome(chatId: number) {
+  await say(
+    chatId,
+    `😍 <b>Emoji setup</b>\n\nPick what you want to change. Send any emoji — premium (custom) emojis are saved with their id automatically.`,
+    {
+      inline_keyboard: [
+        [{ text: "🛍 Product emojis", callback_data: "a:em:prod" }],
+        [{ text: "✨ Normal emojis", callback_data: "a:em:norm" }],
+        [{ text: "🔘 Button emojis", callback_data: "a:em:btn" }],
+        [{ text: "⬅️ Admin", callback_data: "a:home" }],
+      ],
+    },
+  );
+}
+
+async function emojiProducts(chatId: number) {
+  const all = (await dbGet<Record<string, Product>>("products")) || {};
+  const list = Object.entries(all).slice(0, 40);
+  if (!list.length) return say(chatId, "No products yet.", { inline_keyboard: [[{ text: "⬅️ Emojis", callback_data: "a:em" }]] });
+  await say(chatId, "🛍 <b>Product emojis</b>\nChoose a product, then send the emoji.", {
+    inline_keyboard: [
+      ...list.map(([id, p]) => [
+        { text: `${productEmojiChar(id)} ${p.title || "Item"}`, callback_data: `a:emp:${id}` },
+      ]),
+      [{ text: "⬅️ Emojis", callback_data: "a:em" }],
+    ],
+  });
+}
+
+async function emojiSlots(chatId: number, group: "button" | "normal") {
+  const all = (await dbGet<Record<string, Product>>("products")) || {};
+  await collectEmojis(Object.values(all).flatMap((p) => [p.title || "", p.desc || ""])).catch(() => undefined);
+  const list = slotList(group).slice(0, 45);
+  await say(chatId, `${group === "button" ? "🔘 <b>Button emojis</b>" : "✨ <b>Normal emojis</b>"}\nChoose a slot, then send the emoji.`, {
+    inline_keyboard: [
+      ...list.map((s) => [{ text: `${s.preview} ${s.label}`, callback_data: `a:emk:${s.key}` }]),
+      [{ text: "⬅️ Emojis", callback_data: "a:em" }],
+    ],
+  });
+}
+
+async function saveEmojiFromMessage(
+  chatId: number,
+  state: { k: string; a?: string },
+  text: string,
+  entities?: any[],
+) {
+  const value = readEmoji(text, entities);
+  if (!value) return say(chatId, "Send a single emoji (premium emojis work too).");
+  if (state.k === "em_prod") {
+    await setProductEmoji(state.a!, value);
+    await setState(chatId, null);
+    await say(chatId, `✅ Product emoji saved: ${value.char}${value.id ? " (premium)" : ""}`);
+    return emojiProducts(chatId);
+  }
+  await setSlotEmoji(state.a!, value);
+  await setState(chatId, null);
+  await say(chatId, `✅ Emoji saved: ${value.char}${value.id ? " (premium)" : ""}`);
+  return emojiSlots(chatId, EMOJI_SLOTS[state.a!]?.group === "button" ? "button" : "normal");
+}
+
+
 async function broadcast(chatId: number, text: string) {
   const users = (await dbGet<Record<string, boolean>>("telegramUsers")) || {};
   const ids = Object.keys(users).map(Number).filter(Boolean);
