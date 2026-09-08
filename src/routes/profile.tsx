@@ -3,8 +3,8 @@ import { useEffect, useMemo, useState } from "react";
 import { equalTo, get, orderByChild, query, ref, update } from "firebase/database";
 import { signOut } from "firebase/auth";
 import { useStore } from "@/context/StoreContext";
-import {
 import { Emo } from "@/components/store/Emo";
+import {
   botReferralLink,
   REFERRAL_CAP,
   referralEarnings,
