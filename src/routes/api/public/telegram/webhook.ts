@@ -3,8 +3,8 @@ import { DEFAULT_DEPOSIT_ADDRESS, verifyDepositAnyChain } from "@/lib/deposit.se
 import {
   botReferralLink,
   referralEarnings,
-  REFERRAL_CAP,
-  REFERRAL_RATE,
+  referralCap,
+  referralRate,
   websiteReferralLink,
 } from "@/lib/referral";
 import {
@@ -488,9 +488,9 @@ async function payReferralCommission(buyerUid: string, amount: number) {
     const refBy = await dbGet<string>(`users/${buyerUid}/refBy`);
     if (!refBy || refBy === buyerUid) return;
     const earnedSoFar = Number((await dbGet<number>(`users/${refBy}/refEarned/${buyerUid}`)) || 0);
-    const room = REFERRAL_CAP - earnedSoFar;
+    const room = referralCap() - earnedSoFar;
     if (room <= 0) return;
-    const commission = Math.min(Math.round(Number(amount) * REFERRAL_RATE * 100) / 100, room);
+    const commission = Math.min(Math.round(Number(amount) * referralRate() * 100) / 100, room);
     if (commission <= 0) return;
     const w = Number((await dbGet<number>(`users/${refBy}/wallet`)) || 0);
     await dbPut(`users/${refBy}/wallet`, w + commission);
@@ -541,7 +541,7 @@ async function sendRefer(chatId: number) {
   await say(
     chatId,
     `🎁 <b>Refer &amp; Earn</b>\n\n` +
-      `Earn <b>2% commission</b> on every purchase your friend makes (up to ${money(REFERRAL_CAP)} per friend)!\n\n` +
+      `Earn <b>2% commission</b> on every purchase your friend makes (up to ${money(referralCap())} per friend)!\n\n` +
       `🔗 <b>Your link:</b>\n${botReferralLink(code)}\n\n` +
       `🤩 <b>Code:</b> <code>${code}</code>\n\n` +
       `👥 <b>Total Referrals:</b> ${invited}\n\n` +
