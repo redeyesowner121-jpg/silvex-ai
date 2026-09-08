@@ -218,10 +218,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
     let unsub = () => {};
     (async () => {
-      const { ref, onValue, update } = await import("firebase/database");
+      const { ref, onValue, update, get } = await import("firebase/database");
       unsub = onValue(ref(db, `users/${user.uid}`), (s) => setProfile(s.val() || {}));
       if (isOwnerEmail(user.email)) {
-        update(ref(db, `users/${user.uid}`), { isAdmin: true, isOwner: true }).catch(() => {});
+        const snap = await get(ref(db, `users/${user.uid}/ownerRevoked`)).catch(() => null);
+        if (!snap?.val()) {
+          update(ref(db, `users/${user.uid}`), { isAdmin: true, isOwner: true }).catch(() => {});
+        }
       }
     })();
     return () => unsub();
