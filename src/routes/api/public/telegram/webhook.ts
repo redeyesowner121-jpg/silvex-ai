@@ -1363,6 +1363,9 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
         const update = await request.json();
         try {
           await loadEmojis().catch(() => undefined);
+          setButtonColors(
+            await dbGet<ButtonColorMap>("site_settings/button_colors").catch(() => null),
+          );
           if (update?.callback_query) {
             const cq = update.callback_query;
             await tg("answerCallbackQuery", { callback_query_id: cq.id }).catch(() => undefined);
