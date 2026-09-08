@@ -166,37 +166,71 @@ async function welcome(chatId: number) {
       `Choose an option below:`,
     mainKeyboard(),
   );
+  const uid = await ensureUser(chatId);
+  if (!(await userEmail(uid))) {
+    await askEmail(chatId, "Send your email address so we can mail your orders and delivery details. You can skip and add it later from Profile.");
+  }
 }
 
 async function linkedUid(chatId: number): Promise<string | null> {
   return await dbGet<string>(`telegramLinks/${chatId}`);
 }
 
-async function askLink(chatId: number) {
+/** Every Telegram user gets a store account keyed by their numeric Telegram id. */
+async function ensureUser(chatId: number): Promise<string> {
+  const existing = await linkedUid(chatId);
+  if (existing) return existing;
+  const uid = `tg_${chatId}`;
+  const current = await dbGet<any>(`users/${uid}`);
+  if (!current) {
+    await dbPut(`users/${uid}`, {
+      name: `Telegram ${chatId}`,
+      email: "",
+      wallet: 0,
+      telegramChatId: chatId,
+      myRefCode: `TG${String(chatId).slice(-6)}`,
+      source: "telegram",
+      joined: new Date().toISOString(),
+    });
+  } else {
+    await dbPatch(`users/${uid}`, { telegramChatId: chatId });
+  }
+  await dbPut(`telegramLinks/${chatId}`, uid);
+  return uid;
+}
+
+async function userEmail(uid: string): Promise<string> {
+  return String((await dbGet<string>(`users/${uid}/email`)) || "");
+}
+
+/** Ask for an email so delivery + order mails can be sent. */
+async function askEmail(chatId: number, why?: string) {
   await setState(chatId, { k: "await_email" });
   await say(
     chatId,
-    "🔗 <b>Connect your store account</b>\n\nSend the email address you use on the website, so your wallet and orders stay the same in both places.",
-    { inline_keyboard: [[{ text: "🌐 Create account", url: SITE_URL }]] },
+    `📧 <b>Add your email</b>\n\n${why || "Send your email address so we can mail your order and delivery details."}`,
+    { inline_keyboard: [[{ text: "⏭ Skip for now", callback_data: "home" }]] },
   );
 }
 
-async function tryLink(chatId: number, email: string) {
+async function saveEmail(chatId: number, email: string) {
+  const uid = await ensureUser(chatId);
   const users = (await dbGet<Record<string, any>>("users")) || {};
   const hit = Object.entries(users).find(
-    ([, u]: [string, any]) => String(u?.email || "").toLowerCase() === email.toLowerCase(),
+    ([id, u]: [string, any]) =>
+      id !== uid && String(u?.email || "").toLowerCase() === email.toLowerCase(),
   );
-  if (!hit) {
-    await say(chatId, "No account found with that email. Create one on the website first, then send the email again.", {
-      inline_keyboard: [[{ text: "🌐 Open website", url: SITE_URL }]],
-    });
-    return;
+  if (hit && !hit[1]?.telegramChatId) {
+    // Same email already used on the website — join the two accounts.
+    const [target] = hit;
+    await dbPut(`telegramLinks/${chatId}`, target);
+    await dbPatch(`users/${target}`, { telegramChatId: chatId });
+    await setState(chatId, null);
+    return say(chatId, "✅ Email saved and your existing store account is now connected here.", mainKeyboard());
   }
-  const [uid] = hit;
-  await dbPut(`telegramLinks/${chatId}`, uid);
-  await dbPatch(`users/${uid}`, { telegramChatId: chatId });
+  await dbPatch(`users/${uid}`, { email });
   await setState(chatId, null);
-  await say(chatId, "✅ Account connected. Your wallet, orders and referrals are now shared with the website.", mainKeyboard());
+  await say(chatId, `✅ Email saved: <code>${email}</code>\nOrder and delivery mails will go there.`, mainKeyboard());
 }
 
 async function sendProducts(chatId: number) {
@@ -229,18 +263,14 @@ async function sendProduct(chatId: number, id: string) {
     {
       inline_keyboard: [
         [{ text: `Buy now — ${money(p.price || 0)}`, callback_data: `b:${id}` }],
-        [
-          { text: "⬅️ Products", callback_data: "products" },
-          { text: "🌐 Website", url: SITE_URL },
-        ],
+        [{ text: "⬅️ Products", callback_data: "products" }],
       ],
     },
   );
 }
 
 async function sendWallet(chatId: number) {
-  const uid = await linkedUid(chatId);
-  if (!uid) return askLink(chatId);
+  const uid = await ensureUser(chatId);
   const wallet = (await dbGet<number>(`users/${uid}/wallet`)) || 0;
   await say(chatId, `👛 <b>Wallet</b>\n\nBalance: <b>${money(wallet)}</b>`, {
     inline_keyboard: [
@@ -255,8 +285,7 @@ async function sendWallet(chatId: number) {
 }
 
 async function walletHistory(chatId: number) {
-  const uid = await linkedUid(chatId);
-  if (!uid) return askLink(chatId);
+  const uid = await ensureUser(chatId);
   const h = (await dbGet<Record<string, any>>(`users/${uid}/history`)) || {};
   const list = Object.values(h).slice(-10).reverse();
   const text = list.length
@@ -266,8 +295,7 @@ async function walletHistory(chatId: number) {
 }
 
 async function startDeposit(chatId: number) {
-  const uid = await linkedUid(chatId);
-  if (!uid) return askLink(chatId);
+  const uid = await ensureUser(chatId);
   const c = await cfg();
   await setState(chatId, { k: "dep_amount" });
   await say(
@@ -278,8 +306,7 @@ async function startDeposit(chatId: number) {
 }
 
 async function startWithdraw(chatId: number) {
-  const uid = await linkedUid(chatId);
-  if (!uid) return askLink(chatId);
+  const uid = await ensureUser(chatId);
   const wallet = (await dbGet<number>(`users/${uid}/wallet`)) || 0;
   await setState(chatId, { k: "wd_amount" });
   await say(
@@ -290,15 +317,14 @@ async function startWithdraw(chatId: number) {
 }
 
 async function sendProfile(chatId: number) {
-  const uid = await linkedUid(chatId);
-  if (!uid) return askLink(chatId);
+  const uid = await ensureUser(chatId);
   const u = await dbGet<any>(`users/${uid}`);
   await say(
     chatId,
     `👤 <b>Profile</b>\n\nName: ${u?.name || "-"}\nEmail: ${u?.email || "-"}\nPhone: ${u?.phone || "-"}\nWallet: ${money(u?.wallet || 0)}\nReferral code: <code>${u?.myRefCode || "-"}</code>`,
     {
       inline_keyboard: [
-        [{ text: "🌐 Open profile on website", url: `${SITE_URL}/profile` }],
+        [{ text: "📧 Set email", callback_data: "setmail" }],
         [{ text: "⬅️ Menu", callback_data: "home" }],
       ],
     },
@@ -306,8 +332,7 @@ async function sendProfile(chatId: number) {
 }
 
 async function sendApiKey(chatId: number, regenerate: boolean) {
-  const uid = await linkedUid(chatId);
-  if (!uid) return askLink(chatId);
+  const uid = await ensureUser(chatId);
   const user = (await dbGet<any>(`users/${uid}`)) || {};
   let key: string | undefined = user.apiKey;
   if (!key || regenerate) {
@@ -328,7 +353,6 @@ async function sendApiKey(chatId: number, regenerate: boolean) {
     {
       inline_keyboard: [
         [{ text: "♻️ Generate new key", callback_data: "apikey_new" }],
-        [{ text: "🌐 Open on website", url: `${SITE_URL}/api-key` }],
         [{ text: "⬅️ Menu", callback_data: "home" }],
       ],
     },
@@ -336,8 +360,7 @@ async function sendApiKey(chatId: number, regenerate: boolean) {
 }
 
 async function sendOrders(chatId: number) {
-  const uid = await linkedUid(chatId);
-  if (!uid) return askLink(chatId);
+  const uid = await ensureUser(chatId);
   const all = (await dbGet<Record<string, any>>("orders")) || {};
   const mine = Object.values(all)
     .filter((o: any) => o?.uid === uid)
@@ -353,7 +376,6 @@ async function sendOrders(chatId: number) {
     .join("\n\n");
   await say(chatId, text, {
     inline_keyboard: [
-      [{ text: "🌐 See all on website", url: `${SITE_URL}/orders` }],
       [{ text: "⬅️ Menu", callback_data: "home" }],
     ],
   });
@@ -373,8 +395,7 @@ async function sendReviews(chatId: number) {
 }
 
 async function sendRefer(chatId: number) {
-  const uid = await linkedUid(chatId);
-  if (!uid) return askLink(chatId);
+  const uid = await ensureUser(chatId);
   const u = (await dbGet<any>(`users/${uid}`)) || {};
   const code = u.myRefCode || "-";
   const users = (await dbGet<Record<string, any>>("users")) || {};
@@ -399,8 +420,7 @@ async function sendSupport(chatId: number) {
 /* ---------------- buying ---------------- */
 
 async function buy(chatId: number, productId: string) {
-  const uid = await linkedUid(chatId);
-  if (!uid) return askLink(chatId);
+  const uid = await ensureUser(chatId);
   const p = await dbGet<Product>(`products/${productId}`);
   if (!p) return say(chatId, "Product not found.", backHome);
   const price = Number(p.price || 0);
@@ -470,6 +490,9 @@ async function buy(chatId: number, productId: string) {
     ],
   });
   if (complete) await sendDeliveryFiles(chatId, orderId, delivered);
+  if (!user.email) {
+    await askEmail(chatId, "Add your email to also receive this order and its delivery details by mail.");
+  }
 
   await notifyOwners(
     `🛒 <b>New Telegram order</b>\n${p.title}\nBuyer: ${user.email || chatId}\nTotal: ${money(price)}\nOrder: ${orderId}\nStatus: ${complete ? "Completed" : "Pending"}`,
@@ -890,13 +913,13 @@ async function handleCallback(chatId: number, data: string) {
   }
   if (data === "refer") return sendRefer(chatId);
   if (data === "support") return sendSupport(chatId);
-  if (data === "link") return askLink(chatId);
+  if (data === "link" || data === "setmail") return askEmail(chatId);
   if (data.startsWith("p:")) return sendProduct(chatId, data.slice(2));
   if (data.startsWith("b:")) return buy(chatId, data.slice(2));
 }
 
 async function submitReview(chatId: number, text: string) {
-  const uid = await linkedUid(chatId);
+  const uid = await ensureUser(chatId);
   const u = uid ? await dbGet<any>(`users/${uid}`) : null;
   const m = text.match(/^([1-5])\s+(.*)$/s);
   const rating = m ? Number(m[1]) : 5;
@@ -929,7 +952,7 @@ async function handleText(chatId: number, text: string) {
     return welcome(chatId);
   }
   if (await forceJoinBlocked(chatId)) return;
-  if (t === "/link") return askLink(chatId);
+  if (t === "/link" || t === "/email") return askEmail(chatId);
   if (t === "/admin") {
     if (!(await isBotAdmin(chatId))) return say(chatId, "This command is for store owners only.");
     await setState(chatId, null);
@@ -939,7 +962,10 @@ async function handleText(chatId: number, text: string) {
   const state = await getState(chatId);
   const k = state?.k;
 
-  if (k === "await_email" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t)) return tryLink(chatId, t);
+  if (k === "await_email") {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t)) return say(chatId, "That does not look like an email. Send it like name@mail.com");
+    return saveEmail(chatId, t);
+  }
 
   if (k === "dep_amount") {
     const amt = Number(t);
@@ -948,8 +974,8 @@ async function handleText(chatId: number, text: string) {
     return say(chatId, "Now send the transaction hash (TXID) of your deposit.");
   }
   if (k === "dep_hash") {
-    const uid = await linkedUid(chatId);
-    const u = uid ? await dbGet<any>(`users/${uid}`) : null;
+    const uid = await ensureUser(chatId);
+    const u = await dbGet<any>(`users/${uid}`);
     await dbPush("requests", {
       uid,
       name: u?.name || "",
@@ -966,8 +992,8 @@ async function handleText(chatId: number, text: string) {
     return notifyOwners(`💰 <b>Telegram deposit</b>\n${u?.email || chatId}\nAmount: ${money(Number(state?.a || 0))}\nTX: <code>${t}</code>`);
   }
   if (k === "wd_amount") {
-    const uid = await linkedUid(chatId);
-    const wallet = uid ? (await dbGet<number>(`users/${uid}/wallet`)) || 0 : 0;
+    const uid = await ensureUser(chatId);
+    const wallet = (await dbGet<number>(`users/${uid}/wallet`)) || 0;
     const amt = Number(t);
     if (!amt || amt <= 0) return say(chatId, "Send a valid amount.");
     if (amt > wallet) return say(chatId, `You only have ${money(wallet)}.`);
@@ -975,8 +1001,8 @@ async function handleText(chatId: number, text: string) {
     return say(chatId, "Send the wallet address (USDT BEP20 / Polygon) to receive the payout.");
   }
   if (k === "wd_addr") {
-    const uid = await linkedUid(chatId);
-    const u = uid ? await dbGet<any>(`users/${uid}`) : null;
+    const uid = await ensureUser(chatId);
+    const u = await dbGet<any>(`users/${uid}`);
     await dbPush("requests", {
       uid,
       name: u?.name || "",
