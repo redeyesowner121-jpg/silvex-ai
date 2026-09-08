@@ -51,7 +51,10 @@ type Product = {
   price?: number;
   logo?: string;
   link?: string;
-  delivery?: "auto" | "repeat" | "manual";
+  delivery?: "auto" | "repeat" | "manual" | "supplier";
+  supplierId?: number;
+  supplierStock?: number;
+
   stock?: string[];
   salesCount?: number;
 };
