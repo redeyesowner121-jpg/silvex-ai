@@ -436,6 +436,8 @@ async function buy(chatId: number, productId: string) {
       [{ text: "🛍 Buy more", callback_data: "products" }],
     ],
   });
+  if (complete) await sendDeliveryFiles(chatId, orderId, delivered);
+
   await notifyOwners(
     `🛒 <b>New Telegram order</b>\n${p.title}\nBuyer: ${user.email || chatId}\nTotal: ${money(price)}\nOrder: ${orderId}\nStatus: ${complete ? "Completed" : "Pending"}`,
   );
