@@ -88,6 +88,13 @@ const StoreContext = createContext<StoreValue | null>(null);
 
 const CART_KEY = "rkr_cart_v1";
 
+/** Store owners: always admin, cannot be removed. */
+export const OWNER_EMAILS = ["red.eyes.owner121@gmail.com", "mohiuddinarif78@gmail.com"];
+
+export function isOwnerEmail(email?: string | null) {
+  return Boolean(email && OWNER_EMAILS.includes(email.toLowerCase()));
+}
+
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [auth, setAuth] = useState<Auth | null>(null);
   const [db, setDb] = useState<Database | null>(null);
@@ -184,8 +191,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
     let unsub = () => {};
     (async () => {
-      const { ref, onValue } = await import("firebase/database");
+      const { ref, onValue, update } = await import("firebase/database");
       unsub = onValue(ref(db, `users/${user.uid}`), (s) => setProfile(s.val() || {}));
+      if (isOwnerEmail(user.email)) {
+        update(ref(db, `users/${user.uid}`), { isAdmin: true, isOwner: true }).catch(() => {});
+      }
     })();
     return () => unsub();
   }, [db, user]);
