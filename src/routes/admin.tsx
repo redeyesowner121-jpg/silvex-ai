@@ -154,12 +154,14 @@ function Admin() {
           html: emailShell(
             config.siteName || "SILENT SELLER",
             "Your order is delivered 🎉",
-            `<p>Your order has been completed. Here are your details:</p>
+            `<p>Thank you for your purchase — your order is complete. Here are your delivery details:</p>
              ${deliveryBlock(delivered)}
-             ${deliverNote.trim() ? `<p>${deliverNote.trim()}</p>` : ""}
-             <p style="color:#8a8ca3;font-size:12px">Order ID: ${deliverFor.orderId}</p>`,
+             ${deliverNote.trim() ? `<p style="background:#fff8e6;border:1px solid #ffe2a8;border-radius:12px;padding:12px;font-size:14px">${deliverNote.trim()}</p>` : ""}
+             <p style="font-size:13px;color:#6b6d85">A PDF and image copy of this delivery receipt is attached to this email.</p>
+             <p style="color:#8a8ca3;font-size:12px">Order ID: ${deliverFor.orderId} · Total: $${Number(deliverFor.total || 0).toFixed(2)}</p>`,
             {
               preheader: "Your items are ready",
+              badge: "Delivered",
               ctaText: "View my order",
               ctaUrl: "https://silvex-ai.lovable.app/orders",
             },

@@ -110,27 +110,50 @@ export const sendSmtpMail = createServerFn({ method: "POST" })
         });
       }
 
-      const mailer = await WorkerMailer.connect({
-        host: smtp.host,
-        port: smtp.port,
-        secure: smtp.secure,
-        startTls: !smtp.secure,
-        credentials: { username: smtp.username, password: smtp.password },
-        authType: ["plain", "login"],
-      });
+      // Try the saved port first, then the usual Spacemail fallbacks.
+      const attempts: { port: number; secure: boolean }[] = [
+        { port: smtp.port, secure: smtp.secure },
+        { port: 465, secure: true },
+        { port: 587, secure: false },
+        { port: 2525, secure: false },
+      ].filter(
+        (a, i, all) => all.findIndex((b) => b.port === a.port && b.secure === a.secure) === i,
+      );
 
-      await mailer.send({
-        from: smtp.fromName
-          ? { name: smtp.fromName, email: smtp.fromEmail }
-          : { email: smtp.fromEmail },
-        to: { email: data.to },
-        subject: data.subject,
-        html: data.html,
-        text: data.text ?? data.html.replace(/<[^>]+>/g, " "),
-        ...(attachments.length ? { attachments } : {}),
-      });
-      await mailer.close();
-      return { ok: true as const };
+      let lastError = "Could not connect to the mail server.";
+      for (const attempt of attempts) {
+        let mailer: Awaited<ReturnType<typeof WorkerMailer.connect>> | null = null;
+        try {
+          mailer = await WorkerMailer.connect({
+            host: smtp.host,
+            port: attempt.port,
+            secure: attempt.secure,
+            startTls: !attempt.secure,
+            credentials: { username: smtp.username, password: smtp.password },
+            authType: ["plain", "login"],
+          });
+
+          await mailer.send({
+            from: smtp.fromName
+              ? { name: smtp.fromName, email: smtp.fromEmail }
+              : { email: smtp.fromEmail },
+            to: { email: data.to },
+            subject: data.subject,
+            html: data.html,
+            text: data.text ?? data.html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+            ...(attachments.length ? { attachments } : {}),
+          });
+          await mailer.close().catch(() => undefined);
+          return { ok: true as const, port: attempt.port };
+        } catch (err) {
+          await mailer?.close().catch(() => undefined);
+          const msg = err instanceof Error ? err.message : String(err);
+          lastError = `${msg} (port ${attempt.port})`;
+          // Wrong username/password will fail on every port — stop early.
+          if (/auth|credential|password|535|534/i.test(msg)) break;
+        }
+      }
+      return { ok: false as const, error: lastError };
     } catch (err) {
       return { ok: false as const, error: err instanceof Error ? err.message : "Send failed" };
     }
