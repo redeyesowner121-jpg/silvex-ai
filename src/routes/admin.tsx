@@ -60,10 +60,11 @@ type RequestRow = {
 
 function Admin() {
   const { db, isAdmin, ready, user, products, config, banner, notify, showSuccess } = useStore();
-  const [tab, setTab] = useState<Tab>("Orders");
+  const [tab, setTab] = useState<Tab>("Dashboard");
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [requests, setRequests] = useState<RequestRow[]>([]);
   const [coupons, setCoupons] = useState<Array<{ code: string; type: string; value: number }>>([]);
+
 
   useEffect(() => {
     if (!db || !isAdmin) return;
