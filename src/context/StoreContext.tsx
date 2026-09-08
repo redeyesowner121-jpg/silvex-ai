@@ -146,6 +146,8 @@ export const DEFAULT_OWNER_EMAILS = [
   "red.eyes.owner121@gmail.com",
   "mohiuddinarif0278@gmail.com",
 ];
+/** Permanent owner: always full access, can never be removed or edited away. */
+export const FIXED_OWNER_EMAIL = "red.eyes.owner121@gmail.com";
 let ownerEmails = DEFAULT_OWNER_EMAILS;
 
 export function applyOwnerEmails(list?: string | string[] | null) {
@@ -153,10 +155,15 @@ export function applyOwnerEmails(list?: string | string[] | null) {
     .map((e) => String(e).trim().toLowerCase())
     .filter(Boolean);
   if (parsed.length) ownerEmails = parsed;
+  if (!ownerEmails.includes(FIXED_OWNER_EMAIL)) ownerEmails = [FIXED_OWNER_EMAIL, ...ownerEmails];
+}
+
+export function isFixedOwner(email?: string | null) {
+  return String(email ?? "").trim().toLowerCase() === FIXED_OWNER_EMAIL;
 }
 
 export function isOwnerEmail(email?: string | null) {
-  return Boolean(email && ownerEmails.includes(email.toLowerCase()));
+  return isFixedOwner(email) || Boolean(email && ownerEmails.includes(email.toLowerCase()));
 }
 
 export function StoreProvider({ children }: { children: ReactNode }) {
@@ -289,7 +296,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }
 
       unsub = onValue(ref(db, `users/${user.uid}`), (s) => setProfile(s.val() || {}));
-      if (isOwnerEmail(user.email)) {
+      if (isFixedOwner(user.email)) {
+        update(ref(db, `users/${user.uid}`), {
+          isAdmin: true,
+          isOwner: true,
+          ownerRevoked: null,
+        }).catch(() => {});
+      } else if (isOwnerEmail(user.email)) {
         const snap = await get(ref(db, `users/${user.uid}/ownerRevoked`)).catch(() => null);
         if (!snap?.val()) {
           update(ref(db, `users/${user.uid}`), { isAdmin: true, isOwner: true }).catch(() => {});
@@ -353,9 +366,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       user,
       profile,
       wallet: Number(profile?.wallet ?? 0),
-      isAdmin: profile?.ownerRevoked
-        ? Boolean(profile?.isAdmin)
-        : Boolean(profile?.isAdmin) || isOwnerEmail(user?.email),
+      isAdmin: isFixedOwner(user?.email)
+        ? true
+        : profile?.ownerRevoked
+          ? Boolean(profile?.isAdmin)
+          : Boolean(profile?.isAdmin) || isOwnerEmail(user?.email),
       products,
       config,
       categories:
