@@ -548,6 +548,7 @@ async function buy(chatId: number, productId: string) {
     date: new Date().toISOString(),
   });
   await dbPut(`products/${productId}/salesCount`, Number(p.salesCount || 0) + 1);
+  await payReferralCommission(uid, price);
 
   const body = complete
     ? `✅ <b>Order delivered</b>\n\n${delivered.map((d) => `${d.title}\n<code>${d.content}</code>`).join("\n\n")}`
