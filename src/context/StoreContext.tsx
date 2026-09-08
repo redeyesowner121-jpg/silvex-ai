@@ -279,6 +279,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       isAdmin: Boolean(profile?.isAdmin) || isOwnerEmail(user?.email),
       products,
       config,
+      categories:
+        Array.isArray(config.categories) && config.categories.length
+          ? config.categories
+          : DEFAULT_CATEGORIES,
+      siteName: config.siteName || "RKR Premium",
+
       banner,
       flashSale,
       notices,
