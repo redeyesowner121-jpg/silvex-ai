@@ -26,7 +26,7 @@ export const Route = createFileRoute("/cart")({
 });
 
 function Cart() {
-  const { db, user, profile, cart, cartTotal, setQty, clearCart, wallet, openModal, showSuccess, notify, siteName, emoji } =
+  const { db, user, profile, cart, cartTotal, setQty, clearCart, wallet, config, openModal, showSuccess, notify, siteName, emoji } =
     useStore();
   const navigate = useNavigate();
   const [coupon, setCoupon] = useState("");
