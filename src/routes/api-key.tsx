@@ -57,13 +57,14 @@ function ApiKeyPage() {
     }
   }
 
-  const base = typeof window !== "undefined" ? `${window.location.origin}/api/public/reseller` : "/api/public/reseller";
+  const base = "https://silvex-ai.com/api/public/reseller";
 
   return (
     <div className="mx-auto max-w-md px-4 py-5">
       <h1 className="mb-1 text-xl font-bold">Reseller API</h1>
       <p className="mb-5 text-sm text-muted-foreground">
-        Sell our products from your own site or bot. Orders are paid from your wallet balance.
+        Sell our products from your own site or bot. The same key works for your website account and
+        your Telegram account, and orders are paid from your wallet balance.
       </p>
 
       <div className="mb-4 rounded-2xl border border-border p-4">
@@ -93,21 +94,68 @@ function ApiKeyPage() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-border p-4 text-xs leading-relaxed">
-        <p className="mb-2 text-[10px] font-bold uppercase text-muted-foreground">How to use it</p>
-        <p className="mb-2">Send your key in the <code>x-api-key</code> header.</p>
-        <pre className="overflow-x-auto whitespace-pre-wrap rounded-xl bg-muted p-3 font-mono text-[11px]">
-{`GET  ${base}/products
+      <div className="space-y-4 rounded-2xl border border-border p-4 text-xs leading-relaxed">
+        <div>
+          <p className="mb-2 text-[10px] font-bold uppercase text-muted-foreground">Getting started</p>
+          <p>
+            Base URL: <code className="break-all">{base}</code>
+          </p>
+          <p className="mt-1">
+            Send your key on every request in the <code>x-api-key</code> header. All prices and
+            balances are in dollars.
+          </p>
+        </div>
+
+        <div>
+          <p className="mb-2 text-[10px] font-bold uppercase text-muted-foreground">Endpoints</p>
+          <pre className="overflow-x-auto whitespace-pre-wrap rounded-xl bg-muted p-3 font-mono text-[11px]">
+{`GET  ${base}/me
 GET  ${base}/balance
+GET  ${base}/products
 GET  ${base}/orders
 GET  ${base}/orders/ORDER_ID
 POST ${base}/order
      { "productId": "ID", "qty": 1 }`}
-        </pre>
-        <p className="mt-3 text-muted-foreground">
-          Instant products are delivered in the order response; manual ones stay pending until we
-          deliver them.
-        </p>
+          </pre>
+        </div>
+
+        <div>
+          <p className="mb-2 text-[10px] font-bold uppercase text-muted-foreground">Example order</p>
+          <pre className="overflow-x-auto whitespace-pre-wrap rounded-xl bg-muted p-3 font-mono text-[11px]">
+{`curl -X POST ${base}/order \\
+  -H "x-api-key: ${key || "YOUR_KEY"}" \\
+  -H "content-type: application/json" \\
+  -d '{"productId":"ID","qty":1}'`}
+          </pre>
+        </div>
+
+        <div>
+          <p className="mb-2 text-[10px] font-bold uppercase text-muted-foreground">Answers</p>
+          <pre className="overflow-x-auto whitespace-pre-wrap rounded-xl bg-muted p-3 font-mono text-[11px]">
+{`{
+  "ok": true,
+  "orderId": "...",
+  "status": "Completed",
+  "total": 4.5,
+  "balance": 20.5,
+  "delivered": [{ "title": "...", "content": "..." }]
+}`}
+          </pre>
+          <p className="mt-2 text-muted-foreground">
+            Instant items are delivered inside the order answer. Manual items come back as
+            <code> pending</code> and are delivered by us — check <code>/orders/ORDER_ID</code> or your
+            orders page.
+          </p>
+        </div>
+
+        <div>
+          <p className="mb-2 text-[10px] font-bold uppercase text-muted-foreground">Errors</p>
+          <p className="text-muted-foreground">
+            <code>401</code> wrong or missing key · <code>404</code> unknown product or order ·{" "}
+            <code>400</code> not enough balance or stock. Keep your key private — anyone holding it
+            can spend your wallet.
+          </p>
+        </div>
       </div>
     </div>
   );
