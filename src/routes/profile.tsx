@@ -7,6 +7,7 @@ import { Emo } from "@/components/store/Emo";
 import {
   botReferralLink,
   referralCap,
+  referralPercent,
   referralEarnings,
   websiteReferralLink,
 } from "@/lib/referral";
@@ -100,7 +101,7 @@ function ProfilePage() {
         <div className="mb-4 rounded-2xl border border-border p-4">
           <p className="mb-1 text-sm font-bold"><Emo k="web.gift" /> Refer &amp; Earn</p>
           <p className="mb-3 text-xs text-muted-foreground">
-            Earn 2% commission on every purchase your friend makes (up to ${referralCap()} per
+            Earn {referralPercent()}% commission on every purchase your friend makes (up to ${referralCap()} per
             friend)!
           </p>
           <p className="mb-1 text-xs font-bold">

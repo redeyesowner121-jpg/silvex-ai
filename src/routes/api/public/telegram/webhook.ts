@@ -4,6 +4,7 @@ import {
   botReferralLink,
   referralEarnings,
   referralCap,
+  referralPercent,
   referralRate,
   websiteReferralLink,
 } from "@/lib/referral";
@@ -541,7 +542,7 @@ async function sendRefer(chatId: number) {
   await say(
     chatId,
     `🎁 <b>Refer &amp; Earn</b>\n\n` +
-      `Earn <b>2% commission</b> on every purchase your friend makes (up to ${money(referralCap())} per friend)!\n\n` +
+      `Earn <b>${referralPercent()}% commission</b> on every purchase your friend makes (up to ${money(referralCap())} per friend)!\n\n` +
       `🔗 <b>Your link:</b>\n${botReferralLink(code)}\n\n` +
       `🤩 <b>Code:</b> <code>${code}</code>\n\n` +
       `👥 <b>Total Referrals:</b> ${invited}\n\n` +
