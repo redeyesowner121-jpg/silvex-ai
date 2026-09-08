@@ -20,7 +20,8 @@ import {
   sendDeliveryFiles,
 
   siteUrl,
-  telegramWebhookSecret,
+  telegramWebhookOk,
+  loadBotRuntime,
   tg,
   tgSendPhoto,
   ownerIds,
@@ -1488,9 +1489,9 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const expected = telegramWebhookSecret();
+        await loadBotRuntime().catch(() => undefined);
         const actual = request.headers.get("X-Telegram-Bot-Api-Secret-Token") ?? "";
-        if (!safeEqual(actual, expected)) return new Response("Unauthorized", { status: 401 });
+        if (!telegramWebhookOk(actual)) return new Response("Unauthorized", { status: 401 });
 
         const update = await request.json();
         try {
