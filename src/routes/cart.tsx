@@ -105,9 +105,10 @@ function Cart() {
             );
             continue;
           }
-
+        }
         allDelivered = false;
       }
+
 
       await set(ref(db, `users/${user.uid}/wallet`), wallet - total);
       await set(ref(db, `orders/${orderId}`), {
