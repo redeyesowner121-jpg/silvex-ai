@@ -109,7 +109,7 @@ export async function setProductEmoji(productId: string, value: EmojiEntry): Pro
   await dbPut(`${EMOJI_PATH}/products/${productId}`, value);
 }
 
-export function slotList(group: "button" | "normal"): { key: string; label: string; preview: string }[] {
+export function slotList(group: EmojiGroup): { key: string; label: string; preview: string }[] {
   const built = Object.entries(EMOJI_SLOTS)
     .filter(([, v]) => v.group === group)
     .map(([key, v]) => ({ key, label: v.label, preview: entry(key).char }));
