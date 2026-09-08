@@ -7,6 +7,7 @@ import { exportOrdersCsv, exportOrdersPdf, type ExportRow } from "@/lib/export-o
 import { sendSmtpMail } from "@/lib/mail.functions";
 import { deliveryBlock, emailShell, sendMail } from "@/lib/mailer";
 import { notifyTelegramOrder } from "@/lib/telegram.functions";
+import { connectTelegramBot } from "@/lib/bot-setup.functions";
 
 
 import { input, Stat, Empty, ImageField, type OrderRow } from "@/components/admin/shared";
@@ -27,6 +28,7 @@ export function SettingsAdmin({
     categories?: Category[];
     siteUrl?: string;
     botUsername?: string;
+    botToken?: string;
     referralRate?: number;
     referralCap?: number;
     ownerEmails?: string;
@@ -47,6 +49,7 @@ export function SettingsAdmin({
     lowStockAlert: String((config as { lowStockAlert?: number }).lowStockAlert ?? 5),
     siteUrl: config.siteUrl ?? "",
     botUsername: config.botUsername ?? "",
+    botToken: config.botToken ?? "",
     referralRate: String(config.referralRate ?? 2),
     referralCap: String(config.referralCap ?? 201),
     ownerEmails: config.ownerEmails ?? "",
@@ -60,6 +63,23 @@ export function SettingsAdmin({
   });
   const [notice, setNotice] = useState("");
   const [fs, setFs] = useState({ pid: "", price: "", hours: "2" });
+
+  const [connecting, setConnecting] = useState(false);
+
+  async function connectBot() {
+    setConnecting(true);
+    try {
+      await saveConfig();
+      const res = await connectTelegramBot({
+        data: { token: cfg.botToken.trim(), siteUrl: cfg.siteUrl.trim() },
+      });
+      notify(res.ok ? `Bot @${res.username} connected` : res.error);
+    } catch (e) {
+      notify((e as Error)?.message || "Could not connect the bot");
+    } finally {
+      setConnecting(false);
+    }
+  }
 
   async function saveConfig(extra: Record<string, unknown> = {}) {
     if (!db) return;
@@ -75,6 +95,7 @@ export function SettingsAdmin({
       lowStockAlert: Number(cfg.lowStockAlert || 0),
       siteUrl: cfg.siteUrl.trim(),
       botUsername: cfg.botUsername.trim().replace(/^@/, ""),
+      botToken: cfg.botToken.trim(),
       referralRate: Number(cfg.referralRate || 0),
       referralCap: Number(cfg.referralCap || 0),
       ownerEmails: cfg.ownerEmails.trim(),
@@ -181,6 +202,19 @@ export function SettingsAdmin({
           value={cfg.botUsername}
           onChange={(e) => setCfg({ ...cfg, botUsername: e.target.value })}
         />
+        <input
+          className={input}
+          placeholder="Telegram bot token from BotFather"
+          value={cfg.botToken}
+          onChange={(e) => setCfg({ ...cfg, botToken: e.target.value })}
+        />
+        <button
+          onClick={connectBot}
+          disabled={connecting}
+          className="w-full rounded-xl bg-muted py-2.5 text-sm font-bold disabled:opacity-60"
+        >
+          {connecting ? "Connecting bot…" : "Save & connect Telegram bot"}
+        </button>
         <div className="flex gap-2">
           <input
             className={input}

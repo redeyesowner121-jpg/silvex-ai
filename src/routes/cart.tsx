@@ -4,7 +4,7 @@ import { get, push, ref, runTransaction, set, update } from "firebase/database";
 import { useStore } from "@/context/StoreContext";
 import { deliveryBlock, emailShell, itemsTable, sendMail } from "@/lib/mailer";
 import { notifyTelegramOrder } from "@/lib/telegram.functions";
-import { referralCap, referralRate } from "@/lib/referral";
+import { referralCap, referralRate, websiteUrl } from "@/lib/referral";
 import { Emo } from "@/components/store/Emo";
 
 
@@ -26,7 +26,7 @@ export const Route = createFileRoute("/cart")({
 });
 
 function Cart() {
-  const { db, user, profile, cart, cartTotal, setQty, clearCart, wallet, openModal, showSuccess, notify, siteName, emoji } =
+  const { db, user, profile, cart, cartTotal, setQty, clearCart, wallet, config, openModal, showSuccess, notify, siteName, emoji } =
     useStore();
   const navigate = useNavigate();
   const [coupon, setCoupon] = useState("");
@@ -199,7 +199,7 @@ function Cart() {
             {
               preheader: done ? "Your items are ready" : "We received your order",
               ctaText: "View my order",
-              ctaUrl: "https://silvex-ai.lovable.app/orders",
+              ctaUrl: `${(config.siteUrl || websiteUrl()).replace(/\/+$/, "")}/orders`,
             },
           ),
           ...(done

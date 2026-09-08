@@ -7,6 +7,7 @@ import { exportOrdersCsv, exportOrdersPdf, type ExportRow } from "@/lib/export-o
 import { sendSmtpMail } from "@/lib/mail.functions";
 import { deliveryBlock, emailShell, sendMail } from "@/lib/mailer";
 import { notifyTelegramOrder } from "@/lib/telegram.functions";
+import { websiteUrl } from "@/lib/referral";
 
 
 import { input, Stat, Empty, ImageField, type OrderRow } from "@/components/admin/shared";
@@ -137,7 +138,7 @@ function Admin() {
               preheader: "Your items are ready",
               badge: "Delivered",
               ctaText: "View my order",
-              ctaUrl: "https://silvex-ai.lovable.app/orders",
+              ctaUrl: `${(config.siteUrl || websiteUrl()).replace(/\/+$/, "")}/orders`,
             },
           ),
           receipt: {

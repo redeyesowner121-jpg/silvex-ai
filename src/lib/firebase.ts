@@ -1,50 +1,42 @@
 import type { FirebaseApp } from "firebase/app";
 import type { Auth } from "firebase/auth";
 import type { Database } from "firebase/database";
-import { getFirebaseApiKey } from "./firebase.functions";
+import { getFirebaseConfig } from "./firebase.functions";
 
 export type FirebaseBundle = { app: FirebaseApp; auth: Auth; db: Database };
 
 let cached: FirebaseBundle | null = null;
 let pending: Promise<FirebaseBundle> | null = null;
-const API_KEY_CACHE = "silvex_firebase_api_key";
+const CONFIG_CACHE = "store_firebase_config";
 
-async function firebaseApiKey(): Promise<string> {
+type WebConfig = Awaited<ReturnType<typeof getFirebaseConfig>>;
+
+async function loadConfig(): Promise<WebConfig> {
   try {
-    const saved = localStorage.getItem(API_KEY_CACHE);
-    if (saved) return saved;
+    const saved = localStorage.getItem(CONFIG_CACHE);
+    if (saved) return JSON.parse(saved) as WebConfig;
   } catch {
     /* storage unavailable */
   }
-  const { apiKey } = await getFirebaseApiKey();
-  if (apiKey) {
+  const config = await getFirebaseConfig();
+  if (config.apiKey) {
     try {
-      localStorage.setItem(API_KEY_CACHE, apiKey);
+      localStorage.setItem(CONFIG_CACHE, JSON.stringify(config));
     } catch {
       /* storage unavailable */
     }
   }
-  return apiKey;
+  return config;
 }
 
 async function init(): Promise<FirebaseBundle> {
-  const [apiKey, firebaseApp, firebaseAuth, firebaseDatabase] = await Promise.all([
-    firebaseApiKey(),
+  const [config, firebaseApp, firebaseAuth, firebaseDatabase] = await Promise.all([
+    loadConfig(),
     import("firebase/app"),
     import("firebase/auth"),
     import("firebase/database"),
   ]);
 
-  const config = {
-    apiKey,
-    authDomain: "silvex-ai.firebaseapp.com",
-    databaseURL: "https://silvex-ai-default-rtdb.firebaseio.com",
-    projectId: "silvex-ai",
-    storageBucket: "silvex-ai.firebasestorage.app",
-    messagingSenderId: "343959828375",
-    appId: "1:343959828375:web:6d2990763b1f3ea8b576d2",
-    measurementId: "G-B1MPW2N31F",
-  };
 
   const app = firebaseApp.getApps()[0] ?? firebaseApp.initializeApp(config);
   const bundle: FirebaseBundle = {
