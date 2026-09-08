@@ -20,6 +20,7 @@ import {
   update,
 } from "firebase/database";
 import { useStore } from "@/context/StoreContext";
+import { checkDeposit, DEPOSIT_ADDRESS } from "@/lib/deposit.functions";
 
 function Sheet({
   onClose,
@@ -409,30 +410,57 @@ export function WalletModal() {
 
       {tab === "deposit" ? (
         <div>
-          {config.qr ? (
-            <div className="mb-3 rounded-xl border border-dashed border-border bg-muted/50 p-4 text-center">
-              <img src={config.qr} alt="Payment QR code" className="mx-auto mb-2 w-32 rounded-lg" />
-              <p className="text-xs font-bold text-muted-foreground">Scan the QR & pay</p>
-            </div>
-          ) : null}
+          <p className="mb-2 text-xs font-bold text-muted-foreground">
+            Send USDT or USDC to this address, then paste the transaction hash.
+          </p>
+          <div className="mb-3 rounded-xl border border-dashed border-border bg-muted/50 p-3">
+            <p className="break-all font-mono text-[11px] font-bold">{DEPOSIT_ADDRESS}</p>
+            <button
+              onClick={() => {
+                navigator.clipboard?.writeText(DEPOSIT_ADDRESS);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 1500);
+              }}
+              className="mt-2 rounded-lg bg-foreground px-3 py-1 text-[11px] font-bold text-background"
+            >
+              {copied ? "Copied" : "Copy address"}
+            </button>
+          </div>
+          <div className="mb-2 flex gap-2">
+            {(
+              [
+                ["bep20", "BEP20 (BNB)"],
+                ["polygon", "Polygon"],
+              ] as const
+            ).map(([key, label]) => (
+              <button
+                key={key}
+                onClick={() => setChain(key)}
+                className={`flex-1 rounded-xl border p-2 text-xs font-bold ${
+                  chain === key ? "border-primary bg-primary/10 text-primary" : "border-border"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
           <input
-            className={`${inputCls} mb-2`}
-            placeholder="Amount (₹)"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-          />
-          <input
-            className={`${inputCls} mb-3`}
-            placeholder="Transaction ID (UTR)"
-            value={utr}
-            onChange={(e) => setUtr(e.target.value)}
+            className={`${inputCls} mb-3 font-mono text-xs`}
+            placeholder="Transaction hash (0x...)"
+            value={txHash}
+            onChange={(e) => setTxHash(e.target.value)}
           />
           <button
             onClick={submitDeposit}
-            className="w-full rounded-xl bg-emerald-500 py-3 font-bold text-white"
+            disabled={checking}
+            className="w-full rounded-xl bg-emerald-500 py-3 font-bold text-white disabled:opacity-60"
           >
-            Submit request
+            {checking ? "Checking on-chain…" : "Verify & add balance"}
           </button>
+          <p className="mt-2 text-center text-[11px] text-muted-foreground">
+            Verified payments are credited instantly in $. Anything older than 10 minutes is
+            reviewed by an admin.
+          </p>
         </div>
       ) : null}
 
