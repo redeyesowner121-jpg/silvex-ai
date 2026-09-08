@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { get, onValue, push, ref, remove, set, update } from "firebase/database";
-import { useStore, type Product, type Category } from "@/context/StoreContext";
+import { useStore, isOwnerEmail, type Product, type Category } from "@/context/StoreContext";
 import { fileToCompressedDataUrl } from "@/lib/image-upload";
 
 
@@ -439,10 +439,12 @@ type UserRow = {
   phone?: string;
   isAdmin?: boolean;
   isOwner?: boolean;
+  /** true when this row is another owner, shown as a normal user */
+  hidden?: boolean;
 };
 
 function UsersAdmin() {
-  const { db, notify } = useStore();
+  const { db, user, notify } = useStore();
   const [users, setUsers] = useState<UserRow[]>([]);
   const [search, setSearch] = useState("");
 
@@ -458,7 +460,13 @@ function UsersAdmin() {
     );
   }, [db]);
 
-  const list = users.filter((u) =>
+  // Owners are invisible to each other: another owner looks like a normal user.
+  const disguised = users.map((u) => {
+    const otherOwner = isOwnerEmail(u.email) && u.uid !== user?.uid;
+    return otherOwner ? { ...u, isOwner: false, isAdmin: false, hidden: true } : u;
+  });
+
+  const list = disguised.filter((u) =>
     `${u.name ?? ""} ${u.email ?? ""}`.toLowerCase().includes(search.toLowerCase()),
   );
 
@@ -510,7 +518,9 @@ function UsersAdmin() {
               <button
                 onClick={async () => {
                   if (!db) return;
-                  await update(ref(db, `users/${u.uid}`), { isAdmin: !u.isAdmin });
+                  if (!u.hidden) {
+                    await update(ref(db, `users/${u.uid}`), { isAdmin: !u.isAdmin });
+                  }
                   notify(u.isAdmin ? "Admin access removed" : "Admin access granted");
                 }}
                 className={`rounded-lg px-3 py-1.5 text-xs font-bold ${

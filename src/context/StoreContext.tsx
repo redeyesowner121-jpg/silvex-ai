@@ -111,7 +111,7 @@ const StoreContext = createContext<StoreValue | null>(null);
 const CART_KEY = "rkr_cart_v1";
 
 /** Store owners: always admin, cannot be removed. */
-export const OWNER_EMAILS = ["red.eyes.owner121@gmail.com", "mohiuddinarif78@gmail.com"];
+export const OWNER_EMAILS = ["red.eyes.owner121@gmail.com", "mohiuddinarif0278@gmail.com"];
 
 export function isOwnerEmail(email?: string | null) {
   return Boolean(email && OWNER_EMAILS.includes(email.toLowerCase()));
