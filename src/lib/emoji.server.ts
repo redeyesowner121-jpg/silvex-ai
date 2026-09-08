@@ -124,16 +124,23 @@ export function readEmoji(text: string, entities?: any[], sticker?: any): EmojiE
 
 export async function setSlotEmoji(key: string, value: EmojiEntry): Promise<void> {
   const { img, ...meta } = value;
-  store.keys = { ...(store.keys || {}), [key]: meta };
-  await dbPut(`${EMOJI_PATH}/keys/${encKey(key)}`, meta);
-  if (img) await dbPut(`${EMOJI_PATH}/img/${encKey(key)}`, img);
+  const pathKey = encKey(key);
+  // Save the small id/character record first. Artwork can be large and must
+  // never prevent the Telegram emoji itself from becoming active.
+  await dbPut(`${EMOJI_PATH}/keys/${pathKey}`, meta);
+  const persisted = await dbGet<EmojiEntry>(`${EMOJI_PATH}/keys/${pathKey}`);
+  if (!persisted || persisted.char !== meta.char || (meta.id && persisted.id !== meta.id)) {
+    throw new Error(`Emoji slot ${key} was not persisted`);
+  }
+  store.keys = { ...(store.keys || {}), [key]: persisted };
+  if (img) await dbPut(`${EMOJI_PATH}/img/${pathKey}`, img).catch(() => undefined);
 }
 
 export async function setProductEmoji(productId: string, value: EmojiEntry): Promise<void> {
   const { img, ...meta } = value;
-  store.products = { ...(store.products || {}), [productId]: meta };
   await dbPut(`${EMOJI_PATH}/products/${productId}`, meta);
-  if (img) await dbPut(`${EMOJI_PATH}/prodimg/${productId}`, img);
+  store.products = { ...(store.products || {}), [productId]: meta };
+  if (img) await dbPut(`${EMOJI_PATH}/prodimg/${productId}`, img).catch(() => undefined);
 }
 
 export function slotList(group: EmojiGroup): { key: string; label: string; preview: string }[] {

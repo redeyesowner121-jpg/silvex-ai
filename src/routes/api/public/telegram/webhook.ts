@@ -992,13 +992,31 @@ async function saveEmojiFromMessage(
     );
   }
 
-  // Premium emojis only render if this bot is allowed to use them. Test it once
-  // right here, and silently keep the plain emoji if Telegram refuses.
   const saved: typeof value = { ...value };
   let note = "";
+  const target = state.a;
+
+  // Persist the id immediately, before Telegram rendering checks or artwork
+  // downloads. This keeps every non-product slot reliable and makes the new
+  // emoji available to keyboard decoration in this same webhook request.
+  try {
+    if (state.k === "em_prod") {
+      if (!target) throw new Error("No product was selected");
+      await setProductEmoji(target, saved);
+    } else {
+      if (!target || (!EMOJI_SLOTS[target] && !target.startsWith("auto."))) {
+        throw new Error("No emoji slot was selected");
+      }
+      await setSlotEmoji(target, saved);
+    }
+  } catch (error) {
+    console.error("emoji metadata save failed", error);
+    return say(chatId, "❌ The emoji could not be saved. Please choose the slot and send it again.");
+  }
+
   if (value.id) {
-    // Keep the premium id no matter what: messages fall back to the plain emoji
-    // automatically if Telegram refuses to render it for this bot.
+    // Keep the premium id no matter what. This message also proves that the id
+    // extracted from the admin's message is being applied immediately.
     const ok = await tg("sendMessage", {
       chat_id: chatId,
       text: `<tg-emoji emoji-id="${value.id}">${value.char}</tg-emoji> premium emoji check`,
@@ -1012,20 +1030,26 @@ async function saveEmojiFromMessage(
     }
     // Grab the emoji artwork so the website can display the real premium emoji.
     const img = await fetchEmojiImage(value.id);
-    if (img) saved.img = img;
+    if (img) {
+      saved.img = img;
+      if (!target) return say(chatId, "❌ The selected emoji slot expired. Please choose it again.");
+      if (state.k === "em_prod") await setProductEmoji(target, saved);
+      else await setSlotEmoji(target, saved);
+    }
     else note += "\n\n⚠️ Could not download this emoji's image for the website.";
   }
 
   if (state.k === "em_prod") {
-    await setProductEmoji(state.a!, saved);
     await setState(chatId, null);
     await say(chatId, `✅ Product emoji saved: ${saved.char}${saved.id ? " (premium ✨)" : ""}${note}`);
     return emojiProducts(chatId);
   }
-  await setSlotEmoji(state.a!, saved);
   await setState(chatId, null);
-  await say(chatId, `✅ Emoji saved: ${saved.char}${saved.id ? " (premium ✨)" : ""}${note}`);
-  return emojiSlots(chatId, EMOJI_SLOTS[state.a!]?.group ?? "normal");
+  await say(
+    chatId,
+    `✅ Emoji saved and applied: ${saved.id ? `<tg-emoji emoji-id="${saved.id}">${saved.char}</tg-emoji>` : saved.char}${saved.id ? " (premium ✨)" : ""}${note}`,
+  );
+  return emojiSlots(chatId, target ? (EMOJI_SLOTS[target]?.group ?? "normal") : "normal");
 }
 
 
