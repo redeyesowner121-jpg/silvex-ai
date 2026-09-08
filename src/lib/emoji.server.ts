@@ -1,5 +1,6 @@
-/** Server-only emoji registry for the Telegram bot (normal, button and product emojis). */
+/** Server-only emoji registry for the Telegram bot and the website. */
 import { dbGet, dbPatch, dbPut } from "./telegram.server";
+import { WEB_EMOJI_SLOTS } from "./web-emoji";
 
 export type EmojiEntry = { id?: string; char: string };
 export type EmojiStore = {
