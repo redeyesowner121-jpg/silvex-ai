@@ -106,7 +106,11 @@ type StoreValue = {
   notify: (msg: string) => void;
 };
 
-const StoreContext = createContext<StoreValue | null>(null);
+// Keep one context instance across hot reloads so the provider and consumers
+// never end up on two different copies of this module.
+const g = globalThis as unknown as { __rkrStoreContext?: React.Context<StoreValue | null> };
+const StoreContext = g.__rkrStoreContext ?? createContext<StoreValue | null>(null);
+g.__rkrStoreContext = StoreContext;
 
 const CART_KEY = "rkr_cart_v1";
 
