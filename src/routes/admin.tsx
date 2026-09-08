@@ -21,7 +21,15 @@ export const Route = createFileRoute("/admin")({
 });
 
 const input = "w-full rounded-xl border border-border bg-muted/60 p-2.5 text-sm outline-none";
-const TABS = ["Orders", "Requests", "Products", "Coupons", "Users", "Settings"] as const;
+const TABS = [
+  "Dashboard",
+  "Orders",
+  "Requests",
+  "Products",
+  "Coupons",
+  "Users",
+  "Settings",
+] as const;
 type Tab = (typeof TABS)[number];
 
 type OrderRow = {
@@ -33,8 +41,9 @@ type OrderRow = {
   phone?: string;
   note?: string;
   date: string;
-  items?: Array<{ title: string; qty: number }>;
+  items?: Array<{ id?: string; title: string; qty: number; price?: number }>;
 };
+
 
 type RequestRow = {
   id: string;
