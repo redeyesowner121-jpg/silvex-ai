@@ -321,9 +321,12 @@ export function ProductsAdmin({ products }: { products: Product[] }) {
                         </span>
                       ) : p.delivery === "repeat" ? (
                         "repeated"
+                      ) : p.delivery === "supplier" ? (
+                        `supplier #${p.supplierId} · ${p.supplierStock ?? 0} in stock · cost $${p.supplierPrice ?? 0} · ${p.markup ?? 130}%`
                       ) : (
                         "manual"
                       )}
+
                     </p>
                   </div>
                 </div>
