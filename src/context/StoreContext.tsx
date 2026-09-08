@@ -26,6 +26,7 @@ export type Product = {
   /** auto = deliver one stock line per unit, repeat = same link every time, manual = admin delivers */
   delivery?: "auto" | "repeat" | "manual";
   stock?: string[];
+  usedStock?: Record<string, { content: string; orderId?: string; email?: string; date?: string }>;
 };
 
 export type CartItem = Product & {
@@ -56,6 +57,7 @@ export type SiteConfig = {
   depositAddress?: string;
   supportLink?: string;
   minOrder?: number;
+  lowStockAlert?: number;
   categories?: Category[];
 };
 
