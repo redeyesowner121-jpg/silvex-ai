@@ -26,9 +26,14 @@ export const WEB_EMOJI_SLOTS: Record<string, { label: string; char: string }> = 
   "web.ok": { label: "Order received", char: "✅" },
 };
 
-export type WebEmojiMap = Record<string, { char?: string; id?: string }>;
+export type WebEmojiMap = Record<string, { char?: string; id?: string; img?: string }>;
 
 /** Resolve a website emoji, falling back to the built-in default. */
 export function webEmoji(map: WebEmojiMap | null | undefined, key: string): string {
   return map?.[key]?.char || WEB_EMOJI_SLOTS[key]?.char || "";
+}
+
+/** Image of the premium emoji the admin picked, when one was captured. */
+export function webEmojiImg(map: WebEmojiMap | null | undefined, key: string): string {
+  return map?.[key]?.img || "";
 }
