@@ -148,7 +148,7 @@ function Admin() {
         deliveredAt: new Date().toISOString(),
       });
       if (deliverFor.email) {
-        void sendMail(db, {
+        sendMail(db, {
           to: deliverFor.email,
           subject: `${config.siteName || "SILENT SELLER"} · Order ${deliverFor.orderId.slice(-6)} delivered`,
           html: emailShell(
@@ -164,6 +164,15 @@ function Admin() {
               ctaUrl: "https://silvex-ai.lovable.app/orders",
             },
           ),
+          receipt: {
+            orderId: deliverFor.orderId,
+            siteName: config.siteName || "SILENT SELLER",
+            total: Number(deliverFor.total || 0),
+            note: deliverNote.trim() || undefined,
+            items: delivered,
+          },
+        }).then((r) => {
+          if (!r.ok) notify(`Email not sent: ${r.error}`);
         });
       }
       void notifyTelegramOrder({
