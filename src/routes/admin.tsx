@@ -458,7 +458,12 @@ function ProductsAdmin({ products }: { products: Product[] }) {
               <div className="min-w-0">
                 <p className="truncate text-sm font-bold">{p.title}</p>
                 <p className="text-xs text-muted-foreground">
-                  ${p.price} · {p.type} · {p.salesCount ?? 0} sold
+                  ${p.price} · {p.type} · {p.salesCount ?? 0} sold ·{" "}
+                  {p.delivery === "auto"
+                    ? `${(p.stock || []).filter(Boolean).length} in stock`
+                    : p.delivery === "repeat"
+                      ? "repeated"
+                      : "manual"}
                 </p>
               </div>
             </div>
