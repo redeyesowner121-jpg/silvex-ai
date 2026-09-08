@@ -627,15 +627,31 @@ function SettingsAdmin({
   config,
   banner,
 }: {
-  config: { qr?: string; fee?: number; marquee?: string };
+  config: {
+    qr?: string;
+    fee?: number;
+    marquee?: string;
+    siteName?: string;
+    siteTagline?: string;
+    depositAddress?: string;
+    supportLink?: string;
+    minOrder?: number;
+    categories?: Category[];
+  };
   banner: { title?: string; desc?: string; link?: string };
 }) {
-  const { db, products, notify } = useStore();
+  const { db, products, notify, categories: liveCategories } = useStore();
   const [cfg, setCfg] = useState({
     qr: config.qr ?? "",
     fee: String(config.fee ?? 25),
     marquee: config.marquee ?? "",
+    siteName: config.siteName ?? "RKR Premium",
+    siteTagline: config.siteTagline ?? "",
+    depositAddress: config.depositAddress ?? "",
+    supportLink: config.supportLink ?? "",
+    minOrder: String(config.minOrder ?? 0),
   });
+  const [cats, setCats] = useState<Category[]>(liveCategories);
   const [bn, setBn] = useState({
     title: banner.title ?? "",
     desc: banner.desc ?? "",
@@ -644,15 +660,65 @@ function SettingsAdmin({
   const [notice, setNotice] = useState("");
   const [fs, setFs] = useState({ pid: "", price: "", hours: "2" });
 
+  async function saveConfig(extra: Record<string, unknown> = {}) {
+    if (!db) return;
+    await update(ref(db, "site_settings/config"), {
+      qr: cfg.qr,
+      fee: Number(cfg.fee || 0),
+      marquee: cfg.marquee,
+      siteName: cfg.siteName,
+      siteTagline: cfg.siteTagline,
+      depositAddress: cfg.depositAddress.trim(),
+      supportLink: cfg.supportLink,
+      minOrder: Number(cfg.minOrder || 0),
+      ...extra,
+    });
+    notify("Settings saved");
+  }
+
   return (
     <div className="space-y-4">
       <div className="space-y-2 rounded-2xl border border-border bg-card p-4">
-        <h2 className="text-sm font-black">Global settings</h2>
+        <h2 className="text-sm font-black">Store identity</h2>
         <input
           className={input}
-          placeholder="Payment QR image URL"
-          value={cfg.qr}
-          onChange={(e) => setCfg({ ...cfg, qr: e.target.value })}
+          placeholder="Website name"
+          value={cfg.siteName}
+          onChange={(e) => setCfg({ ...cfg, siteName: e.target.value })}
+        />
+        <input
+          className={input}
+          placeholder="Tagline"
+          value={cfg.siteTagline}
+          onChange={(e) => setCfg({ ...cfg, siteTagline: e.target.value })}
+        />
+        <input
+          className={input}
+          placeholder="Support / WhatsApp link"
+          value={cfg.supportLink}
+          onChange={(e) => setCfg({ ...cfg, supportLink: e.target.value })}
+        />
+        <input
+          className={input}
+          placeholder="Scrolling notice text"
+          value={cfg.marquee}
+          onChange={(e) => setCfg({ ...cfg, marquee: e.target.value })}
+        />
+        <button
+          onClick={() => saveConfig()}
+          className="btn-grad w-full rounded-xl py-2.5 text-sm font-bold"
+        >
+          Save identity
+        </button>
+      </div>
+
+      <div className="space-y-2 rounded-2xl border border-border bg-card p-4">
+        <h2 className="text-sm font-black">Payments</h2>
+        <input
+          className={`${input} font-mono text-xs`}
+          placeholder="Crypto deposit address (0x...)"
+          value={cfg.depositAddress}
+          onChange={(e) => setCfg({ ...cfg, depositAddress: e.target.value })}
         />
         <input
           className={input}
@@ -662,25 +728,72 @@ function SettingsAdmin({
         />
         <input
           className={input}
-          placeholder="Scrolling notice text"
-          value={cfg.marquee}
-          onChange={(e) => setCfg({ ...cfg, marquee: e.target.value })}
+          placeholder="Minimum order ($)"
+          value={cfg.minOrder}
+          onChange={(e) => setCfg({ ...cfg, minOrder: e.target.value })}
+        />
+        <ImageField
+          label="Payment QR photo"
+          value={cfg.qr}
+          onChange={(qr) => setCfg({ ...cfg, qr })}
         />
         <button
           onClick={async () => {
-            if (!db) return;
-            await set(ref(db, "site_settings/config"), {
-              qr: cfg.qr,
-              fee: Number(cfg.fee || 0),
-              marquee: cfg.marquee,
-            });
-            notify("Settings saved");
+            const addr = cfg.depositAddress.trim();
+            if (addr && !/^0x[0-9a-fA-F]{40}$/.test(addr))
+              return notify("That deposit address does not look right");
+            await saveConfig();
           }}
           className="btn-grad w-full rounded-xl py-2.5 text-sm font-bold"
         >
-          Save settings
+          Save payment settings
         </button>
       </div>
+
+      <div className="space-y-2 rounded-2xl border border-border bg-card p-4">
+        <h2 className="text-sm font-black">Categories</h2>
+        {cats.map((c, i) => (
+          <div key={i} className="flex gap-2">
+            <input
+              className={`${input} w-16 text-center`}
+              value={c.icon ?? ""}
+              placeholder="🙂"
+              onChange={(e) =>
+                setCats(cats.map((x, xi) => (xi === i ? { ...x, icon: e.target.value } : x)))
+              }
+            />
+            <input
+              className={input}
+              value={c.label}
+              placeholder="Name"
+              onChange={(e) =>
+                setCats(cats.map((x, xi) => (xi === i ? { ...x, label: e.target.value } : x)))
+              }
+            />
+            <button
+              onClick={() => setCats(cats.filter((_, xi) => xi !== i))}
+              className="rounded-xl bg-destructive/10 px-3 text-xs font-bold text-destructive"
+            >
+              ✕
+            </button>
+          </div>
+        ))}
+        <button
+          onClick={() => setCats([...cats, { label: "", icon: "✨" }])}
+          className="w-full rounded-xl bg-muted py-2 text-xs font-bold"
+        >
+          + Add category
+        </button>
+        <button
+          onClick={() =>
+            saveConfig({ categories: cats.filter((c) => c.label.trim()) })
+          }
+          className="btn-grad w-full rounded-xl py-2.5 text-sm font-bold"
+        >
+          Save categories
+        </button>
+      </div>
+
 
       <div className="space-y-2 rounded-2xl border border-border bg-card p-4">
         <h2 className="text-sm font-black">Home banner</h2>
