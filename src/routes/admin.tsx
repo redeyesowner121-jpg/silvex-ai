@@ -427,6 +427,7 @@ function ProductsAdmin({ products }: { products: Product[] }) {
                     price: String(p.price),
                     logo: p.logo ?? "",
                     link: p.link ?? "",
+                    delivery: p.delivery ?? "manual",
                   })
                 }
                 className="rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary"
