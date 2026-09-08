@@ -1,0 +1,57 @@
+import { createServerFn } from "@tanstack/react-start";
+
+type OrderNotice = {
+  orderId: string;
+  email?: string | undefined;
+  total: number;
+  status: string;
+  items: { title: string; qty: number }[];
+  delivered?: { title: string; content: string }[] | undefined;
+  uid?: string | undefined;
+};
+
+function validate(input: OrderNotice): OrderNotice {
+  return {
+    orderId: String(input?.orderId || ""),
+    email: input?.email ? String(input.email) : undefined,
+    total: Number(input?.total || 0),
+    status: String(input?.status || "Pending"),
+    items: Array.isArray(input?.items)
+      ? input.items.slice(0, 30).map((i) => ({ title: String(i.title || ""), qty: Number(i.qty || 1) }))
+      : [],
+    delivered: Array.isArray(input?.delivered)
+      ? input.delivered.map((d) => ({ title: String(d.title || ""), content: String(d.content || "") }))
+      : undefined,
+    uid: input?.uid ? String(input.uid) : undefined,
+  };
+}
+
+/** Sends the order to the Telegram owners, and to the buyer when their account is linked. */
+export const notifyTelegramOrder = createServerFn({ method: "POST" })
+  .inputValidator(validate)
+  .handler(async ({ data }) => {
+    try {
+      const { dbGet, money, notifyOwners, tg, SITE_URL } = await import("./telegram.server");
+      const lines = data.items.map((i) => `• ${i.title} x${i.qty}`).join("\n");
+      await notifyOwners(
+        `🛒 <b>New website order</b>\n${lines}\nBuyer: ${data.email || "-"}\nTotal: ${money(data.total)}\nOrder: ${data.orderId}\nStatus: ${data.status}`,
+      );
+      if (data.uid) {
+        const chatId = await dbGet<number>(`users/${data.uid}/telegramChatId`);
+        if (chatId) {
+          const delivered = data.delivered?.length
+            ? `\n\n${data.delivered.map((d) => `${d.title}\n<code>${d.content}</code>`).join("\n\n")}`
+            : "";
+          await tg("sendMessage", {
+            chat_id: chatId,
+            text: `🧾 <b>Order ${data.orderId}</b>\n${lines}\nTotal: ${money(data.total)}\nStatus: ${data.status}${delivered}\n\n🌐 Website: ${SITE_URL}`,
+            parse_mode: "HTML",
+            reply_markup: { inline_keyboard: [[{ text: "🌐 Visit website", url: SITE_URL }]] },
+          }).catch(() => undefined);
+        }
+      }
+      return { ok: true as const };
+    } catch (err) {
+      return { ok: false as const, error: err instanceof Error ? err.message : "notify failed" };
+    }
+  });
