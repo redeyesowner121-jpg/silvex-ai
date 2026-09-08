@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { get, onValue, push, ref, remove, set, update } from "firebase/database";
 import { useStore, isOwnerEmail, type Product, type Category } from "@/context/StoreContext";
 import { fileToCompressedDataUrl } from "@/lib/image-upload";
@@ -370,6 +370,30 @@ export function ProductsAdmin({ products }: { products: Product[] }) {
                   </button>
                 </div>
               </div>
+
+              {p.delivery === "supplier" ? (
+                <div className="mt-2 flex items-center gap-2 rounded-lg bg-muted/50 p-2">
+                  <span className="text-[11px] font-bold text-muted-foreground">Profit %</span>
+                  <input
+                    type="number"
+                    defaultValue={String(p.markup ?? 130)}
+                    onChange={(e) => (markupRef.current[p.id] = e.target.value)}
+                    className="w-20 rounded-lg border border-border bg-card px-2 py-1 text-xs font-bold"
+                  />
+                  <span className="text-[11px] text-muted-foreground">
+                    → ${((Number(p.supplierPrice ?? 0) * (Number(markupRef.current[p.id] ?? p.markup ?? 130) || 130)) / 100).toFixed(2)}
+                  </span>
+                  <button
+                    onClick={() =>
+                      saveMarkup(p.id, Number(markupRef.current[p.id] ?? p.markup ?? 130))
+                    }
+                    disabled={supBusy}
+                    className="ml-auto rounded-lg bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-600 disabled:opacity-60"
+                  >
+                    Save
+                  </button>
+                </div>
+              ) : null}
 
               <button
                 onClick={async () => {
