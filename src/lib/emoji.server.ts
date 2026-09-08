@@ -16,6 +16,16 @@ export type EmojiStore = {
 
 export const EMOJI_PATH = "telegramEmoji";
 
+/**
+ * Slot names contain dots ("web.home"), which Firebase does not allow inside a
+ * key, so they are stored with "~" instead. This was silently dropping every
+ * saved emoji before.
+ */
+export const encKey = (key: string) => key.split(".").join("~");
+export const decKey = (key: string) => key.split("~").join(".");
+const decodeMap = (map: Record<string, any> | null) =>
+  Object.fromEntries(Object.entries(map || {}).map(([k, v]) => [decKey(k), v]));
+
 /** Built-in slots the admin can override with premium (custom) emojis. */
 export type EmojiGroup = "button" | "normal" | "web";
 
@@ -58,7 +68,7 @@ export async function loadEmojis(): Promise<void> {
     dbGet<Record<string, EmojiEntry>>(`${EMOJI_PATH}/keys`),
     dbGet<Record<string, EmojiEntry>>(`${EMOJI_PATH}/products`),
   ]);
-  store = { keys: keys || {}, products: products || {} };
+  store = { keys: decodeMap(keys), products: products || {} };
 }
 
 function entry(key: string): EmojiEntry {
@@ -115,8 +125,8 @@ export function readEmoji(text: string, entities?: any[], sticker?: any): EmojiE
 export async function setSlotEmoji(key: string, value: EmojiEntry): Promise<void> {
   const { img, ...meta } = value;
   store.keys = { ...(store.keys || {}), [key]: meta };
-  await dbPatch(`${EMOJI_PATH}/keys`, { [key]: meta });
-  if (img) await dbPut(`${EMOJI_PATH}/img/${key}`, img);
+  await dbPut(`${EMOJI_PATH}/keys/${encKey(key)}`, meta);
+  if (img) await dbPut(`${EMOJI_PATH}/img/${encKey(key)}`, img);
 }
 
 export async function setProductEmoji(productId: string, value: EmojiEntry): Promise<void> {
@@ -156,7 +166,10 @@ export async function collectEmojis(texts: string[]): Promise<void> {
   }
   if (!Object.keys(patch).length) return;
   store.keys = { ...(store.keys || {}), ...patch };
-  await dbPatch(`${EMOJI_PATH}/keys`, patch);
+  await dbPatch(
+    `${EMOJI_PATH}/keys`,
+    Object.fromEntries(Object.entries(patch).map(([k, v]) => [encKey(k), v])),
+  );
 }
 
 /* ---------------- coloured inline buttons (Bot API 10.3) ---------------- */
@@ -270,17 +283,17 @@ export async function syncEmojiImages(): Promise<number> {
     if (!v?.id) continue;
     if (v.img) {
       // Legacy record: artwork used to sit inside the key itself.
-      await dbPut(`${EMOJI_PATH}/img/${key}`, v.img);
+      await dbPut(`${EMOJI_PATH}/img/${encKey(key)}`, v.img);
       const meta = { char: v.char, id: v.id };
       store.keys = { ...(store.keys || {}), [key]: meta };
-      await dbPut(`${EMOJI_PATH}/keys/${key}`, meta);
+      await dbPut(`${EMOJI_PATH}/keys/${encKey(key)}`, meta);
       fixed++;
       continue;
     }
-    if (slotImgs?.[key]) continue;
+    if (slotImgs?.[encKey(key)]) continue;
     const img = await fetchEmojiImage(v.id);
     if (!img) continue;
-    await dbPut(`${EMOJI_PATH}/img/${key}`, img);
+    await dbPut(`${EMOJI_PATH}/img/${encKey(key)}`, img);
     fixed++;
   }
 

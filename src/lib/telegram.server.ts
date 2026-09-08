@@ -122,18 +122,20 @@ export async function dbGet<T = any>(path: string): Promise<T | null> {
   return (await res.json()) as T | null;
 }
 
+async function dbWrite(method: string, path: string, value: unknown): Promise<void> {
+  const res = await fetch(`${RTDB_URL}/${path}.json`, { method, body: JSON.stringify(value) });
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    throw new Error(`Database write failed (${res.status}): ${detail.slice(0, 200)}`);
+  }
+}
+
 export async function dbPut(path: string, value: unknown): Promise<void> {
-  await fetch(`${RTDB_URL}/${path}.json`, {
-    method: "PUT",
-    body: JSON.stringify(value),
-  });
+  await dbWrite("PUT", path, value);
 }
 
 export async function dbPatch(path: string, value: Record<string, unknown>): Promise<void> {
-  await fetch(`${RTDB_URL}/${path}.json`, {
-    method: "PATCH",
-    body: JSON.stringify(value),
-  });
+  await dbWrite("PATCH", path, value);
 }
 
 export async function dbPush(path: string, value: unknown): Promise<void> {
