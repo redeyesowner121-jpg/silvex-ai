@@ -856,7 +856,11 @@ async function adminDecideRequest(chatId: number, id: string, approve: boolean) 
 async function adminProducts(chatId: number) {
   const all = (await dbGet<Record<string, Product>>("products")) || {};
   const list = Object.entries(all).slice(0, 30);
-  if (!list.length) return say(chatId, "No products yet.", adminBack);
+  const newBtn = [{ text: "➕ New product", callback_data: "a:pnew" }];
+  if (!list.length)
+    return say(chatId, "📦 No products yet. Add your first one.", {
+      inline_keyboard: [newBtn, [{ text: "⬅️ Admin", callback_data: "a:home" }]],
+    });
   await say(chatId, "📦 <b>Products</b>\nTap one to manage.", {
     inline_keyboard: [
       ...list.map(([id, p]) => [
@@ -865,6 +869,7 @@ async function adminProducts(chatId: number) {
           callback_data: `a:p:${id}`,
         },
       ]),
+      newBtn,
       [{ text: "⬅️ Admin", callback_data: "a:home" }],
     ],
   });
@@ -876,7 +881,7 @@ async function adminProduct(chatId: number, id: string) {
   const stock = Array.isArray(p.stock) ? p.stock.filter(Boolean).length : 0;
   await say(
     chatId,
-    `📦 <b>${p.title}</b>\nPrice: ${money(p.price || 0)}\nDelivery: ${p.delivery || "manual"}\nStock: ${stock}\nSales: ${p.salesCount || 0}`,
+    `📦 <b>${p.title}</b>\n${p.desc ? `${p.desc}\n` : ""}Price: ${money(p.price || 0)}\nDelivery: ${p.delivery || "manual"}\nStock: ${stock}\nSales: ${p.salesCount || 0}`,
     {
       inline_keyboard: [
         [
@@ -884,15 +889,24 @@ async function adminProduct(chatId: number, id: string) {
           { text: "➕ Add stock", callback_data: `a:ps:${id}` },
         ],
         [
+          { text: "✏️ Title", callback_data: `a:pt:${id}` },
+          { text: "📝 Description", callback_data: `a:pdsc:${id}` },
+        ],
+        [
           { text: "⚡ Auto", callback_data: `a:pd:${id}:auto` },
           { text: "🔁 Repeat", callback_data: `a:pd:${id}:repeat` },
           { text: "🕐 Manual", callback_data: `a:pd:${id}:manual` },
+        ],
+        [
+          { text: "🧹 Clear stock", callback_data: `a:psc:${id}` },
+          { text: "🗑 Delete", callback_data: `a:pdel:${id}` },
         ],
         [{ text: "⬅️ Products", callback_data: "a:prod" }],
       ],
     },
   );
 }
+
 
 async function adminUsers(chatId: number) {
   await setState(chatId, { k: "u_find" });
@@ -1137,6 +1151,31 @@ async function handleCallback(chatId: number, data: string) {
     if (key === "pd") {
       await dbPatch(`products/${arg}`, { delivery: arg2 });
       return adminProduct(chatId, arg!);
+    }
+    if (key === "pnew") {
+      await setState(chatId, { k: "p_new" });
+      return say(
+        chatId,
+        "🆕 <b>New product</b>\n\nSend it as:\n<code>Title | price | description</code>\n\nExample:\n<code>Netflix 1 Month | 3.5 | Private profile, 30 days warranty</code>",
+        { inline_keyboard: [[{ text: "❌ Cancel", callback_data: "a:prod" }]] },
+      );
+    }
+    if (key === "pt") {
+      await setState(chatId, { k: "p_title", a: arg! });
+      return say(chatId, "Send the new product title.");
+    }
+    if (key === "pdsc") {
+      await setState(chatId, { k: "p_desc", a: arg! });
+      return say(chatId, "Send the new product description.");
+    }
+    if (key === "psc") {
+      await dbPut(`products/${arg}/stock`, []);
+      return adminProduct(chatId, arg!);
+    }
+    if (key === "pdel") {
+      await dbPut(`products/${arg}`, null);
+      await say(chatId, "🗑 Product deleted.");
+      return adminProducts(chatId);
     }
     if (key === "users") return adminUsers(chatId);
     if (key === "u") return adminUser(chatId, arg!);
@@ -1397,6 +1436,36 @@ async function handleText(chatId: number, text: string, entities?: any[], sticke
       await dbPut(`products/${state.a}/stock`, [...cur.filter(Boolean), ...lines]);
       await setState(chatId, null);
       await say(chatId, `✅ Added ${lines.length} stock items.`);
+      return adminProduct(chatId, state.a!);
+    }
+    if (k === "p_new") {
+      const [rawTitle = "", rawPrice = "", ...rest] = t.split("|");
+      const title = rawTitle.trim();
+      const price = Number(String(rawPrice).replace(/[^0-9.]/g, "")) || 0;
+      if (!title || !price)
+        return say(chatId, "❌ Send it as: <code>Title | price | description</code>");
+      const id = `p${Date.now().toString(36)}`;
+      await dbPut(`products/${id}`, {
+        id,
+        title,
+        price,
+        desc: rest.join("|").trim(),
+        delivery: "manual",
+        stock: [],
+        salesCount: 0,
+      });
+      await setState(chatId, null);
+      await say(chatId, `✅ Product created: <b>${title}</b> — ${money(price)}`);
+      return adminProduct(chatId, id);
+    }
+    if (k === "p_title") {
+      await dbPatch(`products/${state.a}`, { title: t.trim() });
+      await setState(chatId, null);
+      return adminProduct(chatId, state.a!);
+    }
+    if (k === "p_desc") {
+      await dbPatch(`products/${state.a}`, { desc: t.trim() });
+      await setState(chatId, null);
       return adminProduct(chatId, state.a!);
     }
     if (k === "u_find") return adminFindUser(chatId, t);
