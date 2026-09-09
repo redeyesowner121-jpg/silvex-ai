@@ -132,6 +132,9 @@ export async function tg(method: string, body: Record<string, unknown>): Promise
   if (!api) throw new Error("Telegram bot is not configured. Add the bot token in the admin panel.");
   const payload: Record<string, unknown> = { ...body };
   if (payload["reply_markup"]) payload["reply_markup"] = decorateMarkup(payload["reply_markup"]);
+  if (payload["text"]) payload["text"] = decorateText(payload["text"]);
+  if (payload["caption"]) payload["caption"] = decorateText(payload["caption"]);
+
 
   const call = async (data: Record<string, unknown>) => {
     const res = await fetch(api.url, {
