@@ -7,11 +7,14 @@ export type RazorpayConf = {
   webhookSecret: string;
   /** How many rupees equal one dollar (default 100). */
   inrPerDollar: number;
+  /** Extra verification fee added on top of the payment, in percent (default 3). */
+  feePercent: number;
 };
 
 /** Admin panel settings first, project secrets as fallback. */
 export async function razorpayConfig(): Promise<RazorpayConf> {
   const c = (await dbGet<any>("site_settings/config").catch(() => null)) || {};
+  const feeRaw = Number(c.razorpayFeePercent);
   return {
     keyId: String(c.razorpayKeyId || process.env["RAZORPAY_KEY_ID"] || "").trim(),
     keySecret: String(c.razorpayKeySecret || process.env["RAZORPAY_KEY_SECRET"] || "").trim(),
@@ -19,6 +22,7 @@ export async function razorpayConfig(): Promise<RazorpayConf> {
       c.razorpayWebhookSecret || process.env["RAZORPAY_WEBHOOK_SECRET"] || "",
     ).trim(),
     inrPerDollar: Number(c.inrPerDollar) > 0 ? Number(c.inrPerDollar) : 100,
+    feePercent: Number.isFinite(feeRaw) && feeRaw >= 0 ? feeRaw : 3,
   };
 }
 
@@ -28,7 +32,9 @@ function authHeader(conf: RazorpayConf): string {
   return `Basic ${btoa(raw)}`;
 }
 
-export type LinkResult = { ok: true; url: string; id: string; inr: number } | { ok: false; error: string };
+export type LinkResult =
+  | { ok: true; url: string; id: string; inr: number; baseInr: number; feeInr: number; feePercent: number }
+  | { ok: false; error: string };
 
 /** Creates a unique payment link for one deposit. */
 export async function createPaymentLink(opts: {
