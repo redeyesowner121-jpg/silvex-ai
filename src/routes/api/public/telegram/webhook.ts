@@ -331,16 +331,28 @@ async function sendProduct(chatId: number, id: string) {
   if (!p) return say(chatId, "Product not found.", backHome);
   await collectEmojis([p.title || "", p.desc || ""]).catch(() => undefined);
   const stock = Array.isArray(p.stock) ? p.stock.filter(Boolean).length : 0;
-  const availability =
+  const stockLine =
     p.delivery === "auto"
-      ? `${em("norm.box")} In stock: ${stock}`
+      ? `${em("norm.box")} Stock: <b>${stock}</b>`
       : p.delivery === "supplier"
-        ? `${em("norm.fast")} Instant delivery · In stock: ${Number(p.supplierStock || 0)}`
+        ? `${em("norm.box")} Stock: <b>${Number(p.supplierStock || 0)}</b>`
         : p.delivery === "repeat"
-          ? `${em("norm.fast")} Instant delivery`
+          ? `${em("norm.box")} Stock: <b>Unlimited</b>`
           : `${em("norm.clock")} Manual delivery`;
+  const availability =
+    p.delivery === "manual" ? "" : `\n${em("norm.fast")} Instant delivery`;
+  const sold = Number((p as any).salesCount || 0);
 
-  const text = `${productEmoji(id)} <b>${p.title || "Item"}</b>\n\n${p.desc || ""}\n\n${em("norm.money")} Price: <b>${money(p.price || 0)}</b>\n${availability}`;
+  const escDesc = String(p.desc || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+  const text =
+    `${productEmoji(id)} <b>${p.title || "Item"}</b>\n\n` +
+    `${em("norm.money")} Price: <b>${money(p.price || 0)}</b>\n` +
+    `${stockLine}\n${em("norm.cart") || "🛒"} Total sold: <b>${sold}</b>${availability}` +
+    (escDesc ? `\n\n<blockquote expandable>${escDesc}</blockquote>` : "");
+
   const keyboard = {
     inline_keyboard: [
       [{ text: `🟢 ${be("btn.buy")} Buy now — ${money(p.price || 0)}`, callback_data: `b:${id}` }],
