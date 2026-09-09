@@ -39,6 +39,7 @@ export function SettingsAdmin({
     razorpayKeySecret?: string;
     razorpayWebhookSecret?: string;
     inrPerDollar?: number;
+    razorpayFeePercent?: number;
 
   };
   banner: { title?: string; desc?: string; link?: string };
@@ -67,6 +68,7 @@ export function SettingsAdmin({
     razorpayKeySecret: config.razorpayKeySecret ?? "",
     razorpayWebhookSecret: config.razorpayWebhookSecret ?? "",
     inrPerDollar: String(config.inrPerDollar ?? 100),
+    razorpayFeePercent: String(config.razorpayFeePercent ?? 3),
 
   });
   const [cats, setCats] = useState<Category[]>(liveCategories);
