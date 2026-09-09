@@ -97,7 +97,8 @@ export function ProductsAdmin({ products }: { products: Product[] }) {
     setSupBusy(false);
     if (!r.ok) return notify(r.error || "Supplier not reachable");
     setSupplier(r.products);
-    if (r.balance) notify(`Supplier balance: ${r.balance.balance} ${r.balance.currency}`);
+    if (r.balance)
+      setSupBal({ balance: Number(r.balance.balance || 0), currency: r.balance.currency || "USDT" });
   }
 
   async function runSync() {
