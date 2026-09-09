@@ -9,6 +9,8 @@ export type RazorpayConf = {
   inrPerDollar: number;
   /** Extra verification fee added on top of the payment, in percent (default 3). */
   feePercent: number;
+  /** Shop name shown on the payment page so buyers know what they are paying for. */
+  siteName: string;
 };
 
 /** Admin panel settings first, project secrets as fallback. */
@@ -23,6 +25,7 @@ export async function razorpayConfig(): Promise<RazorpayConf> {
     ).trim(),
     inrPerDollar: Number(c.inrPerDollar) > 0 ? Number(c.inrPerDollar) : 100,
     feePercent: Number.isFinite(feeRaw) && feeRaw >= 0 ? feeRaw : 3,
+    siteName: String(c.siteName || "").trim() || "Store",
   };
 }
 
