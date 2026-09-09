@@ -392,6 +392,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<StoreValue>(() => {
     const cartTotal = cart.reduce((sum, i) => sum + i.price * i.qty, 0);
+    const emojiCharMap = buildEmojiCharMap(emojis, emojiImgs);
     return {
       ready,
       auth,
