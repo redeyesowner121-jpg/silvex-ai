@@ -1,7 +1,10 @@
 /**
  * Referral programme. Every value here is a fallback only — the admin panel
  * (Settings → Referral & links) overrides them from site_settings/config.
+ * On a brand-new database the built-in bot/website links do not apply.
  */
+import { isOriginProject } from "./origin";
+
 export const REFERRAL_DEFAULTS = {
   rate: 0.02,
   cap: 201,
@@ -9,7 +12,7 @@ export const REFERRAL_DEFAULTS = {
   websiteUrl: "https://silvex-ai.com",
 };
 
-let settings = { ...REFERRAL_DEFAULTS };
+let settings = { rate: REFERRAL_DEFAULTS.rate, cap: REFERRAL_DEFAULTS.cap, botUsername: "", websiteUrl: "" };
 
 export type ReferralConfig = {
   referralRate?: number | string;
@@ -32,8 +35,17 @@ export function applyReferralConfig(c?: ReferralConfig | null) {
 export const referralRate = () => settings.rate;
 export const referralCap = () => settings.cap;
 export const referralPercent = () => Math.round(settings.rate * 10000) / 100;
-export const websiteUrl = () => settings.websiteUrl;
-export const botUsername = () => settings.botUsername;
+export const websiteUrl = () => {
+  if (settings.websiteUrl) return settings.websiteUrl;
+  if (isOriginProject()) return REFERRAL_DEFAULTS.websiteUrl;
+  if (typeof window !== "undefined") return window.location.origin;
+  return "";
+};
+export const botUsername = () => {
+  if (settings.botUsername) return settings.botUsername;
+  return isOriginProject() ? REFERRAL_DEFAULTS.botUsername : "";
+};
+
 
 export function websiteReferralLink(code: string) {
   return `${websiteUrl()}/?ref=${code}`;
