@@ -284,8 +284,10 @@ const NEUTRAL = /^(menu|back|admin|orders|products|emojis|home)$/i;
 
 /** Map a saved emoji character back to its premium (custom emoji) id, if any. */
 function customIdForChar(char: string): string | undefined {
-  for (const v of Object.values(store.keys || {})) if (v?.char === char && v.id) return v.id;
-  for (const v of Object.values(store.products || {})) if (v?.char === char && v.id) return v.id;
+  const want = String(char || "").replace(/\uFE0F/g, "");
+  const same = (v?: EmojiEntry) => String(v?.char || "").replace(/\uFE0F/g, "") === want;
+  for (const v of Object.values(store.keys || {})) if (same(v) && v.id) return v.id;
+  for (const v of Object.values(store.products || {})) if (same(v) && v.id) return v.id;
   return undefined;
 }
 
@@ -317,6 +319,12 @@ function styleFor(label: string): "primary" | "success" | "danger" | undefined {
 
 const EMOJI_RE = /\p{Extended_Pictographic}(\uFE0F|\u200D\p{Extended_Pictographic})*/gu;
 
+/**
+ * "🛍" and "🛍️" are the same emoji to a person, but different strings. Matching
+ * on the plain form is why some places changed and others did not.
+ */
+const normEmoji = (c: string) => String(c || "").replace(/\uFE0F/g, "");
+
 let charCache: { at: number; plain: Map<string, string>; html: Map<string, string> } | null = null;
 
 /**
@@ -329,9 +337,10 @@ function charMaps() {
   const plain = new Map<string, string>();
   const html = new Map<string, string>();
   const put = (from: string, e: EmojiEntry) => {
-    if (!from || !e?.char) return;
-    plain.set(from, e.char);
-    html.set(from, render(e));
+    const key = normEmoji(from);
+    if (!key || !e?.char) return;
+    plain.set(key, e.char);
+    html.set(key, render(e));
   };
   for (const [key, def] of Object.entries(EMOJI_SLOTS)) {
     const saved = store.keys?.[key];
@@ -350,7 +359,9 @@ export function upgradeText(text: string): string {
   return text
     .split(/(<tg-emoji[^>]*>[\s\S]*?<\/tg-emoji>)/g)
     .map((part) =>
-      part.startsWith("<tg-emoji") ? part : part.replace(EMOJI_RE, (m) => html.get(m) || m),
+      part.startsWith("<tg-emoji")
+        ? part
+        : part.replace(EMOJI_RE, (m) => html.get(normEmoji(m)) || m),
     )
     .join("");
 }
@@ -359,7 +370,7 @@ export function upgradeText(text: string): string {
 function upgradeButtonText(text: string): string {
   const { plain } = charMaps();
   if (!plain.size) return text;
-  return text.replace(EMOJI_RE, (m) => plain.get(m) || m);
+  return text.replace(EMOJI_RE, (m) => plain.get(normEmoji(m)) || m);
 }
 
 export function decorateKeyboard(markup: any): any {

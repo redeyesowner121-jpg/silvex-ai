@@ -404,7 +404,7 @@ export async function tgSendPhoto(
     await tg("sendPhoto", {
       chat_id: chatId,
       photo: photo.trim(),
-      ...(caption ? { caption, parse_mode: "HTML" } : {}),
+      ...(caption ? { caption: String(decorateText(caption)), parse_mode: "HTML" } : {}),
       ...(keyboard ? { reply_markup: decorateMarkup(keyboard) } : {}),
     });
     return true;
