@@ -35,6 +35,11 @@ export function SettingsAdmin({
     telegramOwners?: string;
     supplierApiUrl?: string;
     supplierApiKey?: string;
+    razorpayKeyId?: string;
+    razorpayKeySecret?: string;
+    razorpayWebhookSecret?: string;
+    inrPerDollar?: number;
+
   };
   banner: { title?: string; desc?: string; link?: string };
 }) {

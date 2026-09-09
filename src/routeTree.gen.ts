@@ -16,6 +16,7 @@ import { Route as CartRouteImport } from './routes/cart'
 import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as ProductsRouteImport } from './routes/products'
 import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as ApiPublicRazorpayWebhookRouteImport } from './routes/api/public/razorpay/webhook'
 import { Route as ApiPublicResellerSplatRouteImport } from './routes/api/public/reseller/$'
 import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/public/telegram/webhook'
 
@@ -54,6 +55,12 @@ const ProfileRoute = ProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicRazorpayWebhookRoute =
+  ApiPublicRazorpayWebhookRouteImport.update({
+    id: '/api/public/razorpay/webhook',
+    path: '/api/public/razorpay/webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicResellerSplatRoute = ApiPublicResellerSplatRouteImport.update({
   id: '/api/public/reseller/$',
   path: '/api/public/reseller/$',
@@ -74,6 +81,7 @@ export interface FileRoutesByFullPath {
   '/orders': typeof OrdersRoute
   '/products': typeof ProductsRoute
   '/profile': typeof ProfileRoute
+  '/api/public/razorpay/webhook': typeof ApiPublicRazorpayWebhookRoute
   '/api/public/reseller/$': typeof ApiPublicResellerSplatRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
 }
@@ -85,6 +93,7 @@ export interface FileRoutesByTo {
   '/orders': typeof OrdersRoute
   '/products': typeof ProductsRoute
   '/profile': typeof ProfileRoute
+  '/api/public/razorpay/webhook': typeof ApiPublicRazorpayWebhookRoute
   '/api/public/reseller/$': typeof ApiPublicResellerSplatRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
 }
@@ -97,6 +106,7 @@ export interface FileRoutesById {
   '/orders': typeof OrdersRoute
   '/products': typeof ProductsRoute
   '/profile': typeof ProfileRoute
+  '/api/public/razorpay/webhook': typeof ApiPublicRazorpayWebhookRoute
   '/api/public/reseller/$': typeof ApiPublicResellerSplatRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
 }
@@ -110,6 +120,7 @@ export interface FileRouteTypes {
     | '/orders'
     | '/products'
     | '/profile'
+    | '/api/public/razorpay/webhook'
     | '/api/public/reseller/$'
     | '/api/public/telegram/webhook'
   fileRoutesByTo: FileRoutesByTo
@@ -121,6 +132,7 @@ export interface FileRouteTypes {
     | '/orders'
     | '/products'
     | '/profile'
+    | '/api/public/razorpay/webhook'
     | '/api/public/reseller/$'
     | '/api/public/telegram/webhook'
   id:
@@ -132,6 +144,7 @@ export interface FileRouteTypes {
     | '/orders'
     | '/products'
     | '/profile'
+    | '/api/public/razorpay/webhook'
     | '/api/public/reseller/$'
     | '/api/public/telegram/webhook'
   fileRoutesById: FileRoutesById
@@ -144,6 +157,7 @@ export interface RootRouteChildren {
   OrdersRoute: typeof OrdersRoute
   ProductsRoute: typeof ProductsRoute
   ProfileRoute: typeof ProfileRoute
+  ApiPublicRazorpayWebhookRoute: typeof ApiPublicRazorpayWebhookRoute
   ApiPublicResellerSplatRoute: typeof ApiPublicResellerSplatRoute
   ApiPublicTelegramWebhookRoute: typeof ApiPublicTelegramWebhookRoute
 }
@@ -199,6 +213,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProfileRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/razorpay/webhook': {
+      id: '/api/public/razorpay/webhook'
+      path: '/api/public/razorpay/webhook'
+      fullPath: '/api/public/razorpay/webhook'
+      preLoaderRoute: typeof ApiPublicRazorpayWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/reseller/$': {
       id: '/api/public/reseller/$'
       path: '/api/public/reseller/$'
@@ -224,6 +245,7 @@ const rootRouteChildren: RootRouteChildren = {
   OrdersRoute: OrdersRoute,
   ProductsRoute: ProductsRoute,
   ProfileRoute: ProfileRoute,
+  ApiPublicRazorpayWebhookRoute: ApiPublicRazorpayWebhookRoute,
   ApiPublicResellerSplatRoute: ApiPublicResellerSplatRoute,
   ApiPublicTelegramWebhookRoute: ApiPublicTelegramWebhookRoute,
 }
