@@ -40,6 +40,10 @@ import {
   setSlotEmoji,
   setButtonColors,
   slotList,
+  slotStats,
+  productEmojiStats,
+  clearSlotEmoji,
+  clearProductEmoji,
   EMOJI_SLOTS,
 } from "@/lib/emoji.server";
 import type { ButtonColorMap } from "@/lib/button-colors";
