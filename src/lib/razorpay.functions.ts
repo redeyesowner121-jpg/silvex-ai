@@ -34,5 +34,9 @@ export const createDepositLink = createServerFn({ method: "POST" })
 export const razorpayStatus = createServerFn({ method: "GET" }).handler(async () => {
   const { razorpayConfig } = await import("./razorpay.server");
   const conf = await razorpayConfig();
-  return { enabled: Boolean(conf.keyId && conf.keySecret), inrPerDollar: conf.inrPerDollar };
+  return {
+    enabled: Boolean(conf.keyId && conf.keySecret),
+    inrPerDollar: conf.inrPerDollar,
+    feePercent: conf.feePercent,
+  };
 });

@@ -7,11 +7,14 @@ export type RazorpayConf = {
   webhookSecret: string;
   /** How many rupees equal one dollar (default 100). */
   inrPerDollar: number;
+  /** Extra verification fee added on top of the payment, in percent (default 3). */
+  feePercent: number;
 };
 
 /** Admin panel settings first, project secrets as fallback. */
 export async function razorpayConfig(): Promise<RazorpayConf> {
   const c = (await dbGet<any>("site_settings/config").catch(() => null)) || {};
+  const feeRaw = Number(c.razorpayFeePercent);
   return {
     keyId: String(c.razorpayKeyId || process.env["RAZORPAY_KEY_ID"] || "").trim(),
     keySecret: String(c.razorpayKeySecret || process.env["RAZORPAY_KEY_SECRET"] || "").trim(),
@@ -19,6 +22,7 @@ export async function razorpayConfig(): Promise<RazorpayConf> {
       c.razorpayWebhookSecret || process.env["RAZORPAY_WEBHOOK_SECRET"] || "",
     ).trim(),
     inrPerDollar: Number(c.inrPerDollar) > 0 ? Number(c.inrPerDollar) : 100,
+    feePercent: Number.isFinite(feeRaw) && feeRaw >= 0 ? feeRaw : 3,
   };
 }
 
@@ -28,7 +32,9 @@ function authHeader(conf: RazorpayConf): string {
   return `Basic ${btoa(raw)}`;
 }
 
-export type LinkResult = { ok: true; url: string; id: string; inr: number } | { ok: false; error: string };
+export type LinkResult =
+  | { ok: true; url: string; id: string; inr: number; baseInr: number; feeInr: number; feePercent: number }
+  | { ok: false; error: string };
 
 /** Creates a unique payment link for one deposit. */
 export async function createPaymentLink(opts: {
@@ -46,7 +52,10 @@ export async function createPaymentLink(opts: {
   }
   const usd = Math.round(Number(opts.usd) * 100) / 100;
   if (!usd || usd <= 0) return { ok: false, error: "Enter a valid amount." };
-  const inr = Math.round(usd * conf.inrPerDollar);
+  const baseInr = Math.round(usd * conf.inrPerDollar);
+  // Small verification fee added on top; the wallet still gets the full amount.
+  const feeInr = Math.round((baseInr * conf.feePercent) / 100);
+  const inr = baseInr + feeInr;
   if (inr < 1) return { ok: false, error: "Amount is too small." };
 
   // Razorpay rejects anything odd here, so only send details it accepts.
@@ -60,7 +69,7 @@ export async function createPaymentLink(opts: {
     amount: inr * 100,
     currency: "INR",
     accept_partial: false,
-    description: `Wallet top-up of $${usd.toFixed(2)}`.slice(0, 60),
+    description: `$${usd.toFixed(2)} top-up + ${conf.feePercent}% fee`.slice(0, 60),
     reference_id: `dep_${opts.uid}_${Date.now()}`.slice(0, 40),
     notify: { sms: false, email: Boolean(email) },
     reminder_enable: false,
@@ -69,6 +78,7 @@ export async function createPaymentLink(opts: {
       usd: String(usd),
       source: opts.source,
       email,
+      fee_inr: String(feeInr),
     },
   };
   const customer: Record<string, string> = {};
@@ -103,7 +113,15 @@ export async function createPaymentLink(opts: {
     return { ok: false, error: desc || `Payment provider error (${res.status})` };
   }
   if (!json?.short_url) return { ok: false, error: "Payment provider did not return a link." };
-  return { ok: true, url: String(json.short_url), id: String(json.id), inr };
+  return {
+    ok: true,
+    url: String(json.short_url),
+    id: String(json.id),
+    inr,
+    baseInr,
+    feeInr,
+    feePercent: conf.feePercent,
+  };
 }
 
 async function hmacHex(secret: string, payload: string): Promise<string> {

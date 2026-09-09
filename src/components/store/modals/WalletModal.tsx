@@ -47,6 +47,12 @@ export function WalletModal() {
   const depositAddress = config.depositAddress || DEPOSIT_ADDRESS;
   const rate = Number(config.inrPerDollar) > 0 ? Number(config.inrPerDollar) : 100;
   const cardsOn = Boolean(config.razorpayKeyId);
+  const payFee =
+    Number.isFinite(Number(config.razorpayFeePercent)) && Number(config.razorpayFeePercent) >= 0
+      ? Number(config.razorpayFeePercent)
+      : 3;
+  const payBase = Math.round((Number(payAmount) || 0) * rate);
+  const payFeeInr = Math.round((payBase * payFee) / 100);
 
   async function startCardPayment() {
     if (!user) return notify("Sign in first");
@@ -186,7 +192,8 @@ export function WalletModal() {
             <div className="mb-5 rounded-2xl border border-border bg-card p-4">
               <p className="text-sm font-black">Pay by card, UPI or netbanking</p>
               <p className="mb-2 text-[11px] text-muted-foreground">
-                ₹{rate} = $1. Your balance updates on its own once the payment is done.
+                ₹{rate} = $1, plus a {payFee}% verification fee. Your balance updates on its own
+                once the payment is done.
               </p>
               <input
                 className={`${inputCls} mb-2`}
@@ -197,7 +204,8 @@ export function WalletModal() {
               />
               {Number(payAmount) > 0 ? (
                 <p className="mb-2 text-[11px] font-bold text-muted-foreground">
-                  You pay ₹{Math.round(Number(payAmount) * rate)}
+                  You pay ₹{payBase + payFeeInr} (₹{payBase} + ₹{payFeeInr} fee) and get $
+                  {Number(payAmount)} in your balance
                 </p>
               ) : null}
               <button
