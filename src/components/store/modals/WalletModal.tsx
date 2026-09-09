@@ -205,10 +205,11 @@ export function WalletModal() {
               />
               {Number(payAmount) > 0 ? (
                 <p className="mb-2 text-[11px] font-bold text-muted-foreground">
-                  You pay ₹{payBase + payFeeInr} (₹{payBase} + ₹{payFeeInr} fee) and get $
-                  {Number(payAmount)} in your balance
+                  You pay ₹{(payBase + payFeeInr).toFixed(2)} (₹{payBase.toFixed(2)} + ₹
+                  {payFeeInr.toFixed(2)} fee) and get ${Number(payAmount)} in your balance
                 </p>
               ) : null}
+
               <button
                 onClick={startCardPayment}
                 disabled={paying}
