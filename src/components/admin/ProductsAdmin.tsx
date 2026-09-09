@@ -36,6 +36,25 @@ export function ProductsAdmin({ products }: { products: Product[] }) {
     (p) => p.delivery === "auto" && (p.stock || []).filter(Boolean).length <= threshold,
   );
 
+  const linkedProducts = products.filter((p) => p.delivery === "supplier");
+  const costliest = linkedProducts.reduce((m, p) => Math.max(m, Number(p.supplierPrice ?? 0)), 0);
+  const cheapest = linkedProducts.length
+    ? Math.min(...linkedProducts.map((p) => Number(p.supplierPrice ?? 0)))
+    : 0;
+  const balance = Number(supBal?.balance ?? 0);
+  const balanceLow = supBal != null && linkedProducts.length > 0 && balance < costliest;
+  const balanceEmpty = supBal != null && linkedProducts.length > 0 && balance < cheapest;
+
+  async function loadBalance() {
+    const r = await fetchSupplierBalance();
+    if (r.ok) setSupBal({ balance: Number(r.balance || 0), currency: r.currency || "USDT" });
+  }
+
+  useEffect(() => {
+    loadBalance().catch(() => undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     if (lowStock.length)
       notify(
