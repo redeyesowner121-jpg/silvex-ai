@@ -65,6 +65,8 @@ type Cfg = {
   depositAddress?: string;
   forceJoin?: string;
   reviewChannel?: string;
+  razorpayKeyId?: string;
+  inrPerDollar?: number | string;
 };
 
 const CFG = "site_settings/config";
@@ -385,10 +387,54 @@ async function startDeposit(chatId: number) {
   await ensureUser(chatId);
   const c = await cfg();
   await setState(chatId, { k: "dep_hash" });
+  const rows: any[][] = [];
+  if (String(c.razorpayKeyId || "").trim()) {
+    rows.push([{ text: "💳 Pay by card / UPI", callback_data: "depcard" }]);
+  }
+  rows.push([{ text: "❌ Cancel", callback_data: "home" }]);
   await say(
     chatId,
     `➕ <b>Deposit</b>\n\nSend USDT / USDC (BEP20 or Polygon) to:\n<code>${c.depositAddress || "-"}</code>\n\nThen send the transaction hash (TXID) here. Payments confirmed within 10 minutes are credited automatically.`,
+    { inline_keyboard: rows },
+  );
+}
+
+async function startCardDeposit(chatId: number) {
+  await ensureUser(chatId);
+  const c = await cfg();
+  if (!String(c.razorpayKeyId || "").trim()) {
+    return say(chatId, "Card / UPI payments are not switched on yet.", backHome);
+  }
+  const rate = Number(c.inrPerDollar) > 0 ? Number(c.inrPerDollar) : 100;
+  await setState(chatId, { k: "dep_card" });
+  await say(
+    chatId,
+    `💳 <b>Card / UPI deposit</b>\n\n₹${rate} = $1.\nSend how many dollars you want to add (for example <code>5</code>).`,
     { inline_keyboard: [[{ text: "❌ Cancel", callback_data: "home" }]] },
+  );
+}
+
+async function createCardLink(chatId: number, text: string) {
+  const usd = Number(String(text).replace(/[^\d.]/g, ""));
+  if (!Number.isFinite(usd) || usd <= 0) return say(chatId, "Send a number, like 5.");
+  const uid = await ensureUser(chatId);
+  const u = (await dbGet<any>(`users/${uid}`)) || {};
+  const { createPaymentLink } = await import("@/lib/razorpay.server");
+  const res = await createPaymentLink({
+    usd,
+    uid,
+    name: u.name || "",
+    email: u.email || "",
+    phone: u.phone || "",
+    source: "telegram",
+    siteUrl: siteUrl(),
+  });
+  if (!res.ok) return say(chatId, `❌ ${res.error}`, backHome);
+  await setState(chatId, null);
+  return say(
+    chatId,
+    `💳 <b>Payment link ready</b>\n\nAmount: ${money(usd)} (₹${res.inr})\n\nPay with any card, UPI or netbanking. Your balance is topped up on its own right after the payment.`,
+    { inline_keyboard: [[{ text: "💳 Pay now", url: res.url }], [{ text: "🏠 Home", callback_data: "home" }]] },
   );
 }
 
@@ -1280,6 +1326,7 @@ async function handleCallback(chatId: number, data: string) {
   if (data === "wallet") return sendWallet(chatId);
   if (data === "whist") return walletHistory(chatId);
   if (data === "dep") return startDeposit(chatId);
+  if (data === "depcard") return startCardDeposit(chatId);
   if (data === "wd") return startWithdraw(chatId);
   if (data === "profile") return sendProfile(chatId);
   if (data === "apikey") return sendApiKey(chatId, false);
@@ -1354,6 +1401,8 @@ async function handleText(chatId: number, text: string, entities?: any[], sticke
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t)) return say(chatId, "That does not look like an email. Send it like name@mail.com");
     return saveEmail(chatId, t);
   }
+
+  if (k === "dep_card") return createCardLink(chatId, t);
 
   if (k === "dep_hash") {
     const hash = t.trim();
