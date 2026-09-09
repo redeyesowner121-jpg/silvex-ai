@@ -71,6 +71,7 @@ type Cfg = {
   reviewChannel?: string;
   razorpayKeyId?: string;
   inrPerDollar?: number | string;
+  telegramOwners?: string | number[];
 };
 
 const CFG = "site_settings/config";
