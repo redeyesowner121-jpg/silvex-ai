@@ -1,5 +1,6 @@
 /** Server-only helpers for the Telegram bot + Firebase Realtime Database REST access. */
 import { createHash, timingSafeEqual } from "crypto";
+import { isOriginProject } from "./origin";
 
 /** Database URL: set FIREBASE_DATABASE_URL when remixing to another project. */
 const DEFAULT_RTDB_URL = "https://silvex-ai-default-rtdb.firebaseio.com";
@@ -7,12 +8,12 @@ export const rtdbUrl = () =>
   (process.env["FIREBASE_DATABASE_URL"] || DEFAULT_RTDB_URL).replace(/\/+$/, "");
 export const RTDB_URL = DEFAULT_RTDB_URL;
 
-/** Fallbacks only — the web admin panel overrides these from site_settings/config. */
+/** Fallbacks of the original store only — a new database starts empty. */
 const DEFAULT_SITE_URL = "https://silvex-ai.com";
 const DEFAULT_OWNER_IDS = [7926443195, 6898461453];
 
-let runtimeSiteUrl = DEFAULT_SITE_URL;
-let runtimeOwnerIds = DEFAULT_OWNER_IDS;
+let runtimeSiteUrl = "";
+let runtimeOwnerIds: number[] = [];
 
 let runtimeBotToken = "";
 
@@ -30,8 +31,11 @@ export function applyBotConfig(
 }
 
 export const SITE_URL_DEFAULT = DEFAULT_SITE_URL;
-export const siteUrl = () => runtimeSiteUrl;
-export const ownerIds = () => runtimeOwnerIds;
+export const siteUrl = () =>
+  runtimeSiteUrl || (isOriginProject() ? DEFAULT_SITE_URL : process.env["SITE_URL"] || "");
+export const ownerIds = () =>
+  runtimeOwnerIds.length ? runtimeOwnerIds : isOriginProject() ? DEFAULT_OWNER_IDS : [];
+
 
 
 const GATEWAY = "https://connector-gateway.lovable.dev/telegram";
