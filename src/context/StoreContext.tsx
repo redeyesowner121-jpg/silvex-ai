@@ -415,7 +415,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           : DEFAULT_CATEGORIES,
       siteName: config.siteName || "SILENT SELLER",
       emoji: (key: string) => webEmoji(emojis, key),
-      emojiImg: (key: string) => emojiImgs[key] || webEmojiImg(emojis, key),
+      emojiImg: (key: string) => resolveEmojiImg(emojis, emojiImgs, emojiCharMap, key),
       emojiFor: (char: string) => emojiCharMap[normEmoji(char)] || { char },
 
       banner,
