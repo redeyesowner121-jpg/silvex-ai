@@ -73,10 +73,10 @@ export async function createPaymentLink(opts: {
   const name = String(opts.name || "").trim().slice(0, 60);
 
   const body: Record<string, unknown> = {
-    amount: inr * 100,
+    amount: totalPaise,
     currency: "INR",
     accept_partial: false,
-    description: `$${usd.toFixed(2)} top-up + ${conf.feePercent}% fee`.slice(0, 60),
+    description: `${conf.siteName}: $${usd.toFixed(2)} wallet top-up (incl ${conf.feePercent}% fee)`.slice(0, 60),
     reference_id: `dep_${opts.uid}_${Date.now()}`.slice(0, 40),
     notify: { sms: false, email: Boolean(email) },
     reminder_enable: false,
@@ -85,9 +85,10 @@ export async function createPaymentLink(opts: {
       usd: String(usd),
       source: opts.source,
       email,
-      fee_inr: String(feeInr),
+      fee_inr: feeInr.toFixed(2),
     },
   };
+
   const customer: Record<string, string> = {};
   if (name) customer["name"] = name;
   if (email) customer["email"] = email;
