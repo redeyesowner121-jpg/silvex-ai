@@ -1,5 +1,6 @@
 import { useStore, type Product } from "@/context/StoreContext";
 import { Emo } from "@/components/store/Emo";
+import { EmoText } from "@/components/store/EmoText";
 
 export function ProductCard({ product }: { product: Product }) {
   const { openProduct, addToCart, emoji } = useStore();
@@ -25,7 +26,9 @@ export function ProductCard({ product }: { product: Product }) {
             {product.type}
           </span>
         ) : null}
-        <h3 className="line-clamp-2 text-sm font-bold leading-tight">{product.title}</h3>
+        <h3 className="line-clamp-2 text-sm font-bold leading-tight">
+          <EmoText text={product.title || ""} />
+        </h3>
         <div className="mt-auto flex items-center justify-between pt-3">
           <span className="text-lg font-black">${product.price}</span>
           <button

@@ -14,7 +14,7 @@ import type { Database } from "firebase/database";
 import { toast } from "sonner";
 import { getFirebase } from "@/lib/firebase";
 import { applyReferralConfig } from "@/lib/referral";
-import { webEmoji, webEmojiImg, type WebEmojiMap } from "@/lib/web-emoji";
+import { buildEmojiCharMap, webEmoji, webEmojiImg, type WebEmojiMap } from "@/lib/web-emoji";
 
 export type Product = {
   id: string;
@@ -132,6 +132,8 @@ type StoreValue = {
   siteName: string;
   emoji: (key: string) => string;
   emojiImg: (key: string) => string;
+  /** Same emoji everywhere: built-in character -> what the admin picked. */
+  emojiFor: (char: string) => { char: string; img?: string };
 
   banner: Banner;
   flashSale: FlashSale;
@@ -390,6 +392,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<StoreValue>(() => {
     const cartTotal = cart.reduce((sum, i) => sum + i.price * i.qty, 0);
+    const emojiCharMap = buildEmojiCharMap(emojis, emojiImgs);
     return {
       ready,
       auth,
@@ -411,6 +414,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       siteName: config.siteName || "SILENT SELLER",
       emoji: (key: string) => webEmoji(emojis, key),
       emojiImg: (key: string) => emojiImgs[key] || webEmojiImg(emojis, key),
+      emojiFor: (char: string) => emojiCharMap[char] || { char },
 
       banner,
       flashSale,

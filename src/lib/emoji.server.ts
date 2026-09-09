@@ -57,6 +57,41 @@ export const EMOJI_SLOTS: Record<string, { label: string; char: string; group: E
   "norm.ok": { label: "Success", char: "✅", group: "normal" },
   "norm.fail": { label: "Error", char: "❌", group: "normal" },
   "norm.desc": { label: "Description bullet", char: "•", group: "normal" },
+  "norm.warn": { label: "Warning", char: "⚠️", group: "normal" },
+  "norm.info": { label: "Info", char: "ℹ️", group: "normal" },
+  "norm.wait": { label: "Pending", char: "⏳", group: "normal" },
+  "norm.party": { label: "Delivered", char: "🎉", group: "normal" },
+  "norm.link": { label: "Link", char: "🔗", group: "normal" },
+  "norm.mail": { label: "Email", char: "📧", group: "normal" },
+  "norm.phone": { label: "Phone / WhatsApp", char: "📱", group: "normal" },
+  "norm.receipt": { label: "Receipt", char: "🧾", group: "normal" },
+  "norm.card": { label: "Card / UPI", char: "💳", group: "normal" },
+  "norm.coin": { label: "Crypto", char: "🪙", group: "normal" },
+  "norm.gift": { label: "Referral gift", char: "🎁", group: "normal" },
+  "norm.users": { label: "Referrals", char: "👥", group: "normal" },
+  "norm.user": { label: "Profile", char: "👤", group: "normal" },
+  "norm.chart": { label: "Stats", char: "📈", group: "normal" },
+  "norm.tag": { label: "Discount tag", char: "🏷️", group: "normal" },
+  "norm.fire": { label: "Hot / sold", char: "🔥", group: "normal" },
+  "norm.new": { label: "New item", char: "🆕", group: "normal" },
+  "norm.crown": { label: "Owner", char: "👑", group: "normal" },
+  "norm.bell": { label: "Notification", char: "🔔", group: "normal" },
+  "norm.search": { label: "Search", char: "🔍", group: "normal" },
+  "norm.pin": { label: "Note", char: "📌", group: "normal" },
+  "btn.home": { label: "Home button", char: "🏠", group: "button" },
+  "btn.admin": { label: "Admin button", char: "🛠", group: "button" },
+  "btn.settings": { label: "Settings button", char: "⚙️", group: "button" },
+  "btn.stats": { label: "Stats button", char: "📊", group: "button" },
+  "btn.cancel": { label: "Cancel button", char: "❌", group: "button" },
+  "btn.confirm": { label: "Confirm button", char: "✅", group: "button" },
+  "btn.refresh": { label: "Refresh button", char: "🔄", group: "button" },
+  "btn.next": { label: "Next button", char: "➡️", group: "button" },
+  "btn.copy": { label: "Copy button", char: "📋", group: "button" },
+  "btn.channel": { label: "Channel button", char: "📣", group: "button" },
+  "btn.emoji": { label: "Emoji button", char: "😍", group: "button" },
+  "btn.history": { label: "History button", char: "🕘", group: "button" },
+  "btn.help": { label: "Help button", char: "❓", group: "button" },
+  "btn.edit": { label: "Edit button", char: "✏️", group: "button" },
 };
 
 let store: EmojiStore = {};
@@ -155,6 +190,51 @@ export async function setProductEmoji(productId: string, value: EmojiEntry): Pro
   store.products = { ...(store.products || {}), [productId]: meta };
   loadedAt = Date.now();
   if (img) await dbPut(`${EMOJI_PATH}/prodimg/${productId}`, img).catch(() => undefined);
+}
+
+/** Put a slot back to its built-in emoji. */
+export async function clearSlotEmoji(key: string): Promise<void> {
+  const pathKey = encKey(key);
+  await dbPut(`${EMOJI_PATH}/keys/${pathKey}`, null).catch(() => undefined);
+  await dbPut(`${EMOJI_PATH}/img/${pathKey}`, null).catch(() => undefined);
+  const next = { ...(store.keys || {}) };
+  delete next[key];
+  store.keys = next;
+  loadedAt = Date.now();
+}
+
+/** Put a product back to the default shop emoji. */
+export async function clearProductEmoji(productId: string): Promise<void> {
+  await dbPut(`${EMOJI_PATH}/products/${productId}`, null).catch(() => undefined);
+  await dbPut(`${EMOJI_PATH}/prodimg/${productId}`, null).catch(() => undefined);
+  const next = { ...(store.products || {}) };
+  delete next[productId];
+  store.products = next;
+  loadedAt = Date.now();
+}
+
+/** How many slots in a group already use a premium emoji. */
+export function slotStats(group: EmojiGroup): { total: number; set: number; premium: number } {
+  const list = slotList(group);
+  let set = 0;
+  let premium = 0;
+  for (const s of list) {
+    const saved = store.keys?.[s.key];
+    if (saved?.char || saved?.id) set++;
+    if (saved?.id) premium++;
+  }
+  return { total: list.length, set, premium };
+}
+
+export function productEmojiStats(ids: string[]): { total: number; set: number; premium: number } {
+  let set = 0;
+  let premium = 0;
+  for (const id of ids) {
+    const saved = store.products?.[id];
+    if (saved?.char || saved?.id) set++;
+    if (saved?.id) premium++;
+  }
+  return { total: ids.length, set, premium };
 }
 
 export function slotList(group: EmojiGroup): { key: string; label: string; preview: string }[] {
