@@ -64,6 +64,13 @@ export function webEmojiImg(map: WebEmojiMap | null | undefined, key: string): s
 }
 
 /**
+ * "🛍" and "🛍️" are the same emoji to a person but different text, so matching
+ * ignores the invisible variation mark. Without this some places changed and
+ * others kept the old emoji.
+ */
+export const normEmoji = (c: string) => String(c || "").replace(/\uFE0F/g, "");
+
+/**
  * The same emoji can show in many places, not only the slot it was set on.
  * This maps a built-in character to what the admin chose (character + artwork)
  * so every appearance on the website follows the admin's choice.
@@ -76,11 +83,11 @@ export function buildEmojiCharMap(
   for (const [key, def] of Object.entries(WEB_EMOJI_SLOTS)) {
     const saved = map?.[key];
     if (!saved?.char && !saved?.img && !imgs?.[key]) continue;
-    out[def.char] = { char: saved?.char || def.char, img: imgs?.[key] || saved?.img || "" };
+    out[normEmoji(def.char)] = { char: saved?.char || def.char, img: imgs?.[key] || saved?.img || "" };
   }
   for (const [key, saved] of Object.entries(map || {})) {
     const img = imgs?.[key] || saved?.img || "";
-    if (saved?.char && img) out[saved.char] = { char: saved.char, img };
+    if (saved?.char && img) out[normEmoji(saved.char)] = { char: saved.char, img };
   }
   return out;
 }
