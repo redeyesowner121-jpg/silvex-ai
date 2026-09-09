@@ -143,10 +143,12 @@ export function buildEmojiCharMap(
   imgs: Record<string, string> | null | undefined,
 ): Record<string, { char: string; img?: string }> {
   const out: Record<string, { char: string; img?: string }> = {};
-  for (const [key, def] of Object.entries(WEB_EMOJI_SLOTS)) {
+  const defs: Record<string, { char: string }> = { ...WEB_EMOJI_SLOTS, ...BOT_EMOJI_SLOTS };
+  for (const [key, def] of Object.entries(defs)) {
     const saved = map?.[key];
-    if (!saved?.char && !saved?.img && !imgs?.[key]) continue;
-    out[normEmoji(def.char)] = { char: saved?.char || def.char, img: imgs?.[key] || saved?.img || "" };
+    const img = imgs?.[key] || saved?.img || "";
+    if (!saved?.char && !img) continue;
+    out[normEmoji(def.char)] = { char: saved?.char || def.char, img };
   }
   for (const [key, saved] of Object.entries(map || {})) {
     const img = imgs?.[key] || saved?.img || "";
@@ -154,6 +156,23 @@ export function buildEmojiCharMap(
   }
   return out;
 }
+
+/**
+ * Artwork for a website slot. When that exact slot has none, the artwork the
+ * admin set in the bot for the same emoji character is used instead.
+ */
+export function resolveEmojiImg(
+  map: WebEmojiMap | null | undefined,
+  imgs: Record<string, string> | null | undefined,
+  charMap: Record<string, { char: string; img?: string }>,
+  key: string,
+): string {
+  const direct = imgs?.[key] || map?.[key]?.img || "";
+  if (direct) return direct;
+  const char = map?.[key]?.char || WEB_EMOJI_SLOTS[key]?.char || BOT_EMOJI_SLOTS[key]?.char || "";
+  return charMap[normEmoji(char)]?.img || "";
+}
+
 
 const EMOJI_RE = /\p{Extended_Pictographic}(\uFE0F|\u200D\p{Extended_Pictographic})*/gu;
 
