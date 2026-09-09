@@ -51,7 +51,7 @@ function ProfilePage() {
 
   if (!user) {
     return (
-      <div className="mx-auto max-w-md px-4 py-16 text-center">
+      <div className="mx-auto w-full max-w-md px-4 py-16 md:max-w-3xl text-center">
         <h1 className="mb-2 text-xl font-bold">My profile</h1>
         <p className="mb-6 text-sm text-muted-foreground">Log in to see your profile.</p>
         <button
@@ -72,7 +72,7 @@ function ProfilePage() {
   }
 
   return (
-    <div className="mx-auto max-w-md px-4 py-5">
+    <div className="mx-auto w-full max-w-md px-4 py-5 md:max-w-3xl">
       <h1 className="mb-4 text-xl font-bold">My profile</h1>
       <div className="mb-6 flex items-center gap-4">
         <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-xl font-bold uppercase text-primary">

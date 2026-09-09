@@ -136,7 +136,7 @@ function Home() {
       <h2 className="mb-3 text-sm font-black uppercase tracking-wide text-muted-foreground">
         Categories
       </h2>
-      <div className="mb-6 grid grid-cols-4 gap-3">
+      <div className="mb-6 grid grid-cols-4 gap-3 md:grid-cols-8">
         {categories.map((c) => (
           <button
             key={c.label}
@@ -157,7 +157,7 @@ function Home() {
           No products yet. An admin can add them from the admin panel.
         </p>
       ) : (
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           {trending.map((p) => (
             <ProductCard key={p.id} product={p} />
           ))}
