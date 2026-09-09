@@ -1,11 +1,12 @@
 # Remix this store
 
-Everything below can be changed without touching code.
+Change the Firebase project and the whole site starts over as a brand-new,
+empty store. Nothing from the original shop carries over.
 
-## 1. Point it at your own database (optional but recommended)
+## 1. Point it at your own database
 
 Create a free Firebase project (Realtime Database + Email/Password + Google sign-in),
-then add these project secrets:
+then set these project secrets:
 
 | Secret | Example |
 | --- | --- |
@@ -20,11 +21,15 @@ then add these project secrets:
 
 Add your published domain to Firebase → Authentication → Settings → Authorized domains.
 
-## 2. Sign in and open `/admin`
+## 2. What happens automatically on a new database
 
-The first owner email is set in code (`FIXED_OWNER_EMAIL` in
-`src/context/StoreContext.tsx`) — change that single line to your own email when
-you remix, then add any other owners from Settings.
+- Old browser data (cart, cached settings) is cleared the moment the site
+  notices a different project.
+- No owner, no admin, no products, no orders, no wallet address, no bot.
+- The **first account that signs in becomes the owner** of the new store.
+- In Telegram, the **first person who opens the bot becomes the bot owner**.
+- The original store's owner emails, deposit wallet, bot username, website
+  address and Telegram owner IDs do **not** apply to any other project.
 
 ## 3. Set everything from Settings
 
@@ -34,8 +39,9 @@ you remix, then add any other owners from Settings.
 - SMTP (Spacemail or any provider) for order and delivery emails
 - Telegram bot token from BotFather + bot username → press
   **Save & connect Telegram bot**. It verifies the token and registers the
-  webhook automatically, no code or connector needed.
+  webhook automatically.
 - Telegram owner IDs, bot button colours, premium emojis
+- Supplier (reseller) API address and key, Razorpay keys
 
 Products, stock, coupons, users and orders are all managed from the admin panel
-too, on the website and inside the bot (`/admin`).
+on the website and inside the bot (`/admin`).
