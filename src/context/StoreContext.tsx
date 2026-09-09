@@ -437,7 +437,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         Array.isArray(config.categories) && config.categories.length
           ? config.categories
           : DEFAULT_CATEGORIES,
-      siteName: config.siteName || "SILENT SELLER",
+      siteName: config.siteName || (isOriginProject() ? "SILENT SELLER" : "My Store"),
       emoji: (key: string) => webEmoji(emojis, key),
       emojiImg: (key: string) => resolveEmojiImg(emojis, emojiImgs, emojiCharMap, key),
       emojiFor: (char: string) => emojiCharMap[normEmoji(char)] || { char },
