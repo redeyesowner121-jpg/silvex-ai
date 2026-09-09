@@ -1402,6 +1402,8 @@ async function handleText(chatId: number, text: string, entities?: any[], sticke
     return saveEmail(chatId, t);
   }
 
+  if (k === "dep_card") return createCardLink(chatId, t);
+
   if (k === "dep_hash") {
     const hash = t.trim();
     if (!/^0x[0-9a-fA-F]{64}$/.test(hash)) return say(chatId, "Send the full transaction hash, starting with 0x.");
