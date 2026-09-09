@@ -37,11 +37,43 @@ export function WalletModal() {
   const [checking, setChecking] = useState(false);
   const [copied, setCopied] = useState(false);
   const [upi, setUpi] = useState("");
+  const [payAmount, setPayAmount] = useState("");
+  const [paying, setPaying] = useState(false);
+  const [payLink, setPayLink] = useState("");
   const [history, setHistory] = useState<
     Array<{ id: string; type: string; amount: number; desc: string; date: string }>
   >([]);
   const fee = Number(config.fee ?? 25);
   const depositAddress = config.depositAddress || DEPOSIT_ADDRESS;
+  const rate = Number(config.inrPerDollar) > 0 ? Number(config.inrPerDollar) : 100;
+  const cardsOn = Boolean(config.razorpayKeyId);
+
+  async function startCardPayment() {
+    if (!user) return notify("Sign in first");
+    const usd = Number(payAmount);
+    if (!usd || usd <= 0) return notify("Enter how many dollars you want to add");
+    setPaying(true);
+    try {
+      const res = await createDepositLink({
+        data: {
+          usd,
+          uid: user.uid,
+          name: profile?.name ?? "",
+          email: user.email ?? "",
+          phone: profile?.phone ?? "",
+          siteUrl: config.siteUrl ?? "",
+        },
+      });
+      if (!res.ok) return notify(res.error);
+      setPayLink(res.url);
+      window.open(res.url, "_blank");
+    } catch (e) {
+      notify(e instanceof Error ? e.message : "Could not start the payment");
+    } finally {
+      setPaying(false);
+    }
+  }
+
 
 
   useEffect(() => {
