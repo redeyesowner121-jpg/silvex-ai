@@ -192,6 +192,51 @@ export async function setProductEmoji(productId: string, value: EmojiEntry): Pro
   if (img) await dbPut(`${EMOJI_PATH}/prodimg/${productId}`, img).catch(() => undefined);
 }
 
+/** Put a slot back to its built-in emoji. */
+export async function clearSlotEmoji(key: string): Promise<void> {
+  const pathKey = encKey(key);
+  await dbPut(`${EMOJI_PATH}/keys/${pathKey}`, null).catch(() => undefined);
+  await dbPut(`${EMOJI_PATH}/img/${pathKey}`, null).catch(() => undefined);
+  const next = { ...(store.keys || {}) };
+  delete next[key];
+  store.keys = next;
+  loadedAt = Date.now();
+}
+
+/** Put a product back to the default shop emoji. */
+export async function clearProductEmoji(productId: string): Promise<void> {
+  await dbPut(`${EMOJI_PATH}/products/${productId}`, null).catch(() => undefined);
+  await dbPut(`${EMOJI_PATH}/prodimg/${productId}`, null).catch(() => undefined);
+  const next = { ...(store.products || {}) };
+  delete next[productId];
+  store.products = next;
+  loadedAt = Date.now();
+}
+
+/** How many slots in a group already use a premium emoji. */
+export function slotStats(group: EmojiGroup): { total: number; set: number; premium: number } {
+  const list = slotList(group);
+  let set = 0;
+  let premium = 0;
+  for (const s of list) {
+    const saved = store.keys?.[s.key];
+    if (saved?.char || saved?.id) set++;
+    if (saved?.id) premium++;
+  }
+  return { total: list.length, set, premium };
+}
+
+export function productEmojiStats(ids: string[]): { total: number; set: number; premium: number } {
+  let set = 0;
+  let premium = 0;
+  for (const id of ids) {
+    const saved = store.products?.[id];
+    if (saved?.char || saved?.id) set++;
+    if (saved?.id) premium++;
+  }
+  return { total: ids.length, set, premium };
+}
+
 export function slotList(group: EmojiGroup): { key: string; label: string; preview: string }[] {
   const built = Object.entries(EMOJI_SLOTS)
     .filter(([, v]) => v.group === group)
