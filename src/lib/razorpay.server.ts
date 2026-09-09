@@ -49,40 +49,60 @@ export async function createPaymentLink(opts: {
   const inr = Math.round(usd * conf.inrPerDollar);
   if (inr < 1) return { ok: false, error: "Amount is too small." };
 
+  // Razorpay rejects anything odd here, so only send details it accepts.
+  const digits = String(opts.phone || "").replace(/[^\d+]/g, "");
+  const contact = digits.length >= 8 && digits.length <= 14 ? digits : "";
+  const rawEmail = String(opts.email || "").trim();
+  const email = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawEmail) ? rawEmail : "";
+  const name = String(opts.name || "").trim().slice(0, 60);
+
   const body: Record<string, unknown> = {
     amount: inr * 100,
     currency: "INR",
     accept_partial: false,
-    description: `Wallet top-up of $${usd.toFixed(2)}`,
-    reference_id: `dep_${opts.uid}_${Date.now()}`,
-    notify: { sms: false, email: Boolean(opts.email) },
+    description: `Wallet top-up of $${usd.toFixed(2)}`.slice(0, 60),
+    reference_id: `dep_${opts.uid}_${Date.now()}`.slice(0, 40),
+    notify: { sms: false, email: Boolean(email) },
     reminder_enable: false,
     notes: {
       uid: opts.uid,
       usd: String(usd),
       source: opts.source,
-      email: opts.email || "",
+      email,
     },
   };
   const customer: Record<string, string> = {};
-  if (opts.name) customer["name"] = opts.name;
-  if (opts.email) customer["email"] = opts.email;
-  if (opts.phone) customer["contact"] = opts.phone;
+  if (name) customer["name"] = name;
+  if (email) customer["email"] = email;
+  if (contact) customer["contact"] = contact;
   if (Object.keys(customer).length) body["customer"] = customer;
-  if (opts.siteUrl) {
-    body["callback_url"] = `${opts.siteUrl.replace(/\/+$/, "")}/profile`;
+
+  let base = String(opts.siteUrl || "").trim().replace(/\/+$/, "");
+  if (base && !/^https?:\/\//i.test(base)) base = `https://${base}`;
+  if (/^https:\/\/[^\s/]+\.[^\s/]+/i.test(base)) {
+    body["callback_url"] = `${base}/profile`;
     body["callback_method"] = "get";
   }
 
-  const res = await fetch("https://api.razorpay.com/v1/payment_links", {
-    method: "POST",
-    headers: { "content-type": "application/json", authorization: authHeader(conf) },
-    body: JSON.stringify(body),
-  });
+  let res: Response;
+  try {
+    res = await fetch("https://api.razorpay.com/v1/payment_links", {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: authHeader(conf) },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    return { ok: false, error: "Could not reach the payment provider. Try again." };
+  }
   const json = (await res.json().catch(() => ({}))) as any;
   if (!res.ok) {
-    return { ok: false, error: json?.error?.description || `Payment provider error (${res.status})` };
+    const desc = String(json?.error?.description || "");
+    if (res.status === 401) {
+      return { ok: false, error: "Payment keys are wrong. Check the key ID and secret in Settings." };
+    }
+    return { ok: false, error: desc || `Payment provider error (${res.status})` };
   }
+  if (!json?.short_url) return { ok: false, error: "Payment provider did not return a link." };
   return { ok: true, url: String(json.short_url), id: String(json.id), inr };
 }
 
