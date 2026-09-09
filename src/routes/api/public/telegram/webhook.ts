@@ -451,7 +451,7 @@ async function createCardLink(chatId: number, text: string) {
   await setState(chatId, null);
   return say(
     chatId,
-    `💳 <b>Payment link ready</b>\n\nAmount: ${money(usd)} (₹${res.inr})\n\nPay with any card, UPI or netbanking. Your balance is topped up on its own right after the payment.`,
+    `💳 <b>Payment link ready</b>\n\nFor: wallet top-up of ${money(usd)}\nAmount: ₹${res.baseInr.toFixed(2)}\nVerification fee (${res.feePercent}%): ₹${res.feeInr.toFixed(2)}\n<b>Total to pay: ₹${res.inr.toFixed(2)}</b>\n\nPay with any card, UPI or netbanking. Your balance is topped up on its own right after the payment.`,
     { inline_keyboard: [[{ text: "💳 Pay now", url: res.url }], [{ text: "🏠 Home", callback_data: "home" }]] },
   );
 }

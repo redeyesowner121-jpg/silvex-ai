@@ -55,11 +55,15 @@ export async function createPaymentLink(opts: {
   }
   const usd = Math.round(Number(opts.usd) * 100) / 100;
   if (!usd || usd <= 0) return { ok: false, error: "Enter a valid amount." };
-  const baseInr = Math.round(usd * conf.inrPerDollar);
-  // Small verification fee added on top; the wallet still gets the full amount.
-  const feeInr = Math.round((baseInr * conf.feePercent) / 100);
-  const inr = baseInr + feeInr;
-  if (inr < 1) return { ok: false, error: "Amount is too small." };
+  // Work in paise so a 3% fee on ₹1 is really ₹0.03, not rounded away.
+  const basePaise = Math.round(usd * conf.inrPerDollar * 100);
+  const feePaise = Math.round((basePaise * conf.feePercent) / 100);
+  const totalPaise = basePaise + feePaise;
+  const baseInr = Math.round(basePaise) / 100;
+  const feeInr = Math.round(feePaise) / 100;
+  const inr = Math.round(totalPaise) / 100;
+  if (totalPaise < 100) return { ok: false, error: "Amount is too small." };
+
 
   // Razorpay rejects anything odd here, so only send details it accepts.
   const digits = String(opts.phone || "").replace(/[^\d+]/g, "");
@@ -69,10 +73,10 @@ export async function createPaymentLink(opts: {
   const name = String(opts.name || "").trim().slice(0, 60);
 
   const body: Record<string, unknown> = {
-    amount: inr * 100,
+    amount: totalPaise,
     currency: "INR",
     accept_partial: false,
-    description: `$${usd.toFixed(2)} top-up + ${conf.feePercent}% fee`.slice(0, 60),
+    description: `${conf.siteName}: $${usd.toFixed(2)} wallet top-up (incl ${conf.feePercent}% fee)`.slice(0, 60),
     reference_id: `dep_${opts.uid}_${Date.now()}`.slice(0, 40),
     notify: { sms: false, email: Boolean(email) },
     reminder_enable: false,
@@ -81,9 +85,10 @@ export async function createPaymentLink(opts: {
       usd: String(usd),
       source: opts.source,
       email,
-      fee_inr: String(feeInr),
+      fee_inr: feeInr.toFixed(2),
     },
   };
+
   const customer: Record<string, string> = {};
   if (name) customer["name"] = name;
   if (email) customer["email"] = email;
