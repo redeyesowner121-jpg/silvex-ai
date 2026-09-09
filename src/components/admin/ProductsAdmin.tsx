@@ -132,6 +132,43 @@ export function ProductsAdmin({ products }: { products: Product[] }) {
 
   return (
     <div className="space-y-4">
+      {linkedProducts.length ? (
+        <div
+          className={`flex items-center justify-between gap-3 rounded-2xl border p-4 ${
+            balanceLow
+              ? "border-destructive/40 bg-destructive/10"
+              : "border-border bg-card"
+          }`}
+        >
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+              Supplier balance
+            </p>
+            <p
+              className={`text-lg font-black ${balanceLow ? "text-destructive" : "text-foreground"}`}
+            >
+              {supBal ? `${balance.toFixed(2)} ${supBal.currency}` : "…"}
+            </p>
+            {balanceLow ? (
+              <p className="text-[11px] font-bold text-destructive">
+                {balanceEmpty
+                  ? "Too low to buy any product — top up the supplier wallet now."
+                  : `Too low for your costliest item ($${costliest.toFixed(2)}) — top up soon.`}
+              </p>
+            ) : (
+              <p className="text-[11px] text-muted-foreground">
+                Enough for every linked product (costliest ${costliest.toFixed(2)}).
+              </p>
+            )}
+          </div>
+          <button
+            onClick={() => loadBalance()}
+            className="rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary"
+          >
+            Refresh
+          </button>
+        </div>
+      ) : null}
       {lowStock.length ? (
         <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-4">
           <h2 className="text-sm font-black text-destructive">
