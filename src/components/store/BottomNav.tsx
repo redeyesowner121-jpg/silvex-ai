@@ -14,7 +14,7 @@ export function BottomNav() {
 
   return (
     <nav className="fixed bottom-0 left-0 z-40 w-full border-t border-border bg-card">
-      <div className="mx-auto flex max-w-md items-stretch justify-between px-2 py-2">
+      <div className="mx-auto flex w-full max-w-md items-stretch justify-between px-2 py-2 md:max-w-2xl">
         {items.map((item) => (
           <Link
             key={item.to}
