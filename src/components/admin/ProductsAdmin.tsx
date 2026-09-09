@@ -10,7 +10,7 @@ import { notifyTelegramOrder } from "@/lib/telegram.functions";
 
 
 import { input, Stat, Empty, ImageField, emptyProduct, type OrderRow } from "@/components/admin/shared";
-import { fetchSupplierCatalogue, syncSupplier } from "@/lib/supplier.functions";
+import { fetchSupplierCatalogue, fetchSupplierBalance, syncSupplier } from "@/lib/supplier.functions";
 
 type SupItem = { id: number; name: string; price: number; stock: number; unlimited_stock?: boolean; description?: string };
 
