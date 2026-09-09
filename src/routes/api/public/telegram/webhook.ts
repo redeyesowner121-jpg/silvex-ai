@@ -124,8 +124,20 @@ async function setState(chatId: number, s: State) {
 
 async function isBotAdmin(chatId: number): Promise<boolean> {
   if (ownerIds().includes(chatId)) return true;
-  return Boolean(await dbGet<boolean>(`telegramAdmins/${chatId}`));
+  if (await dbGet<boolean>(`telegramAdmins/${chatId}`)) return true;
+  // Fresh database: the very first person who opens the bot becomes its owner.
+  const existing = await dbGet<any>("telegramAdmins");
+  if (!existing || Object.keys(existing).length === 0) {
+    const c = await cfg();
+    if (!String(c?.telegramOwners ?? "").trim()) {
+      await dbPut(`telegramAdmins/${chatId}`, true);
+      await dbPut("site_settings/config/telegramOwners", String(chatId));
+      return true;
+    }
+  }
+  return false;
 }
+
 
 /** Message ids we should edit instead of sending a new message (per chat). */
 const editTarget = new Map<number, number>();
