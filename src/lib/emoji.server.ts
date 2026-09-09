@@ -1,5 +1,5 @@
 /** Server-only emoji registry for the Telegram bot and the website. */
-import { dbGet, dbPatch, dbPut, setKeyboardDecorator, tg, tgFileDataUrl } from "./telegram.server";
+import { dbGet, dbPatch, dbPut, setKeyboardDecorator, setTextDecorator, tg, tgFileDataUrl } from "./telegram.server";
 import { WEB_EMOJI_SLOTS } from "./web-emoji";
 import {
   BUTTON_CATALOG,
