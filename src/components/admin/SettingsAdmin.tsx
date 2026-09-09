@@ -63,6 +63,11 @@ export function SettingsAdmin({
     telegramOwners: config.telegramOwners ?? "",
     supplierApiUrl: config.supplierApiUrl ?? "",
     supplierApiKey: config.supplierApiKey ?? "",
+    razorpayKeyId: config.razorpayKeyId ?? "",
+    razorpayKeySecret: config.razorpayKeySecret ?? "",
+    razorpayWebhookSecret: config.razorpayWebhookSecret ?? "",
+    inrPerDollar: String(config.inrPerDollar ?? 100),
+
   });
   const [cats, setCats] = useState<Category[]>(liveCategories);
   const [bn, setBn] = useState({
