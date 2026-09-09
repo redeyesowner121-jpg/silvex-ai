@@ -339,7 +339,8 @@ export async function tgSendDocument(
   const form = new FormData();
   form.append("chat_id", String(chatId));
   if (caption) {
-    form.append("caption", caption);
+    form.append("caption", String(decorateText(caption)));
+
     form.append("parse_mode", "HTML");
   }
   form.append("document", new Blob([bytes as unknown as BlobPart], { type: mime }), filename);
@@ -386,7 +387,7 @@ export async function tgSendPhoto(
       const form = new FormData();
       form.append("chat_id", String(chatId));
       if (caption) {
-        form.append("caption", caption);
+        form.append("caption", String(decorateText(caption)));
         form.append("parse_mode", "HTML");
       }
       if (keyboard) form.append("reply_markup", JSON.stringify(decorateMarkup(keyboard)));
