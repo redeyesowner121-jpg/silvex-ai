@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useStore } from "@/context/StoreContext";
+import { Emo } from "@/components/store/Emo";
 
 const items = [
   { to: "/", label: "Home", key: "web.home" },
@@ -10,7 +11,7 @@ const items = [
 ] as const;
 
 export function BottomNav() {
-  const { cartCount, emoji } = useStore();
+  const { cartCount } = useStore();
 
   return (
     <nav className="fixed bottom-0 left-0 z-40 w-full border-t border-border bg-card">
@@ -23,7 +24,7 @@ export function BottomNav() {
             activeOptions={{ exact: item.to === "/" }}
             className="relative flex flex-1 flex-col items-center gap-0.5 py-1 text-[10px] font-bold text-muted-foreground"
           >
-            <span className="text-lg leading-none">{emoji(item.key)}</span>
+            <span className="text-lg leading-none"><Emo k={item.key} /></span>
             {item.label}
             {item.to === "/cart" && cartCount > 0 ? (
               <span className="absolute right-3 top-0 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[9px] text-destructive-foreground">
