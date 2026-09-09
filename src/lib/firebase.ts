@@ -2,6 +2,7 @@ import type { FirebaseApp } from "firebase/app";
 import type { Auth } from "firebase/auth";
 import type { Database } from "firebase/database";
 import { getFirebaseConfig } from "./firebase.functions";
+import { setActiveProjectId } from "./origin";
 
 export type FirebaseBundle = { app: FirebaseApp; auth: Auth; db: Database };
 
@@ -11,23 +12,51 @@ const CONFIG_CACHE = "store_firebase_config";
 
 type WebConfig = Awaited<ReturnType<typeof getFirebaseConfig>>;
 
-async function loadConfig(): Promise<WebConfig> {
+/** Wipe browser-side leftovers so a new database starts the site completely fresh. */
+function resetLocalState() {
   try {
-    const saved = localStorage.getItem(CONFIG_CACHE);
-    if (saved) return JSON.parse(saved) as WebConfig;
+    localStorage.clear();
+    sessionStorage.clear();
   } catch {
     /* storage unavailable */
   }
-  const config = await getFirebaseConfig();
-  if (config.apiKey) {
-    try {
-      localStorage.setItem(CONFIG_CACHE, JSON.stringify(config));
-    } catch {
-      /* storage unavailable */
+}
+
+async function loadConfig(): Promise<WebConfig> {
+  let saved: WebConfig | null = null;
+  try {
+    const raw = localStorage.getItem(CONFIG_CACHE);
+    if (raw) saved = JSON.parse(raw) as WebConfig;
+  } catch {
+    /* storage unavailable */
+  }
+
+  let config: WebConfig | null = null;
+  try {
+    config = await getFirebaseConfig();
+  } catch {
+    config = null;
+  }
+  if (!config?.apiKey) {
+    if (saved) {
+      setActiveProjectId(saved.projectId);
+      return saved;
     }
+    throw new Error("Store settings unavailable");
+  }
+
+  // The store was pointed at a different Firebase project: start over.
+  if (saved && saved.projectId !== config.projectId) resetLocalState();
+
+  setActiveProjectId(config.projectId);
+  try {
+    localStorage.setItem(CONFIG_CACHE, JSON.stringify(config));
+  } catch {
+    /* storage unavailable */
   }
   return config;
 }
+
 
 async function init(): Promise<FirebaseBundle> {
   const [config, firebaseApp, firebaseAuth, firebaseDatabase] = await Promise.all([
