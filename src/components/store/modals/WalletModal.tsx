@@ -23,8 +23,10 @@ import {
 } from "firebase/database";
 import { useStore } from "@/context/StoreContext";
 import { checkDeposit, DEPOSIT_ADDRESS } from "@/lib/deposit.functions";
+import { createDepositLink } from "@/lib/razorpay.functions";
 import { Emo } from "@/components/store/Emo";
 import { Sheet, inputCls } from "./ui";
+
 
 export function WalletModal() {
   const { db, user, wallet, profile, config, closeModal, showSuccess, notify } = useStore();
