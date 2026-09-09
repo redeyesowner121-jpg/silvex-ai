@@ -14,7 +14,7 @@ import type { Database } from "firebase/database";
 import { toast } from "sonner";
 import { getFirebase } from "@/lib/firebase";
 import { applyReferralConfig } from "@/lib/referral";
-import { buildEmojiCharMap, webEmoji, webEmojiImg, type WebEmojiMap } from "@/lib/web-emoji";
+import { buildEmojiCharMap, normEmoji, webEmoji, webEmojiImg, type WebEmojiMap } from "@/lib/web-emoji";
 
 export type Product = {
   id: string;
@@ -414,7 +414,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       siteName: config.siteName || "SILENT SELLER",
       emoji: (key: string) => webEmoji(emojis, key),
       emojiImg: (key: string) => emojiImgs[key] || webEmojiImg(emojis, key),
-      emojiFor: (char: string) => emojiCharMap[char] || { char },
+      emojiFor: (char: string) => emojiCharMap[normEmoji(char)] || { char },
 
       banner,
       flashSale,
