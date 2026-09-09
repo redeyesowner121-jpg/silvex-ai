@@ -49,7 +49,7 @@ function useCountdown(endTime?: number) {
 }
 
 function Home() {
-  const { products, config, banner, flashSale, categories, addToCart, emoji } = useStore();
+  const { products, config, banner, flashSale, categories, addToCart, emoji, siteName } = useStore();
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
 
