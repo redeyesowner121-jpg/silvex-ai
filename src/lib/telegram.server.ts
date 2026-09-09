@@ -94,6 +94,28 @@ export function decorateMarkup(markup: any): any {
   }
 }
 
+/**
+ * Emoji chosen by the admin must apply everywhere the same emoji appears, not
+ * only on the one button it was picked for. The emoji registry plugs a text
+ * decorator in here so every outgoing message/caption is upgraded.
+ */
+type TextDecorator = (text: string) => string;
+let textDecorator: TextDecorator = (t) => t;
+
+export function setTextDecorator(fn: TextDecorator): void {
+  textDecorator = fn;
+}
+
+export function decorateText(text: unknown): unknown {
+  if (typeof text !== "string" || !text) return text;
+  try {
+    return textDecorator(text);
+  } catch {
+    return text;
+  }
+}
+
+
 /** Drop premium icons if Telegram refuses them for this bot. */
 function stripIcons(markup: any): any {
   if (!markup || !Array.isArray(markup.inline_keyboard)) return markup;
@@ -110,6 +132,9 @@ export async function tg(method: string, body: Record<string, unknown>): Promise
   if (!api) throw new Error("Telegram bot is not configured. Add the bot token in the admin panel.");
   const payload: Record<string, unknown> = { ...body };
   if (payload["reply_markup"]) payload["reply_markup"] = decorateMarkup(payload["reply_markup"]);
+  if (payload["text"]) payload["text"] = decorateText(payload["text"]);
+  if (payload["caption"]) payload["caption"] = decorateText(payload["caption"]);
+
 
   const call = async (data: Record<string, unknown>) => {
     const res = await fetch(api.url, {
@@ -314,7 +339,8 @@ export async function tgSendDocument(
   const form = new FormData();
   form.append("chat_id", String(chatId));
   if (caption) {
-    form.append("caption", caption);
+    form.append("caption", String(decorateText(caption)));
+
     form.append("parse_mode", "HTML");
   }
   form.append("document", new Blob([bytes as unknown as BlobPart], { type: mime }), filename);
@@ -361,7 +387,7 @@ export async function tgSendPhoto(
       const form = new FormData();
       form.append("chat_id", String(chatId));
       if (caption) {
-        form.append("caption", caption);
+        form.append("caption", String(decorateText(caption)));
         form.append("parse_mode", "HTML");
       }
       if (keyboard) form.append("reply_markup", JSON.stringify(decorateMarkup(keyboard)));

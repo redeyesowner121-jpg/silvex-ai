@@ -1,5 +1,5 @@
 /** Server-only emoji registry for the Telegram bot and the website. */
-import { dbGet, dbPatch, dbPut, setKeyboardDecorator, tg, tgFileDataUrl } from "./telegram.server";
+import { dbGet, dbPatch, dbPut, setKeyboardDecorator, setTextDecorator, tg, tgFileDataUrl } from "./telegram.server";
 import { WEB_EMOJI_SLOTS } from "./web-emoji";
 import {
   BUTTON_CATALOG,
@@ -233,6 +233,55 @@ function styleFor(label: string): "primary" | "success" | "danger" | undefined {
   return "primary";
 }
 
+/* ---------------- global emoji mapping ---------------- */
+
+const EMOJI_RE = /\p{Extended_Pictographic}(\uFE0F|\u200D\p{Extended_Pictographic})*/gu;
+
+let charCache: { at: number; plain: Map<string, string>; html: Map<string, string> } | null = null;
+
+/**
+ * Every place the same emoji appears must follow what the admin picked, not
+ * only the one slot it was set on. Maps the built-in character of each slot to
+ * whatever the admin chose (and to its premium markup when there is one).
+ */
+function charMaps() {
+  if (charCache && charCache.at === loadedAt) return charCache;
+  const plain = new Map<string, string>();
+  const html = new Map<string, string>();
+  const put = (from: string, e: EmojiEntry) => {
+    if (!from || !e?.char) return;
+    plain.set(from, e.char);
+    html.set(from, render(e));
+  };
+  for (const [key, def] of Object.entries(EMOJI_SLOTS)) {
+    const saved = store.keys?.[key];
+    if (saved?.char || saved?.id) put(def.char, { char: saved.char || def.char, id: saved.id ?? "" });
+  }
+  for (const v of Object.values(store.keys || {})) if (v?.id && v.char) put(v.char, v);
+  for (const v of Object.values(store.products || {})) if (v?.id && v.char) put(v.char, v);
+  charCache = { at: loadedAt, plain, html };
+  return charCache;
+}
+
+/** Upgrade every emoji in an outgoing message to the admin's choice. */
+export function upgradeText(text: string): string {
+  const { html } = charMaps();
+  if (!html.size) return text;
+  return text
+    .split(/(<tg-emoji[^>]*>[\s\S]*?<\/tg-emoji>)/g)
+    .map((part) =>
+      part.startsWith("<tg-emoji") ? part : part.replace(EMOJI_RE, (m) => html.get(m) || m),
+    )
+    .join("");
+}
+
+/** Buttons only support plain characters, so swap the character itself. */
+function upgradeButtonText(text: string): string {
+  const { plain } = charMaps();
+  if (!plain.size) return text;
+  return text.replace(EMOJI_RE, (m) => plain.get(m) || m);
+}
+
 export function decorateKeyboard(markup: any): any {
   if (!markup || !Array.isArray(markup.inline_keyboard)) return markup;
   return {
@@ -241,7 +290,7 @@ export function decorateKeyboard(markup: any): any {
       row.map((btn: any) => {
         if (!btn || typeof btn.text !== "string") return btn;
         // The old fake "colour dots" are no longer needed — Telegram colours the button itself.
-        let text = btn.text.replace(MARKERS, "");
+        let text = upgradeButtonText(btn.text.replace(MARKERS, ""));
         const out: any = { ...btn, text };
         if (!out.style) {
           const configured = styleFromConfig(btn);
@@ -267,6 +316,8 @@ export function decorateKeyboard(markup: any): any {
 }
 
 setKeyboardDecorator(decorateKeyboard);
+setTextDecorator(upgradeText);
+
 
 /* ---------------- premium emoji artwork (for the website) ---------------- */
 
