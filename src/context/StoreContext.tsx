@@ -89,6 +89,13 @@ export type SiteConfig = {
   /** Supplier shop reseller API (address + key), set in the admin panel. */
   supplierApiUrl?: string;
   supplierApiKey?: string;
+  /** Razorpay card/UPI deposits, set in the admin panel. */
+  razorpayKeyId?: string;
+  razorpayKeySecret?: string;
+  razorpayWebhookSecret?: string;
+  /** Rupees that equal one dollar (default 100). */
+  inrPerDollar?: number;
+
 };
 
 export const DEFAULT_CATEGORIES: Category[] = [

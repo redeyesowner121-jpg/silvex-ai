@@ -35,6 +35,11 @@ export function SettingsAdmin({
     telegramOwners?: string;
     supplierApiUrl?: string;
     supplierApiKey?: string;
+    razorpayKeyId?: string;
+    razorpayKeySecret?: string;
+    razorpayWebhookSecret?: string;
+    inrPerDollar?: number;
+
   };
   banner: { title?: string; desc?: string; link?: string };
 }) {
@@ -58,6 +63,11 @@ export function SettingsAdmin({
     telegramOwners: config.telegramOwners ?? "",
     supplierApiUrl: config.supplierApiUrl ?? "",
     supplierApiKey: config.supplierApiKey ?? "",
+    razorpayKeyId: config.razorpayKeyId ?? "",
+    razorpayKeySecret: config.razorpayKeySecret ?? "",
+    razorpayWebhookSecret: config.razorpayWebhookSecret ?? "",
+    inrPerDollar: String(config.inrPerDollar ?? 100),
+
   });
   const [cats, setCats] = useState<Category[]>(liveCategories);
   const [bn, setBn] = useState({
@@ -106,14 +116,78 @@ export function SettingsAdmin({
       telegramOwners: cfg.telegramOwners.trim(),
       supplierApiUrl: cfg.supplierApiUrl.trim().replace(/\/+$/, ""),
       supplierApiKey: cfg.supplierApiKey.trim(),
+      razorpayKeyId: cfg.razorpayKeyId.trim(),
+      razorpayKeySecret: cfg.razorpayKeySecret.trim(),
+      razorpayWebhookSecret: cfg.razorpayWebhookSecret.trim(),
+      inrPerDollar: Number(cfg.inrPerDollar || 100),
       ...extra,
     });
     notify("Settings saved");
   }
 
+  const webhookUrl = `${(cfg.siteUrl || "").trim().replace(/\/+$/, "") || "https://your-site.com"}/api/public/razorpay/webhook`;
+
   return (
     <div className="space-y-4">
       <div className="space-y-2 rounded-2xl border border-border bg-card p-4">
+        <h2 className="text-sm font-black">Card / UPI deposits (Razorpay)</h2>
+        <p className="text-[11px] text-muted-foreground">
+          Every top-up gets its own payment link. Paid money lands in the customer's balance on its
+          own — nobody has to approve it.
+        </p>
+        <input
+          className={input}
+          placeholder="Razorpay Key ID (rzp_live_...)"
+          value={cfg.razorpayKeyId}
+          onChange={(e) => setCfg({ ...cfg, razorpayKeyId: e.target.value })}
+        />
+        <input
+          className={input}
+          placeholder="Razorpay Key Secret"
+          value={cfg.razorpayKeySecret}
+          onChange={(e) => setCfg({ ...cfg, razorpayKeySecret: e.target.value })}
+        />
+        <input
+          className={input}
+          placeholder="Webhook secret (same one you type in Razorpay)"
+          value={cfg.razorpayWebhookSecret}
+          onChange={(e) => setCfg({ ...cfg, razorpayWebhookSecret: e.target.value })}
+        />
+        <input
+          className={input}
+          placeholder="Rupees per $1 (default 100)"
+          value={cfg.inrPerDollar}
+          onChange={(e) => setCfg({ ...cfg, inrPerDollar: e.target.value })}
+        />
+        <div className="rounded-xl border border-dashed border-border bg-muted/50 p-3">
+          <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+            Webhook address
+          </p>
+          <p className="break-all font-mono text-[11px] font-bold">{webhookUrl}</p>
+          <button
+            onClick={() => {
+              navigator.clipboard?.writeText(webhookUrl);
+              notify("Webhook address copied");
+            }}
+            className="mt-2 rounded-lg bg-foreground px-3 py-1 text-[11px] font-bold text-background"
+          >
+            Copy
+          </button>
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            Paste it in Razorpay → Settings → Webhooks, tick payment_link.paid and
+            payment.captured, and use the same webhook secret above.
+          </p>
+        </div>
+        <button
+          onClick={() => saveConfig()}
+          className="rounded-xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground"
+        >
+          Save payment settings
+        </button>
+      </div>
+
+      <div className="space-y-2 rounded-2xl border border-border bg-card p-4">
+
         <h2 className="text-sm font-black">Supplier shop (reseller API)</h2>
         <p className="text-[11px] text-muted-foreground">
           Link another shop's reseller API. Products set to "Supplier shop" keep their price and

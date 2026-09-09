@@ -23,8 +23,10 @@ import {
 } from "firebase/database";
 import { useStore } from "@/context/StoreContext";
 import { checkDeposit, DEPOSIT_ADDRESS } from "@/lib/deposit.functions";
+import { createDepositLink } from "@/lib/razorpay.functions";
 import { Emo } from "@/components/store/Emo";
 import { Sheet, inputCls } from "./ui";
+
 
 export function WalletModal() {
   const { db, user, wallet, profile, config, closeModal, showSuccess, notify } = useStore();
@@ -35,11 +37,43 @@ export function WalletModal() {
   const [checking, setChecking] = useState(false);
   const [copied, setCopied] = useState(false);
   const [upi, setUpi] = useState("");
+  const [payAmount, setPayAmount] = useState("");
+  const [paying, setPaying] = useState(false);
+  const [payLink, setPayLink] = useState("");
   const [history, setHistory] = useState<
     Array<{ id: string; type: string; amount: number; desc: string; date: string }>
   >([]);
   const fee = Number(config.fee ?? 25);
   const depositAddress = config.depositAddress || DEPOSIT_ADDRESS;
+  const rate = Number(config.inrPerDollar) > 0 ? Number(config.inrPerDollar) : 100;
+  const cardsOn = Boolean(config.razorpayKeyId);
+
+  async function startCardPayment() {
+    if (!user) return notify("Sign in first");
+    const usd = Number(payAmount);
+    if (!usd || usd <= 0) return notify("Enter how many dollars you want to add");
+    setPaying(true);
+    try {
+      const res = await createDepositLink({
+        data: {
+          usd,
+          uid: user.uid,
+          name: profile?.name ?? "",
+          email: user.email ?? "",
+          phone: profile?.phone ?? "",
+          siteUrl: config.siteUrl ?? "",
+        },
+      });
+      if (!res.ok) return notify(res.error);
+      setPayLink(res.url);
+      window.open(res.url, "_blank");
+    } catch (e) {
+      notify(e instanceof Error ? e.message : "Could not start the payment");
+    } finally {
+      setPaying(false);
+    }
+  }
+
 
 
   useEffect(() => {
@@ -148,6 +182,44 @@ export function WalletModal() {
 
       {tab === "deposit" ? (
         <div>
+          {cardsOn ? (
+            <div className="mb-5 rounded-2xl border border-border bg-card p-4">
+              <p className="text-sm font-black">Pay by card, UPI or netbanking</p>
+              <p className="mb-2 text-[11px] text-muted-foreground">
+                ₹{rate} = $1. Your balance updates on its own once the payment is done.
+              </p>
+              <input
+                className={`${inputCls} mb-2`}
+                placeholder="Amount in $"
+                inputMode="decimal"
+                value={payAmount}
+                onChange={(e) => setPayAmount(e.target.value)}
+              />
+              {Number(payAmount) > 0 ? (
+                <p className="mb-2 text-[11px] font-bold text-muted-foreground">
+                  You pay ₹{Math.round(Number(payAmount) * rate)}
+                </p>
+              ) : null}
+              <button
+                onClick={startCardPayment}
+                disabled={paying}
+                className="w-full rounded-xl bg-primary py-3 font-bold text-primary-foreground disabled:opacity-60"
+              >
+                {paying ? "Creating payment link…" : "Get payment link"}
+              </button>
+              {payLink ? (
+                <a
+                  href={payLink}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-2 block break-all text-center text-[11px] font-bold text-primary underline"
+                >
+                  Open payment page
+                </a>
+              ) : null}
+            </div>
+          ) : null}
+
           <p className="mb-2 text-xs font-bold text-muted-foreground">
             Send USDT or USDC to this address, then paste the transaction hash.
           </p>
