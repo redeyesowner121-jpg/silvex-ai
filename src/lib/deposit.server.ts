@@ -1,6 +1,11 @@
 /** Server-only on-chain deposit verification (BEP20 + Polygon USDT/USDC). */
+import { isOriginProject } from "./origin";
 
 export const DEFAULT_DEPOSIT_ADDRESS = "0x4c1506bd7a564ad416925997f4f75f79c3da07f2";
+
+/** Built-in wallet of the original store only; a new database starts with none. */
+export const defaultDepositAddress = () => (isOriginProject() ? DEFAULT_DEPOSIT_ADDRESS : "");
+
 
 const TRANSFER_TOPIC =
   "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";

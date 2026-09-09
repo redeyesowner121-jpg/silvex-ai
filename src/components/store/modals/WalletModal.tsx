@@ -22,7 +22,7 @@ import {
   update,
 } from "firebase/database";
 import { useStore } from "@/context/StoreContext";
-import { checkDeposit, DEPOSIT_ADDRESS } from "@/lib/deposit.functions";
+import { checkDeposit, fallbackDepositAddress } from "@/lib/deposit.functions";
 import { createDepositLink } from "@/lib/razorpay.functions";
 import { Emo } from "@/components/store/Emo";
 import { Sheet, inputCls } from "./ui";
@@ -44,7 +44,7 @@ export function WalletModal() {
     Array<{ id: string; type: string; amount: number; desc: string; date: string }>
   >([]);
   const fee = Number(config.fee ?? 25);
-  const depositAddress = config.depositAddress || DEPOSIT_ADDRESS;
+  const depositAddress = config.depositAddress || fallbackDepositAddress();
   const rate = Number(config.inrPerDollar) > 0 ? Number(config.inrPerDollar) : 100;
   const cardsOn = Boolean(config.razorpayKeyId);
   const payFee =

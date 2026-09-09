@@ -1,8 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import type { DepositCheck } from "./deposit.server";
+import { isOriginProject } from "./origin";
 
-/** Wallet that receives on-chain deposits (BEP20 + Polygon). */
-export const DEPOSIT_ADDRESS = "0x4c1506bd7a564ad416925997f4f75f79c3da07f2";
+/** Wallet of the original store. A different Firebase project starts with none. */
+export const ORIGIN_DEPOSIT_ADDRESS = "0x4c1506bd7a564ad416925997f4f75f79c3da07f2";
+export const DEPOSIT_ADDRESS = ORIGIN_DEPOSIT_ADDRESS;
+export const fallbackDepositAddress = () => (isOriginProject() ? ORIGIN_DEPOSIT_ADDRESS : "");
 
 export type { DepositCheck };
 
@@ -14,12 +17,13 @@ export const checkDeposit = createServerFn({ method: "POST" })
   .inputValidator((input: { hash: string; chain: string; address?: string }) => {
     const hash = String(input.hash || "").trim();
     const chain = String(input.chain || "").trim();
-    const address = String(input.address || DEPOSIT_ADDRESS).trim();
+    const address = String(input.address || "").trim();
     if (!/^0x[0-9a-fA-F]{64}$/.test(hash)) throw new Error("That does not look like a transaction hash.");
     if (chain !== "bep20" && chain !== "polygon") throw new Error("Unknown network.");
     if (!/^0x[0-9a-fA-F]{40}$/.test(address)) throw new Error("Deposit address is not valid.");
     return { hash, chain: chain as "bep20" | "polygon", address };
   })
+
   .handler(async ({ data }): Promise<DepositCheck> => {
     const { verifyDepositOnChain } = await import("./deposit.server");
     return verifyDepositOnChain(data.hash, data.chain, data.address);

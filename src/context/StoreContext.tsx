@@ -13,6 +13,7 @@ import type { Auth, User } from "firebase/auth";
 import type { Database } from "firebase/database";
 import { toast } from "sonner";
 import { getFirebase } from "@/lib/firebase";
+import { isOriginProject } from "@/lib/origin";
 import { applyReferralConfig } from "@/lib/referral";
 import { buildEmojiCharMap, normEmoji, resolveEmojiImg, webEmoji, type WebEmojiMap } from "@/lib/web-emoji";
 
@@ -165,30 +166,34 @@ g.__rkrStoreContext = StoreContext;
 
 const CART_KEY = "rkr_cart_v1";
 
-/** Store owners: always admin, cannot be removed. Editable from the admin panel. */
+/** Store owners of the ORIGINAL database only. A new Firebase project starts with none. */
 export const DEFAULT_OWNER_EMAILS = [
   "red.eyes.owner121@gmail.com",
   "mohiuddinarif0278@gmail.com",
 ];
-/** Permanent owner: always full access, can never be removed or edited away. */
+/** Permanent owner of the original store; ignored on any other database. */
 export const FIXED_OWNER_EMAIL = "red.eyes.owner121@gmail.com";
-let ownerEmails = DEFAULT_OWNER_EMAILS;
+let ownerEmails: string[] = [];
 
 export function applyOwnerEmails(list?: string | string[] | null) {
   const parsed = (Array.isArray(list) ? list : String(list ?? "").split(/[,\s]+/))
     .map((e) => String(e).trim().toLowerCase())
     .filter(Boolean);
-  if (parsed.length) ownerEmails = parsed;
-  if (!ownerEmails.includes(FIXED_OWNER_EMAIL)) ownerEmails = [FIXED_OWNER_EMAIL, ...ownerEmails];
+  ownerEmails = parsed.length ? parsed : isOriginProject() ? [...DEFAULT_OWNER_EMAILS] : [];
+  if (isOriginProject() && !ownerEmails.includes(FIXED_OWNER_EMAIL)) {
+    ownerEmails = [FIXED_OWNER_EMAIL, ...ownerEmails];
+  }
 }
 
 export function isFixedOwner(email?: string | null) {
+  if (!isOriginProject()) return false;
   return String(email ?? "").trim().toLowerCase() === FIXED_OWNER_EMAIL;
 }
 
 export function isOwnerEmail(email?: string | null) {
   return isFixedOwner(email) || Boolean(email && ownerEmails.includes(email.toLowerCase()));
 }
+
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [auth, setAuth] = useState<Auth | null>(null);
@@ -343,7 +348,26 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           update(ref(db, `users/${user.uid}`), { isAdmin: true, isOwner: true }).catch(() => {});
         }
       }
+
+      // Brand-new database: the very first account to sign in becomes the owner,
+      // so a fresh Firebase project needs no code change at all.
+      if (!isOriginProject() && user.email) {
+        const claimed = await get(ref(db, "site_settings/bootstrapOwner")).catch(() => null);
+        const owners = await get(ref(db, "site_settings/config/ownerEmails")).catch(() => null);
+        if (!claimed?.exists() && !String(owners?.val() ?? "").trim()) {
+          await update(ref(db, "site_settings"), {
+            bootstrapOwner: user.uid,
+            "config/ownerEmails": user.email.toLowerCase(),
+          }).catch(() => {});
+          await update(ref(db, `users/${user.uid}`), {
+            isAdmin: true,
+            isOwner: true,
+            ownerRevoked: null,
+          }).catch(() => {});
+        }
+      }
     })();
+
     return () => unsub();
   }, [db, user]);
 
@@ -413,7 +437,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         Array.isArray(config.categories) && config.categories.length
           ? config.categories
           : DEFAULT_CATEGORIES,
-      siteName: config.siteName || "SILENT SELLER",
+      siteName: config.siteName || (isOriginProject() ? "SILENT SELLER" : "My Store"),
       emoji: (key: string) => webEmoji(emojis, key),
       emojiImg: (key: string) => resolveEmojiImg(emojis, emojiImgs, emojiCharMap, key),
       emojiFor: (char: string) => emojiCharMap[normEmoji(char)] || { char },
