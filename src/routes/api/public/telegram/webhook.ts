@@ -1058,57 +1058,85 @@ async function adminSettings(chatId: number) {
 
 /* ---------------- emoji setup (/setemoji) ---------------- */
 
-async function emojiHome(chatId: number) {
-  // Pick up artwork for premium emojis saved before images were captured.
-  const fixed = await syncEmojiImages().catch(() => 0);
+const EM_PAGE = 12;
+
+function emPager(prefix: string, page: number, total: number) {
+  const pages = Math.max(1, Math.ceil(total / EM_PAGE));
+  if (pages < 2) return [] as any[];
+  const row: any[] = [];
+  if (page > 0) row.push({ text: "⬅️ Prev", callback_data: `${prefix}${page - 1}` });
+  row.push({ text: `${page + 1}/${pages}`, callback_data: "noop" });
+  if (page < pages - 1) row.push({ text: "Next ➡️", callback_data: `${prefix}${page + 1}` });
+  return [row];
+}
+
+async function emojiHome(chatId: number, synced?: number) {
+  const all = (await dbGet<Record<string, Product>>("products")) || {};
+  const prodIds = Object.keys(all);
+  const p = productEmojiStats(prodIds);
+  const n = slotStats("normal");
+  const b = slotStats("button");
+  const w = slotStats("web");
   await say(
     chatId,
-    `😍 <b>Emoji setup</b>\n\nPick what you want to change. Send any emoji — premium (custom) emojis are saved with their id automatically.${
-      fixed ? `\n\n✨ ${fixed} premium emoji(s) synced for the website.` : ""
+    `😍 <b>Emoji setup</b>\n\nPick a group, tap a slot, then send the emoji.\nPremium (custom) emojis are saved with their id and their artwork is shown on the website too.\n\n🛍 Products: ${p.set}/${p.total} set (✨${p.premium})\n✨ Normal: ${n.set}/${n.total} (✨${n.premium})\n🔘 Buttons: ${b.set}/${b.total} (✨${b.premium})\n🌐 Website: ${w.set}/${w.total} (✨${w.premium})${
+      synced ? `\n\n✨ ${synced} premium emoji(s) synced for the website.` : ""
     }`,
     {
       inline_keyboard: [
-        [{ text: "🛍 Product emojis", callback_data: "a:em:prod" }],
-        [{ text: "✨ Normal emojis", callback_data: "a:em:norm" }],
-        [{ text: "🔘 Button emojis", callback_data: "a:em:btn" }],
-        [{ text: "🌐 Website emojis", callback_data: "a:em:web" }],
+        [
+          { text: "🛍 Product emojis", callback_data: "a:em:prod" },
+          { text: "✨ Normal emojis", callback_data: "a:em:norm" },
+        ],
+        [
+          { text: "🔘 Button emojis", callback_data: "a:em:btn" },
+          { text: "🌐 Website emojis", callback_data: "a:em:web" },
+        ],
+        [{ text: "🔄 Sync website artwork", callback_data: "a:em:sync" }],
         [{ text: "⬅️ Admin", callback_data: "a:home" }],
       ],
     },
   );
 }
 
-async function emojiProducts(chatId: number) {
+async function emojiProducts(chatId: number, page = 0) {
   const all = (await dbGet<Record<string, Product>>("products")) || {};
-  const list = Object.entries(all).slice(0, 40);
-  if (!list.length) return say(chatId, "No products yet.", { inline_keyboard: [[{ text: "⬅️ Emojis", callback_data: "a:em" }]] });
+  const entries = Object.entries(all);
+  if (!entries.length)
+    return say(chatId, "No products yet.", { inline_keyboard: [[{ text: "⬅️ Emojis", callback_data: "a:em" }]] });
+  const slice = entries.slice(page * EM_PAGE, page * EM_PAGE + EM_PAGE);
   await say(chatId, "🛍 <b>Product emojis</b>\nChoose a product, then send the emoji.", {
     inline_keyboard: [
-      ...list.map(([id, p]) => [
+      ...slice.map(([id, p]) => [
         { text: `${productEmojiChar(id)} ${p.title || "Item"}`, callback_data: `a:emp:${id}` },
       ]),
+      ...emPager("a:emP:", page, entries.length),
       [{ text: "⬅️ Emojis", callback_data: "a:em" }],
     ],
   });
 }
 
-async function emojiSlots(chatId: number, group: "button" | "normal" | "web") {
+async function emojiSlots(chatId: number, group: "button" | "normal" | "web", page = 0) {
   const all = (await dbGet<Record<string, Product>>("products")) || {};
   await collectEmojis(Object.values(all).flatMap((p) => [p.title || "", p.desc || ""])).catch(() => undefined);
-  const list = slotList(group).slice(0, 45);
+  const list = slotList(group);
+  const slice = list.slice(page * EM_PAGE, page * EM_PAGE + EM_PAGE);
   const heading =
     group === "button"
       ? "🔘 <b>Button emojis</b>"
       : group === "web"
         ? "🌐 <b>Website emojis</b>\nThese show on your website."
-        : "✨ <b>Normal emojis</b>";
+        : "✨ <b>Normal emojis</b>\nUsed inside bot messages. New emojis found in your products appear here too.";
+  const short = group === "button" ? "btn" : group === "web" ? "web" : "norm";
   await say(chatId, `${heading}\nChoose a slot, then send the emoji.`, {
     inline_keyboard: [
-      ...list.map((s) => [{ text: `${s.preview} ${s.label}`, callback_data: `a:emk:${s.key}` }]),
+      ...slice.map((s) => [{ text: `${s.preview} ${s.label}`, callback_data: `a:emk:${s.key}` }]),
+      ...emPager(`a:emS:${short}:`, page, list.length),
       [{ text: "⬅️ Emojis", callback_data: "a:em" }],
     ],
   });
 }
+
 
 async function saveEmojiFromMessage(
   chatId: number,
