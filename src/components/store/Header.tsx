@@ -8,7 +8,7 @@ export function Header() {
 
   return (
     <header className="glass sticky top-0 z-40">
-      <div className="mx-auto flex h-16 max-w-md items-center justify-between px-4">
+      <div className="mx-auto flex h-16 w-full max-w-md items-center justify-between px-4 md:max-w-5xl md:px-8">
         <Link to="/" className="text-lg font-black tracking-tight">
           {first} <span className="text-primary">{rest.join(" ")}</span>
         </Link>
