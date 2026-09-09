@@ -10,7 +10,7 @@ import { notifyTelegramOrder } from "@/lib/telegram.functions";
 
 
 import { input, Stat, Empty, ImageField, emptyProduct, type OrderRow } from "@/components/admin/shared";
-import { fetchSupplierCatalogue, syncSupplier } from "@/lib/supplier.functions";
+import { fetchSupplierCatalogue, fetchSupplierBalance, syncSupplier } from "@/lib/supplier.functions";
 
 type SupItem = { id: number; name: string; price: number; stock: number; unlimited_stock?: boolean; description?: string };
 
@@ -21,6 +21,7 @@ export function ProductsAdmin({ products }: { products: Product[] }) {
   const [viewing, setViewing] = useState<string | null>(null);
   const [supplier, setSupplier] = useState<SupItem[]>([]);
   const [supBusy, setSupBusy] = useState(false);
+  const [supBal, setSupBal] = useState<{ balance: number; currency: string } | null>(null);
   const markupRef = useRef<Record<string, string>>({});
   const [usedMap, setUsedMap] = useState<
     Record<string, Record<string, { content: string; orderId?: string; email?: string; date?: string }>>
@@ -34,6 +35,25 @@ export function ProductsAdmin({ products }: { products: Product[] }) {
   const lowStock = products.filter(
     (p) => p.delivery === "auto" && (p.stock || []).filter(Boolean).length <= threshold,
   );
+
+  const linkedProducts = products.filter((p) => p.delivery === "supplier");
+  const costliest = linkedProducts.reduce((m, p) => Math.max(m, Number(p.supplierPrice ?? 0)), 0);
+  const cheapest = linkedProducts.length
+    ? Math.min(...linkedProducts.map((p) => Number(p.supplierPrice ?? 0)))
+    : 0;
+  const balance = Number(supBal?.balance ?? 0);
+  const balanceLow = supBal != null && linkedProducts.length > 0 && balance < costliest;
+  const balanceEmpty = supBal != null && linkedProducts.length > 0 && balance < cheapest;
+
+  async function loadBalance() {
+    const r = await fetchSupplierBalance();
+    if (r.ok) setSupBal({ balance: Number(r.balance || 0), currency: r.currency || "USDT" });
+  }
+
+  useEffect(() => {
+    loadBalance().catch(() => undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (lowStock.length)
@@ -77,7 +97,8 @@ export function ProductsAdmin({ products }: { products: Product[] }) {
     setSupBusy(false);
     if (!r.ok) return notify(r.error || "Supplier not reachable");
     setSupplier(r.products);
-    if (r.balance) notify(`Supplier balance: ${r.balance.balance} ${r.balance.currency}`);
+    if (r.balance)
+      setSupBal({ balance: Number(r.balance.balance || 0), currency: r.balance.currency || "USDT" });
   }
 
   async function runSync() {
@@ -111,6 +132,43 @@ export function ProductsAdmin({ products }: { products: Product[] }) {
 
   return (
     <div className="space-y-4">
+      {linkedProducts.length ? (
+        <div
+          className={`flex items-center justify-between gap-3 rounded-2xl border p-4 ${
+            balanceLow
+              ? "border-destructive/40 bg-destructive/10"
+              : "border-border bg-card"
+          }`}
+        >
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+              Supplier balance
+            </p>
+            <p
+              className={`text-lg font-black ${balanceLow ? "text-destructive" : "text-foreground"}`}
+            >
+              {supBal ? `${balance.toFixed(2)} ${supBal.currency}` : "…"}
+            </p>
+            {balanceLow ? (
+              <p className="text-[11px] font-bold text-destructive">
+                {balanceEmpty
+                  ? "Too low to buy any product — top up the supplier wallet now."
+                  : `Too low for your costliest item ($${costliest.toFixed(2)}) — top up soon.`}
+              </p>
+            ) : (
+              <p className="text-[11px] text-muted-foreground">
+                Enough for every linked product (costliest ${costliest.toFixed(2)}).
+              </p>
+            )}
+          </div>
+          <button
+            onClick={() => loadBalance()}
+            className="rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary"
+          >
+            Refresh
+          </button>
+        </div>
+      ) : null}
       {lowStock.length ? (
         <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-4">
           <h2 className="text-sm font-black text-destructive">
