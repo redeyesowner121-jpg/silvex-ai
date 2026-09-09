@@ -51,8 +51,9 @@ export function WalletModal() {
     Number.isFinite(Number(config.razorpayFeePercent)) && Number(config.razorpayFeePercent) >= 0
       ? Number(config.razorpayFeePercent)
       : 3;
-  const payBase = Math.round((Number(payAmount) || 0) * rate);
-  const payFeeInr = Math.round((payBase * payFee) / 100);
+  const payBase = Math.round((Number(payAmount) || 0) * rate * 100) / 100;
+  const payFeeInr = Math.round(payBase * payFee) / 100;
+
 
   async function startCardPayment() {
     if (!user) return notify("Sign in first");
