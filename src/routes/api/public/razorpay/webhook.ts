@@ -72,12 +72,13 @@ export const Route = createFileRoute("/api/public/razorpay/webhook")({
         // Telegram buyers get the good news right inside the bot.
         const tgId = Number(uid.startsWith("tg_") ? uid.slice(3) : 0);
         if (tgId > 0) {
-          const { tgSend } = await import("@/lib/telegram.server");
+          const { tg } = await import("@/lib/telegram.server");
           const bal = Math.round((current + usd) * 100) / 100;
-          await tgSend(
-            tgId,
-            `✅ <b>Deposit done</b>\n${money(usd)} added by card/UPI (₹${inrPaid.toFixed(0)}).\nNew balance: <b>${money(bal)}</b>`,
-          ).catch(() => undefined);
+          await tg("sendMessage", {
+            chat_id: tgId,
+            parse_mode: "HTML",
+            text: `✅ <b>Deposit done</b>\n${money(usd)} added by card/UPI (₹${inrPaid.toFixed(0)}).\nNew balance: <b>${money(bal)}</b>`,
+          }).catch(() => undefined);
         }
 
         await notifyOwners(
