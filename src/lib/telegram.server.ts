@@ -327,6 +327,10 @@ ${body}
   return new TextEncoder().encode(svg);
 }
 
+/** Premium emoji markup removed, for retries when Telegram rejects it. */
+export const plainEmojiText = (v: string) =>
+  v.replace(/<tg-emoji[^>]*>([\s\S]*?)<\/tg-emoji>/g, "$1");
+
 export async function tgSendDocument(
   chatId: number,
   filename: string,
@@ -345,7 +349,14 @@ export async function tgSendDocument(
   }
   form.append("document", new Blob([bytes as unknown as BlobPart], { type: mime }), filename);
   const res = await fetch(api.url, { method: "POST", headers: api.headers, body: form });
-  if (!res.ok) console.error(`Telegram sendDocument failed [${res.status}]: ${await res.text()}`);
+  if (!res.ok) {
+    const detail = await res.text();
+    console.error(`Telegram sendDocument failed [${res.status}]: ${detail}`);
+    if (caption && /emoji|entit/i.test(detail)) {
+      form.set("caption", plainEmojiText(String(decorateText(caption))));
+      await fetch(api.url, { method: "POST", headers: api.headers, body: form }).catch(() => undefined);
+    }
+  }
 }
 
 export async function sendDeliveryFiles(
@@ -395,7 +406,14 @@ export async function tgSendPhoto(
       form.append("photo", new Blob([bytes as unknown as BlobPart], { type: m[1] || "image/jpeg" }), `photo.${ext}`);
       const res = await fetch(api.url, { method: "POST", headers: api.headers, body: form });
       if (!res.ok) {
-        console.error(`Telegram sendPhoto failed [${res.status}]: ${await res.text()}`);
+        const detail = await res.text();
+        console.error(`Telegram sendPhoto failed [${res.status}]: ${detail}`);
+        // Retry without premium emoji markup so the photo still reaches the buyer.
+        if (caption && /emoji|entit/i.test(detail)) {
+          form.set("caption", plainEmojiText(String(decorateText(caption))));
+          const retry = await fetch(api.url, { method: "POST", headers: api.headers, body: form });
+          if (retry.ok) return true;
+        }
         return false;
       }
       return true;
