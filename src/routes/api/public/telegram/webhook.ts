@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { DEFAULT_DEPOSIT_ADDRESS, verifyDepositAnyChain } from "@/lib/deposit.server";
+import { defaultDepositAddress, verifyDepositAnyChain } from "@/lib/deposit.server";
 import {
   botReferralLink,
   referralEarnings,
@@ -1505,7 +1505,8 @@ async function handleText(chatId: number, text: string, entities?: any[], sticke
     const uid = await ensureUser(chatId);
     const u = await dbGet<any>(`users/${uid}`);
     const c = await cfg();
-    const address = c.depositAddress || DEFAULT_DEPOSIT_ADDRESS;
+    const address = c.depositAddress || defaultDepositAddress();
+    if (!address) return say(chatId, "No deposit wallet is set up yet. Ask the store owner to add one in the admin panel.", backHome);
 
     const already = await dbGet<any>(`deposits/${hash}`);
     if (already) return say(chatId, "This transaction has already been used.", backHome);
