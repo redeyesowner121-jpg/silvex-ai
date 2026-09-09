@@ -1,4 +1,4 @@
-/** Turn a picked image file into a small compressed 4:3 data URL we can store. */
+/** Turn a picked image file into a small compressed 16:9 data URL we can store. */
 export async function fileToCompressedDataUrl(file: File, maxSize = 800): Promise<string> {
   if (!file.type.startsWith("image/")) throw new Error("Please choose an image file.");
   const dataUrl = await new Promise<string>((resolve, reject) => {
@@ -15,9 +15,9 @@ export async function fileToCompressedDataUrl(file: File, maxSize = 800): Promis
     el.src = dataUrl;
   });
 
-  // Always output a 4:3 picture, cropping the middle of the original.
+  // Always output a 16:9 picture, cropping the middle of the original.
   const outW = Math.min(maxSize, Math.max(320, img.width));
-  const outH = Math.round((outW * 3) / 4);
+  const outH = Math.round((outW * 9) / 16);
   const canvas = document.createElement("canvas");
   canvas.width = outW;
   canvas.height = outH;
@@ -27,7 +27,7 @@ export async function fileToCompressedDataUrl(file: File, maxSize = 800): Promis
   ctx.fillRect(0, 0, outW, outH);
 
   const srcRatio = img.width / img.height;
-  const dstRatio = 4 / 3;
+  const dstRatio = 16 / 9;
   let sx = 0;
   let sy = 0;
   let sw = img.width;
