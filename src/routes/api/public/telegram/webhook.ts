@@ -1326,6 +1326,7 @@ async function handleCallback(chatId: number, data: string) {
   if (data === "wallet") return sendWallet(chatId);
   if (data === "whist") return walletHistory(chatId);
   if (data === "dep") return startDeposit(chatId);
+  if (data === "depcard") return startCardDeposit(chatId);
   if (data === "wd") return startWithdraw(chatId);
   if (data === "profile") return sendProfile(chatId);
   if (data === "apikey") return sendApiKey(chatId, false);
