@@ -22,7 +22,7 @@ import {
   update,
 } from "firebase/database";
 import { useStore } from "@/context/StoreContext";
-import { checkDeposit, DEPOSIT_ADDRESS } from "@/lib/deposit.functions";
+import { checkDeposit, fallbackDepositAddress } from "@/lib/deposit.functions";
 import { Emo } from "@/components/store/Emo";
 import { EmoText } from "@/components/store/EmoText";
 import { Sheet, inputCls } from "./ui";
