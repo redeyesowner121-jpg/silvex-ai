@@ -94,6 +94,28 @@ export function decorateMarkup(markup: any): any {
   }
 }
 
+/**
+ * Emoji chosen by the admin must apply everywhere the same emoji appears, not
+ * only on the one button it was picked for. The emoji registry plugs a text
+ * decorator in here so every outgoing message/caption is upgraded.
+ */
+type TextDecorator = (text: string) => string;
+let textDecorator: TextDecorator = (t) => t;
+
+export function setTextDecorator(fn: TextDecorator): void {
+  textDecorator = fn;
+}
+
+export function decorateText(text: unknown): unknown {
+  if (typeof text !== "string" || !text) return text;
+  try {
+    return textDecorator(text);
+  } catch {
+    return text;
+  }
+}
+
+
 /** Drop premium icons if Telegram refuses them for this bot. */
 function stripIcons(markup: any): any {
   if (!markup || !Array.isArray(markup.inline_keyboard)) return markup;
