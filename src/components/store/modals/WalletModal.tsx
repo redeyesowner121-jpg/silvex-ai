@@ -182,6 +182,44 @@ export function WalletModal() {
 
       {tab === "deposit" ? (
         <div>
+          {cardsOn ? (
+            <div className="mb-5 rounded-2xl border border-border bg-card p-4">
+              <p className="text-sm font-black">Pay by card, UPI or netbanking</p>
+              <p className="mb-2 text-[11px] text-muted-foreground">
+                ₹{rate} = $1. Your balance updates on its own once the payment is done.
+              </p>
+              <input
+                className={`${inputCls} mb-2`}
+                placeholder="Amount in $"
+                inputMode="decimal"
+                value={payAmount}
+                onChange={(e) => setPayAmount(e.target.value)}
+              />
+              {Number(payAmount) > 0 ? (
+                <p className="mb-2 text-[11px] font-bold text-muted-foreground">
+                  You pay ₹{Math.round(Number(payAmount) * rate)}
+                </p>
+              ) : null}
+              <button
+                onClick={startCardPayment}
+                disabled={paying}
+                className="w-full rounded-xl bg-primary py-3 font-bold text-primary-foreground disabled:opacity-60"
+              >
+                {paying ? "Creating payment link…" : "Get payment link"}
+              </button>
+              {payLink ? (
+                <a
+                  href={payLink}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-2 block break-all text-center text-[11px] font-bold text-primary underline"
+                >
+                  Open payment page
+                </a>
+              ) : null}
+            </div>
+          ) : null}
+
           <p className="mb-2 text-xs font-bold text-muted-foreground">
             Send USDT or USDC to this address, then paste the transaction hash.
           </p>
