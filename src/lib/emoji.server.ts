@@ -337,9 +337,12 @@ export function decorateKeyboard(markup: any): any {
         if (!out.icon_custom_emoji_id) {
           const lead = LEAD_EMOJI.exec(text)?.[1];
           const id = lead ? customIdForChar(lead) : undefined;
-          // Keep the emoji in the label too: clients that ignore the premium
-          // icon field would otherwise show a button with no emoji at all.
-          if (id) out.icon_custom_emoji_id = id;
+          if (id) {
+            // Telegram renders icon_custom_emoji_id beside the label. Keeping
+            // the Unicode source in `text` renders the same emoji twice.
+            out.icon_custom_emoji_id = id;
+            out.text = text.replace(LEAD_EMOJI, "").trimStart();
+          }
         }
 
         return out;
