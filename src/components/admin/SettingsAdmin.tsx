@@ -162,6 +162,13 @@ export function SettingsAdmin({
           value={cfg.inrPerDollar}
           onChange={(e) => setCfg({ ...cfg, inrPerDollar: e.target.value })}
         />
+        <input
+          className={input}
+          placeholder="Verification fee % added to the payment (default 3)"
+          value={cfg.razorpayFeePercent}
+          onChange={(e) => setCfg({ ...cfg, razorpayFeePercent: e.target.value })}
+        />
+
         <div className="rounded-xl border border-dashed border-border bg-muted/50 p-3">
           <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
             Webhook address
