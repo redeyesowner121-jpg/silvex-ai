@@ -65,6 +65,8 @@ type Cfg = {
   depositAddress?: string;
   forceJoin?: string;
   reviewChannel?: string;
+  razorpayKeyId?: string;
+  inrPerDollar?: number | string;
 };
 
 const CFG = "site_settings/config";
