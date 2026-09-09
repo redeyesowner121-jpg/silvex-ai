@@ -55,3 +55,13 @@ export const autoSyncSupplier = createServerFn({ method: "POST" }).handler(async
     return { ok: false as const, updated: [] };
   }
 });
+
+/** Just the supplier wallet balance, shown in the admin panel. */
+export const fetchSupplierBalance = createServerFn({ method: "GET" }).handler(async () => {
+  const { supplierBalance } = await import("./supplier.server");
+  try {
+    return { ok: true as const, ...(await supplierBalance()) };
+  } catch (err) {
+    return { ok: false as const, error: (err as Error).message, balance: 0, currency: "USDT" };
+  }
+});
