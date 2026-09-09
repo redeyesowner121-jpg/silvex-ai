@@ -95,6 +95,8 @@ export type SiteConfig = {
   razorpayWebhookSecret?: string;
   /** Rupees that equal one dollar (default 100). */
   inrPerDollar?: number;
+  /** Extra verification fee added on card/UPI payments, in percent (default 3). */
+  razorpayFeePercent?: number;
 
 };
 
