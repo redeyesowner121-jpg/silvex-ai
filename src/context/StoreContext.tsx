@@ -348,7 +348,26 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           update(ref(db, `users/${user.uid}`), { isAdmin: true, isOwner: true }).catch(() => {});
         }
       }
+
+      // Brand-new database: the very first account to sign in becomes the owner,
+      // so a fresh Firebase project needs no code change at all.
+      if (!isOriginProject() && user.email) {
+        const claimed = await get(ref(db, "site_settings/bootstrapOwner")).catch(() => null);
+        const owners = await get(ref(db, "site_settings/config/ownerEmails")).catch(() => null);
+        if (!claimed?.exists() && !String(owners?.val() ?? "").trim()) {
+          await update(ref(db, "site_settings"), {
+            bootstrapOwner: user.uid,
+            "config/ownerEmails": user.email.toLowerCase(),
+          }).catch(() => {});
+          await update(ref(db, `users/${user.uid}`), {
+            isAdmin: true,
+            isOwner: true,
+            ownerRevoked: null,
+          }).catch(() => {});
+        }
+      }
     })();
+
     return () => unsub();
   }, [db, user]);
 
