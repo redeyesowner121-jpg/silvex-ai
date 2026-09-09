@@ -64,13 +64,28 @@ export function ProductModal() {
     notify("Review added!");
   }
 
+  const anyP = product as unknown as {
+    stock?: unknown[];
+    supplierStock?: number;
+    delivery?: string;
+    salesCount?: number;
+  };
+  const stockCount =
+    anyP.delivery === "supplier"
+      ? Number(anyP.supplierStock || 0)
+      : Array.isArray(anyP.stock)
+        ? anyP.stock.filter(Boolean).length
+        : 0;
+  const unlimited = anyP.delivery === "repeat";
+  const sold = Number(anyP.salesCount || 0);
+
   return (
     <Sheet onClose={closeModal}>
       {product.logo ? (
         <img
           src={product.logo}
           alt={product.title}
-          className="mb-4 aspect-[4/3] w-full rounded-xl object-cover"
+          className="mx-auto mb-4 aspect-[4/3] w-32 rounded-xl object-cover"
         />
       ) : null}
       <div className="mb-2 flex items-start justify-between gap-3">
@@ -84,11 +99,20 @@ export function ProductModal() {
         </div>
         <div className="text-xl font-black text-primary">${product.price}</div>
       </div>
+
+      <div className="mb-3 flex gap-2 text-xs font-semibold">
+        <span className="rounded-lg bg-muted/60 px-2 py-1">
+          📦 Stock: {unlimited ? "Unlimited" : stockCount}
+        </span>
+        <span className="rounded-lg bg-muted/60 px-2 py-1">🛒 Total sold: {sold}</span>
+      </div>
+
       {product.desc ? (
-        <p className="mb-4 whitespace-pre-line break-words rounded-xl bg-muted/60 p-3 text-sm leading-relaxed text-muted-foreground">
+        <blockquote className="mb-4 whitespace-pre-line break-words border-l-4 border-primary/60 bg-muted/50 py-2 pl-3 pr-2 text-sm italic leading-relaxed text-muted-foreground">
           {product.desc}
-        </p>
+        </blockquote>
       ) : null}
+
 
       <div className="border-t border-border pt-3">
         <h4 className="mb-2 text-sm font-bold">⭐ Reviews</h4>
