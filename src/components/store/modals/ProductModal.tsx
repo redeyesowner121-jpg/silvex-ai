@@ -95,27 +95,33 @@ export function ProductModal() {
               {product.type}
             </span>
           ) : null}
-          <h3 className="mt-1 text-xl font-bold leading-tight">{product.title}</h3>
+          <h3 className="mt-1 text-xl font-bold leading-tight">
+            <EmoText text={product.title || ""} />
+          </h3>
         </div>
         <div className="text-xl font-black text-primary">${product.price}</div>
       </div>
 
       <div className="mb-3 flex gap-2 text-xs font-semibold">
         <span className="rounded-lg bg-muted/60 px-2 py-1">
-          📦 Stock: {unlimited ? "Unlimited" : stockCount}
+          <Emo k="web.stock" /> Stock: {unlimited ? "Unlimited" : stockCount}
         </span>
-        <span className="rounded-lg bg-muted/60 px-2 py-1">🛒 Total sold: {sold}</span>
+        <span className="rounded-lg bg-muted/60 px-2 py-1">
+          <Emo k="web.sold" /> Total sold: {sold}
+        </span>
       </div>
 
       {product.desc ? (
         <blockquote className="mb-4 whitespace-pre-line break-words border-l-4 border-primary/60 bg-muted/50 py-2 pl-3 pr-2 text-sm italic leading-relaxed text-muted-foreground">
-          {product.desc}
+          <EmoText text={product.desc} />
         </blockquote>
       ) : null}
 
 
       <div className="border-t border-border pt-3">
-        <h4 className="mb-2 text-sm font-bold">⭐ Reviews</h4>
+        <h4 className="mb-2 text-sm font-bold">
+          <Emo k="web.star" /> Reviews
+        </h4>
         <div className="mb-3 max-h-32 space-y-2 overflow-y-auto text-xs">
           {reviews.length === 0 ? (
             <p className="text-muted-foreground">No reviews yet.</p>
