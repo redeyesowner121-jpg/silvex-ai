@@ -69,7 +69,7 @@ export async function createPaymentLink(opts: {
     amount: inr * 100,
     currency: "INR",
     accept_partial: false,
-    description: `Wallet top-up of $${usd.toFixed(2)}`.slice(0, 60),
+    description: `$${usd.toFixed(2)} top-up + ${conf.feePercent}% fee`.slice(0, 60),
     reference_id: `dep_${opts.uid}_${Date.now()}`.slice(0, 40),
     notify: { sms: false, email: Boolean(email) },
     reminder_enable: false,
@@ -78,6 +78,7 @@ export async function createPaymentLink(opts: {
       usd: String(usd),
       source: opts.source,
       email,
+      fee_inr: String(feeInr),
     },
   };
   const customer: Record<string, string> = {};
@@ -112,7 +113,15 @@ export async function createPaymentLink(opts: {
     return { ok: false, error: desc || `Payment provider error (${res.status})` };
   }
   if (!json?.short_url) return { ok: false, error: "Payment provider did not return a link." };
-  return { ok: true, url: String(json.short_url), id: String(json.id), inr };
+  return {
+    ok: true,
+    url: String(json.short_url),
+    id: String(json.id),
+    inr,
+    baseInr,
+    feeInr,
+    feePercent: conf.feePercent,
+  };
 }
 
 async function hmacHex(secret: string, payload: string): Promise<string> {
