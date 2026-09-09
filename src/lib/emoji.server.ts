@@ -395,11 +395,11 @@ export function decorateKeyboard(markup: any): any {
         if (!out.icon_custom_emoji_id) {
           const lead = LEAD_EMOJI.exec(text)?.[1];
           const id = lead ? customIdForChar(lead) : undefined;
-          if (id) {
-            out.icon_custom_emoji_id = id;
-            out.text = text.replace(LEAD_EMOJI, "").trim() || text;
-          }
+          // Keep the emoji in the label too: clients that ignore the premium
+          // icon field would otherwise show a button with no emoji at all.
+          if (id) out.icon_custom_emoji_id = id;
         }
+
         return out;
       }),
     ),
