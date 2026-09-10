@@ -1372,61 +1372,50 @@ async function handleCallback(chatId: number, data: string) {
     }
     if (key === "set") return adminSettings(chatId);
     if (key === "em") {
+      if (arg === "add") return emojiAsk(chatId);
+      if (arg === "list") return emojiList(chatId);
       if (arg === "prod") return emojiProducts(chatId);
-      if (arg === "norm") return emojiSlots(chatId, "normal");
-      if (arg === "btn") return emojiSlots(chatId, "button");
-      if (arg === "web") return emojiSlots(chatId, "web");
       if (arg === "sync") {
         const fixed = await syncEmojiImages().catch(() => 0);
-        return emojiHome(chatId, fixed);
+        return emojiHome(chatId, `🔄 ${fixed} emoji picture(s) synced for the website.`);
+      }
+      if (arg === "rst")
+        return say(chatId, "♻️ Remove every emoji you set (bot + website + products)?", {
+          inline_keyboard: [
+            [{ text: "✅ Yes, reset all", callback_data: "a:em:rst2" }],
+            [{ text: "❌ Cancel", callback_data: "a:em" }],
+          ],
+        });
+      if (arg === "rst2") {
+        await resetAllEmojis();
+        return emojiHome(chatId, "♻️ All emojis are back to the defaults.");
       }
       return emojiHome(chatId);
     }
+    if (key === "emL") return emojiList(chatId, Number(arg) || 0);
     if (key === "emP") return emojiProducts(chatId, Number(arg) || 0);
-    if (key === "emS")
-      return emojiSlots(
-        chatId,
-        arg === "btn" ? "button" : arg === "web" ? "web" : "normal",
-        Number(arg2) || 0,
-      );
+    if (key === "emd") {
+      await removeRule(String(arg));
+      await say(chatId, "🗑 Removed.");
+      return emojiList(chatId);
+    }
     if (key === "emp") {
       await setState(chatId, { k: "em_prod", a: arg! });
       return say(chatId, "Send the emoji for this product (premium emoji supported).", {
         inline_keyboard: [
-          [{ text: "♻️ Use default 🛍", callback_data: `a:emx:p:${arg}` }],
+          [{ text: "♻️ Use default 🛍", callback_data: `a:emx:${arg}` }],
           [{ text: "❌ Cancel", callback_data: "a:em:prod" }],
         ],
       });
     }
-    if (key === "emk") {
-      const slotKey = data.slice("a:emk:".length);
-      await setState(chatId, { k: "em_key", a: slotKey });
-      const def = EMOJI_SLOTS[slotKey];
-      return say(
-        chatId,
-        `Send the emoji to use for <b>${def?.label || slotKey}</b> (premium emoji supported).\n\nDefault: ${def?.char || "•"}`,
-        {
-          inline_keyboard: [
-            [{ text: `♻️ Use default ${def?.char || ""}`.trim(), callback_data: `a:emx:k:${slotKey}` }],
-            [{ text: "❌ Cancel", callback_data: "a:em" }],
-          ],
-        },
-      );
-    }
     if (key === "emx") {
-      const rest = data.slice("a:emx:".length);
-      const isProduct = rest.startsWith("p:");
-      const id = rest.slice(2);
+      const id = data.slice("a:emx:".length);
       await setState(chatId, null);
-      if (isProduct) {
-        await clearProductEmoji(id);
-        await say(chatId, "♻️ Product emoji reset to the default.");
-        return emojiProducts(chatId);
-      }
-      await clearSlotEmoji(id);
-      await say(chatId, "♻️ Emoji reset to the default.");
-      return emojiSlots(chatId, EMOJI_SLOTS[id]?.group === "button" ? "button" : EMOJI_SLOTS[id]?.group === "web" ? "web" : "normal");
+      await clearProductEmoji(id);
+      await say(chatId, "♻️ Product emoji reset to the default.");
+      return emojiProducts(chatId);
     }
+
     if (key === "s") {
       await setState(chatId, { k: "cfg", a: arg! });
       return say(chatId, `Send the new value for <b>${arg}</b>.`, {
