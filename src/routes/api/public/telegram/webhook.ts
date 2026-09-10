@@ -1125,6 +1125,11 @@ async function emojiHome(chatId: number, note = "") {
       inline_keyboard: [
         [{ text: "➕ Change an emoji", callback_data: "a:em:add" }],
         [
+          { text: "🔘 Button emojis", callback_data: "a:emg:button:0" },
+          { text: "🔤 Normal emojis", callback_data: "a:emg:normal:0" },
+        ],
+        [{ text: "🌐 Website emojis", callback_data: "a:emg:web:0" }],
+        [
           { text: "📋 Saved emojis", callback_data: "a:em:list" },
           { text: "🛍 Product emojis", callback_data: "a:em:prod" },
         ],
