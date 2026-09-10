@@ -1598,8 +1598,9 @@ async function handleText(chatId: number, text: string, entities?: any[], sticke
   if (k === "review") return submitReview(chatId, t);
 
   if (state && (await isBotAdmin(chatId))) {
-    if (k === "em_prod" || k === "em_key")
-      return saveEmojiFromMessage(chatId, state, text, entities, sticker);
+    if (k === "em_from") return emojiFromMessage(chatId, text, entities, sticker);
+    if (k === "em_to") return emojiToMessage(chatId, state.a!, text, entities, sticker);
+    if (k === "em_prod") return emojiProductMessage(chatId, state.a!, text, entities, sticker);
     if (k === "deliver") return adminDeliver(chatId, state.a!, t);
     if (k === "bc") return broadcast(chatId, t);
     if (k === "cfg") {
