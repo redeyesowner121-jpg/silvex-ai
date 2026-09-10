@@ -28,7 +28,9 @@ import { EmoText } from "@/components/store/EmoText";
 import { Sheet, inputCls } from "./ui";
 
 export function ProductModal() {
-  const { db, user, products, activeProductId, closeModal, addToCart, notify, profile } = useStore();
+  const { db, user, products, activeProductId, closeModal, addToCart, notify, profile, productEmoji } =
+    useStore();
+  const pe = productEmoji(activeProductId || "");
   const [reviews, setReviews] = useState<
     Array<{ id: string; name: string; rating: number; comment: string }>
   >([]);
