@@ -332,10 +332,17 @@ export function apiProductKey(provider: string, id: number): string {
   return `api_${provider}_${id}`;
 }
 
-/** Category (folder) the imported API products live in. */
+/** Category (folder) the imported API products live in, created if missing. */
 export async function apiCategoryName(): Promise<string> {
-  const c = (await dbGet<Record<string, string>>("site_settings/config")) || {};
-  return c["apiCategory"] || "Reseller API";
+  const c = (await dbGet<Record<string, any>>("site_settings/config")) || {};
+  const label = String(c["apiCategory"] || "Reseller API");
+  const cats = Array.isArray(c["categories"]) ? c["categories"] : [];
+  if (!cats.some((x: any) => String(x?.label || "") === label)) {
+    await dbPatch("site_settings/config", {
+      categories: [...cats, { label, icon: "🔑" }],
+    });
+  }
+  return label;
 }
 
 /**
