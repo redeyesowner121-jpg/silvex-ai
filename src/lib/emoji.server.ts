@@ -51,7 +51,7 @@ export async function loadEmojis(): Promise<void> {
     dbGet<Record<string, EmojiEntry>>(`${EMOJI_PATH}/products`),
   ])
     .then(([keys, products]) => {
-      store = { keys: decodeMap(keys), products: products || {} };
+      store = { keys: decodeMap(keys), products: decodeMap(products) };
       loadedAt = Date.now();
     })
     .finally(() => {
@@ -153,8 +153,8 @@ export async function clearSlotEmoji(key: string): Promise<void> {
 
 /** Put a product back to the default shop emoji. */
 export async function clearProductEmoji(productId: string): Promise<void> {
-  await dbPut(`${EMOJI_PATH}/products/${productId}`, null).catch(() => undefined);
-  await dbPut(`${EMOJI_PATH}/prodimg/${productId}`, null).catch(() => undefined);
+  await dbPut(`${EMOJI_PATH}/products/${encKey(productId)}`, null).catch(() => undefined);
+  await dbPut(`${EMOJI_PATH}/prodimg/${encKey(productId)}`, null).catch(() => undefined);
   const next = { ...(store.products || {}) };
   delete next[productId];
   store.products = next;
