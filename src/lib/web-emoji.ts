@@ -114,64 +114,36 @@ export const BOT_EMOJI_SLOTS: Record<string, { label: string; char: string; grou
   "btn.edit": { label: "Edit button", char: "✏️", group: "button" },
 };
 
-export type WebEmojiMap = Record<string, { char?: string; id?: string; img?: string }>;
-
-/** Resolve a website emoji, falling back to the built-in default. */
-export function webEmoji(map: WebEmojiMap | null | undefined, key: string): string {
-  return map?.[key]?.char || WEB_EMOJI_SLOTS[key]?.char || "";
-}
-
-/** Image of the premium emoji the admin picked, when one was captured. */
-export function webEmojiImg(map: WebEmojiMap | null | undefined, key: string): string {
-  return map?.[key]?.img || "";
-}
+/** One saved replacement: the original emoji -> the emoji the admin picked. */
+export type EmojiRule = { from: string; char: string; id?: string };
+export type EmojiRuleMap = Record<string, EmojiRule>;
 
 /**
  * "🛍" and "🛍️" are the same emoji to a person but different text, so matching
- * ignores the invisible variation mark. Without this some places changed and
- * others kept the old emoji.
+ * ignores the invisible variation mark.
  */
 export const normEmoji = (c: string) => String(c || "").replace(/\uFE0F/g, "");
 
+/** Default character for a named place in the site or bot. */
+export const slotChar = (key: string) =>
+  WEB_EMOJI_SLOTS[key]?.char || BOT_EMOJI_SLOTS[key]?.char || "";
+
 /**
- * The same emoji can show in many places, not only the slot it was set on.
- * This maps a built-in character to what the admin chose (character + artwork)
- * so every appearance on the website follows the admin's choice.
+ * Build "original emoji -> chosen emoji (+ premium artwork)" so one change by
+ * the admin applies to every place that emoji is used.
  */
 export function buildEmojiCharMap(
-  map: WebEmojiMap | null | undefined,
+  rules: EmojiRuleMap | null | undefined,
   imgs: Record<string, string> | null | undefined,
 ): Record<string, { char: string; img?: string }> {
   const out: Record<string, { char: string; img?: string }> = {};
-  const defs: Record<string, { char: string }> = { ...WEB_EMOJI_SLOTS, ...BOT_EMOJI_SLOTS };
-  for (const [key, def] of Object.entries(defs)) {
-    const saved = map?.[key];
-    const img = imgs?.[key] || saved?.img || "";
-    if (!saved?.char && !img) continue;
-    out[normEmoji(def.char)] = { char: saved?.char || def.char, img };
-  }
-  for (const [key, saved] of Object.entries(map || {})) {
-    const img = imgs?.[key] || saved?.img || "";
-    if (saved?.char && img) out[normEmoji(saved.char)] = { char: saved.char, img };
+  for (const [key, rule] of Object.entries(rules || {})) {
+    if (!rule?.from || !rule?.char) continue;
+    out[normEmoji(rule.from)] = { char: rule.char, img: imgs?.[key] || "" };
   }
   return out;
 }
 
-/**
- * Artwork for a website slot. When that exact slot has none, the artwork the
- * admin set in the bot for the same emoji character is used instead.
- */
-export function resolveEmojiImg(
-  map: WebEmojiMap | null | undefined,
-  imgs: Record<string, string> | null | undefined,
-  charMap: Record<string, { char: string; img?: string }>,
-  key: string,
-): string {
-  const direct = imgs?.[key] || map?.[key]?.img || "";
-  if (direct) return direct;
-  const char = map?.[key]?.char || WEB_EMOJI_SLOTS[key]?.char || BOT_EMOJI_SLOTS[key]?.char || "";
-  return charMap[normEmoji(char)]?.img || "";
-}
 
 
 const EMOJI_RE = /\p{Extended_Pictographic}(\uFE0F|\u200D\p{Extended_Pictographic})*/gu;
