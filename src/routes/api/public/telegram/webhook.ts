@@ -185,13 +185,23 @@ function channelLink(handle: string) {
   return `https://t.me/${h.replace(/^@/, "")}`;
 }
 
+/** Accepts "@name", "name" or a full https://t.me/name link. */
+function channelHandle(raw: string): string {
+  const h = raw.trim().replace(/\/+$/, "");
+  const m = h.match(/t\.me\/(?:s\/)?([A-Za-z0-9_]{4,})$/i);
+  const name = m ? m[1] : h.replace(/^@/, "");
+  if (!name || /^\+/.test(name) || /joinchat/i.test(h)) return "";
+  return `@${name}`;
+}
+
 async function forceJoinBlocked(chatId: number): Promise<boolean> {
   const c = await cfg();
   const ch = (c.forceJoin || "").trim();
-  if (!ch || ch.startsWith("http")) return false;
+  const handle = ch ? channelHandle(ch) : "";
+  if (!ch || !handle) return false;
   try {
     const res = await tg("getChatMember", {
-      chat_id: ch.startsWith("@") ? ch : `@${ch}`,
+      chat_id: handle,
       user_id: chatId,
     });
     const status = res?.result?.status;
@@ -199,6 +209,7 @@ async function forceJoinBlocked(chatId: number): Promise<boolean> {
   } catch {
     return false;
   }
+
   await say(
     chatId,
     "🔒 <b>Join our channel first</b>\n\nYou must join the channel below to use this bot.",
