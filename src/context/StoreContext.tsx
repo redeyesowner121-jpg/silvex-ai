@@ -461,8 +461,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           ? config.categories
           : DEFAULT_CATEGORIES,
       siteName: config.siteName || (isOriginProject() ? "SILENT SELLER" : "My Store"),
-      emoji: (key: string) => webEmoji(emojis, key),
-      emojiImg: (key: string) => resolveEmojiImg(emojis, emojiImgs, emojiCharMap, key),
+      emoji: (key: string) => emojiCharMap[normEmoji(slotChar(key))]?.char || slotChar(key),
+      emojiImg: (key: string) => emojiCharMap[normEmoji(slotChar(key))]?.img || "",
       emojiFor: (char: string) => emojiCharMap[normEmoji(char)] || { char },
       productEmoji: (productId: string) => {
         const saved = prodEmojis[productId];
