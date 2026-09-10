@@ -97,6 +97,16 @@ export function ProvidersAdmin({ products }: { products: Product[] }) {
     notify(p.hidden ? "Shown to customers" : "Hidden from customers");
   }
 
+  async function saveDetails(p: Product) {
+    if (!db) return;
+    const title = String(nameRef.current[p.id] ?? p.title ?? "").trim();
+    const type = String(typeRef.current[p.id] ?? p.type ?? "").trim();
+    if (!title) return notify("Give the product a name");
+    await update(ref(db, `products/${p.id}`), { title, ...(type ? { type } : {}) });
+    notify("Name and category saved");
+  }
+
+
   async function saveMarkup(p: Product) {
     if (!db) return;
     const pct = Number(markupRef.current[p.id] ?? p.markup ?? 130);
