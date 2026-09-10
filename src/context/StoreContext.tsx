@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import { getFirebase } from "@/lib/firebase";
 import { isOriginProject } from "@/lib/origin";
 import { applyReferralConfig } from "@/lib/referral";
-import { buildEmojiCharMap, normEmoji, resolveEmojiImg, webEmoji, type WebEmojiMap } from "@/lib/web-emoji";
+import { buildEmojiCharMap, normEmoji, slotChar, type EmojiRuleMap } from "@/lib/web-emoji";
 
 export type Product = {
   id: string;
