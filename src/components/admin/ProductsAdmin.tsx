@@ -399,6 +399,18 @@ export function ProductsAdmin({ products }: { products: Product[] }) {
                 </div>
                 <div className="flex shrink-0 gap-2">
                   <button
+                    onClick={async () => {
+                      if (db) await update(ref(db, `products/${p.id}`), { hidden: !p.hidden });
+                    }}
+                    className={`rounded-lg px-3 py-1.5 text-xs font-bold ${
+                      p.hidden
+                        ? "bg-muted text-muted-foreground"
+                        : "bg-emerald-500/10 text-emerald-600"
+                    }`}
+                  >
+                    {p.hidden ? "Hidden" : "Visible"}
+                  </button>
+                  <button
                     onClick={() =>
                       setForm({
                         id: p.id,
