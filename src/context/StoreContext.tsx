@@ -291,19 +291,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           applyReferralConfig(c);
           setConfig(c);
         }));
-      // Slot names hold dots, stored as "~" because Firebase keys can't have dots.
+      // Product ids hold dots, stored as "~" because Firebase keys can't have dots.
       const decodeKeys = (v: Record<string, any> | null) =>
         Object.fromEntries(Object.entries(v || {}).map(([k, val]) => [k.split("~").join("."), val]));
-      unsubs.push(onValue(ref(d, "telegramEmoji/keys"), (s) => setEmojis(decodeKeys(s.val()))));
+      // "Replace this emoji with that one" rules set by the bot admin.
+      unsubs.push(onValue(ref(d, "telegramEmoji/map"), (s) => setEmojis(s.val() || {})));
       // Emojis the bot admin picked for single products.
       unsubs.push(onValue(ref(d, "telegramEmoji/products"), (s) => setProdEmojis(decodeKeys(s.val()))));
       // Premium emoji artwork can be heavy, so it loads after the first paint.
       const loadArt = () => {
-        unsubs.push(onValue(ref(d, "telegramEmoji/img"), (s) => setEmojiImgs(decodeKeys(s.val()))));
+        unsubs.push(onValue(ref(d, "telegramEmoji/mapimg"), (s) => setEmojiImgs(s.val() || {})));
         unsubs.push(
           onValue(ref(d, "telegramEmoji/prodimg"), (s) => setProdEmojiImgs(decodeKeys(s.val()))),
         );
       };
+
 
 
       if (typeof requestIdleCallback === "function") requestIdleCallback(() => loadArt());
