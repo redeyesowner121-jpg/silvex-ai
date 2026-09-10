@@ -137,6 +137,8 @@ type StoreValue = {
   emojiImg: (key: string) => string;
   /** Same emoji everywhere: built-in character -> what the admin picked. */
   emojiFor: (char: string) => { char: string; img?: string };
+  /** Emoji the bot admin picked for one product (with premium artwork). */
+  productEmoji: (productId: string) => { char: string; img?: string };
 
   banner: Banner;
   flashSale: FlashSale;
@@ -205,6 +207,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [config, setConfig] = useState<SiteConfig>({});
   const [emojis, setEmojis] = useState<WebEmojiMap>({});
   const [emojiImgs, setEmojiImgs] = useState<Record<string, string>>({});
+  const [prodEmojis, setProdEmojis] = useState<Record<string, { char?: string; id?: string; img?: string }>>({});
+  const [prodEmojiImgs, setProdEmojiImgs] = useState<Record<string, string>>({});
   const [banner, setBanner] = useState<Banner>({});
   const [flashSale, setFlashSale] = useState<FlashSale>(null);
   const [notices, setNotices] = useState<NoticeItem[]>([]);
