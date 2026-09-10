@@ -128,10 +128,16 @@ export async function setSlotEmoji(key: string, value: EmojiEntry): Promise<void
 
 export async function setProductEmoji(productId: string, value: EmojiEntry): Promise<void> {
   const { img, ...meta } = value;
-  await dbPut(`${EMOJI_PATH}/products/${productId}`, meta);
-  store.products = { ...(store.products || {}), [productId]: meta };
+  const pathKey = encKey(productId);
+  await dbPut(`${EMOJI_PATH}/products/${pathKey}`, meta);
+  // Same readback check the slots use, so a silently rejected write is reported.
+  const persisted = await dbGet<EmojiEntry>(`${EMOJI_PATH}/products/${pathKey}`);
+  if (!persisted || persisted.char !== meta.char || (meta.id && persisted.id !== meta.id)) {
+    throw new Error(`Product emoji ${productId} was not persisted`);
+  }
+  store.products = { ...(store.products || {}), [productId]: persisted };
   loadedAt = Date.now();
-  if (img) await dbPut(`${EMOJI_PATH}/prodimg/${productId}`, img).catch(() => undefined);
+  if (img) await dbPut(`${EMOJI_PATH}/prodimg/${pathKey}`, img).catch(() => undefined);
 }
 
 /** Put a slot back to its built-in emoji. */
