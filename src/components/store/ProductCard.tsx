@@ -3,7 +3,8 @@ import { Emo } from "@/components/store/Emo";
 import { EmoText } from "@/components/store/EmoText";
 
 export function ProductCard({ product }: { product: Product }) {
-  const { openProduct, addToCart, emoji } = useStore();
+  const { openProduct, addToCart, productEmoji } = useStore();
+  const pe = productEmoji(product.id);
 
   return (
     <div className="flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
@@ -17,7 +18,15 @@ export function ProductCard({ product }: { product: Product }) {
             className="h-full w-full object-cover"
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center text-2xl"><Emo k="web.bag" /></div>
+          <div className="flex h-full w-full items-center justify-center text-2xl">
+            {pe.img ? (
+              <img src={pe.img} alt="" aria-hidden loading="lazy" className="h-8 w-8 object-contain" />
+            ) : pe.char ? (
+              <span>{pe.char}</span>
+            ) : (
+              <Emo k="web.bag" />
+            )}
+          </div>
         )}
       </button>
       <div className="flex flex-1 flex-col p-3">
@@ -27,6 +36,17 @@ export function ProductCard({ product }: { product: Product }) {
           </span>
         ) : null}
         <h3 className="line-clamp-2 text-sm font-bold leading-tight">
+          {pe.img ? (
+            <img
+              src={pe.img}
+              alt=""
+              aria-hidden
+              loading="lazy"
+              className="mr-1 inline-block h-[1.15em] w-[1.15em] align-[-0.2em] object-contain"
+            />
+          ) : pe.char ? (
+            <span className="mr-1">{pe.char}</span>
+          ) : null}
           <EmoText text={product.title || ""} />
         </h3>
         <div className="mt-auto flex items-center justify-between pt-3">

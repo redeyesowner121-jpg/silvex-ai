@@ -137,6 +137,8 @@ type StoreValue = {
   emojiImg: (key: string) => string;
   /** Same emoji everywhere: built-in character -> what the admin picked. */
   emojiFor: (char: string) => { char: string; img?: string };
+  /** Emoji the bot admin picked for one product (with premium artwork). */
+  productEmoji: (productId: string) => { char: string; img?: string };
 
   banner: Banner;
   flashSale: FlashSale;
@@ -205,6 +207,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [config, setConfig] = useState<SiteConfig>({});
   const [emojis, setEmojis] = useState<WebEmojiMap>({});
   const [emojiImgs, setEmojiImgs] = useState<Record<string, string>>({});
+  const [prodEmojis, setProdEmojis] = useState<Record<string, { char?: string; id?: string; img?: string }>>({});
+  const [prodEmojiImgs, setProdEmojiImgs] = useState<Record<string, string>>({});
   const [banner, setBanner] = useState<Banner>({});
   const [flashSale, setFlashSale] = useState<FlashSale>(null);
   const [notices, setNotices] = useState<NoticeItem[]>([]);
@@ -284,9 +288,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const decodeKeys = (v: Record<string, any> | null) =>
         Object.fromEntries(Object.entries(v || {}).map(([k, val]) => [k.split("~").join("."), val]));
       unsubs.push(onValue(ref(d, "telegramEmoji/keys"), (s) => setEmojis(decodeKeys(s.val()))));
+      // Emojis the bot admin picked for single products.
+      unsubs.push(onValue(ref(d, "telegramEmoji/products"), (s) => setProdEmojis(decodeKeys(s.val()))));
       // Premium emoji artwork can be heavy, so it loads after the first paint.
-      const loadArt = () =>
+      const loadArt = () => {
         unsubs.push(onValue(ref(d, "telegramEmoji/img"), (s) => setEmojiImgs(decodeKeys(s.val()))));
+        unsubs.push(
+          onValue(ref(d, "telegramEmoji/prodimg"), (s) => setProdEmojiImgs(decodeKeys(s.val()))),
+        );
+      };
+
 
       if (typeof requestIdleCallback === "function") requestIdleCallback(() => loadArt());
       else setTimeout(loadArt, 1500);
@@ -419,6 +430,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const value = useMemo<StoreValue>(() => {
     const cartTotal = cart.reduce((sum, i) => sum + i.price * i.qty, 0);
     const emojiCharMap = buildEmojiCharMap(emojis, emojiImgs);
+    // Artwork picked on a product also counts for that same emoji everywhere.
+    for (const [pid, saved] of Object.entries(prodEmojis)) {
+      const img = prodEmojiImgs[pid] || saved?.img || "";
+      if (saved?.char && img) emojiCharMap[normEmoji(saved.char)] = { char: saved.char, img };
+    }
     return {
       ready,
       auth,
@@ -441,6 +457,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       emoji: (key: string) => webEmoji(emojis, key),
       emojiImg: (key: string) => resolveEmojiImg(emojis, emojiImgs, emojiCharMap, key),
       emojiFor: (char: string) => emojiCharMap[normEmoji(char)] || { char },
+      productEmoji: (productId: string) => {
+        const saved = prodEmojis[productId];
+        const char = saved?.char || "";
+        if (!char) return { char: "" };
+        const img = prodEmojiImgs[productId] || saved?.img || emojiCharMap[normEmoji(char)]?.img || "";
+        return { char, img };
+      },
+
 
       banner,
       flashSale,
@@ -474,6 +498,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     config,
     emojis,
     emojiImgs,
+    prodEmojis,
+    prodEmojiImgs,
     banner,
     flashSale,
     notices,

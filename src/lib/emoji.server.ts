@@ -51,7 +51,7 @@ export async function loadEmojis(): Promise<void> {
     dbGet<Record<string, EmojiEntry>>(`${EMOJI_PATH}/products`),
   ])
     .then(([keys, products]) => {
-      store = { keys: decodeMap(keys), products: products || {} };
+      store = { keys: decodeMap(keys), products: decodeMap(products) };
       loadedAt = Date.now();
     })
     .finally(() => {
@@ -128,10 +128,16 @@ export async function setSlotEmoji(key: string, value: EmojiEntry): Promise<void
 
 export async function setProductEmoji(productId: string, value: EmojiEntry): Promise<void> {
   const { img, ...meta } = value;
-  await dbPut(`${EMOJI_PATH}/products/${productId}`, meta);
-  store.products = { ...(store.products || {}), [productId]: meta };
+  const pathKey = encKey(productId);
+  await dbPut(`${EMOJI_PATH}/products/${pathKey}`, meta);
+  // Same readback check the slots use, so a silently rejected write is reported.
+  const persisted = await dbGet<EmojiEntry>(`${EMOJI_PATH}/products/${pathKey}`);
+  if (!persisted || persisted.char !== meta.char || (meta.id && persisted.id !== meta.id)) {
+    throw new Error(`Product emoji ${productId} was not persisted`);
+  }
+  store.products = { ...(store.products || {}), [productId]: persisted };
   loadedAt = Date.now();
-  if (img) await dbPut(`${EMOJI_PATH}/prodimg/${productId}`, img).catch(() => undefined);
+  if (img) await dbPut(`${EMOJI_PATH}/prodimg/${pathKey}`, img).catch(() => undefined);
 }
 
 /** Put a slot back to its built-in emoji. */
@@ -147,8 +153,8 @@ export async function clearSlotEmoji(key: string): Promise<void> {
 
 /** Put a product back to the default shop emoji. */
 export async function clearProductEmoji(productId: string): Promise<void> {
-  await dbPut(`${EMOJI_PATH}/products/${productId}`, null).catch(() => undefined);
-  await dbPut(`${EMOJI_PATH}/prodimg/${productId}`, null).catch(() => undefined);
+  await dbPut(`${EMOJI_PATH}/products/${encKey(productId)}`, null).catch(() => undefined);
+  await dbPut(`${EMOJI_PATH}/prodimg/${encKey(productId)}`, null).catch(() => undefined);
   const next = { ...(store.products || {}) };
   delete next[productId];
   store.products = next;
@@ -408,17 +414,17 @@ export async function syncEmojiImages(): Promise<number> {
   for (const [id, v] of Object.entries(store.products || {})) {
     if (!v?.id) continue;
     if (v.img) {
-      await dbPut(`${EMOJI_PATH}/prodimg/${id}`, v.img);
+      await dbPut(`${EMOJI_PATH}/prodimg/${encKey(id)}`, v.img);
       const meta = { char: v.char, id: v.id };
       store.products = { ...(store.products || {}), [id]: meta };
-      await dbPut(`${EMOJI_PATH}/products/${id}`, meta);
+      await dbPut(`${EMOJI_PATH}/products/${encKey(id)}`, meta);
       fixed++;
       continue;
     }
-    if (prodImgs?.[id]) continue;
+    if (prodImgs?.[encKey(id)]) continue;
     const img = await fetchEmojiImage(v.id);
     if (!img) continue;
-    await dbPut(`${EMOJI_PATH}/prodimg/${id}`, img);
+    await dbPut(`${EMOJI_PATH}/prodimg/${encKey(id)}`, img);
     fixed++;
   }
 
