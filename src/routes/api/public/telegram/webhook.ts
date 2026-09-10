@@ -1114,33 +1114,59 @@ function emPager(prefix: string, page: number, total: number) {
   return [row];
 }
 
-async function emojiHome(chatId: number, synced?: number) {
+async function emojiHome(chatId: number, note = "") {
   const all = (await dbGet<Record<string, Product>>("products")) || {};
-  const prodIds = Object.keys(all);
-  const p = productEmojiStats(prodIds);
-  const n = slotStats("normal");
-  const b = slotStats("button");
-  const w = slotStats("web");
+  const p = productEmojiStats(Object.keys(all));
+  const r = ruleStats();
   await say(
     chatId,
-    `😍 <b>Emoji setup</b>\n\nPick a group, tap a slot, then send the emoji.\nPremium (custom) emojis are saved with their id and their artwork is shown on the website too.\n\n🛍 Products: ${p.set}/${p.total} set (✨${p.premium})\n✨ Normal: ${n.set}/${n.total} (✨${n.premium})\n🔘 Buttons: ${b.set}/${b.total} (✨${b.premium})\n🌐 Website: ${w.set}/${w.total} (✨${w.premium})${
-      synced ? `\n\n✨ ${synced} premium emoji(s) synced for the website.` : ""
-    }`,
+    `😍 <b>Emoji setup</b>\n\nHow it works: send the emoji you want to change, then send the new one. It is applied everywhere in the bot and on the website at once.\n\n🔁 Replaced emojis: ${r.total} (✨${r.premium} premium)\n🛍 Product emojis: ${p.set}/${p.total} (✨${p.premium})${note ? `\n\n${note}` : ""}`,
     {
       inline_keyboard: [
+        [{ text: "➕ Change an emoji", callback_data: "a:em:add" }],
         [
+          { text: "📋 Saved emojis", callback_data: "a:em:list" },
           { text: "🛍 Product emojis", callback_data: "a:em:prod" },
-          { text: "✨ Normal emojis", callback_data: "a:em:norm" },
-        ],
-        [
-          { text: "🔘 Button emojis", callback_data: "a:em:btn" },
-          { text: "🌐 Website emojis", callback_data: "a:em:web" },
         ],
         [{ text: "🔄 Sync website artwork", callback_data: "a:em:sync" }],
+        [{ text: "♻️ Reset all emojis", callback_data: "a:em:rst" }],
         [{ text: "⬅️ Admin", callback_data: "a:home" }],
       ],
     },
   );
+}
+
+async function emojiAsk(chatId: number) {
+  await setState(chatId, { k: "em_from" });
+  await say(
+    chatId,
+    "1️⃣ Send the emoji you want to change (the one you see now in the bot or on the website).",
+    { inline_keyboard: [[{ text: "❌ Cancel", callback_data: "a:em" }]] },
+  );
+}
+
+async function emojiList(chatId: number, page = 0) {
+  const rules = listRules();
+  if (!rules.length)
+    return say(chatId, "No emoji changed yet.", {
+      inline_keyboard: [
+        [{ text: "➕ Change an emoji", callback_data: "a:em:add" }],
+        [{ text: "⬅️ Emojis", callback_data: "a:em" }],
+      ],
+    });
+  const slice = rules.slice(page * EM_PAGE, page * EM_PAGE + EM_PAGE);
+  await say(chatId, "📋 <b>Saved emojis</b>\nTap one to remove it.", {
+    inline_keyboard: [
+      ...slice.map((r) => [
+        {
+          text: `${r.from} ➜ ${r.char}${r.id ? " ✨" : ""}`,
+          callback_data: `a:emd:${emojiKey(r.from)}`,
+        },
+      ]),
+      ...emPager("a:emL:", page, rules.length),
+      [{ text: "⬅️ Emojis", callback_data: "a:em" }],
+    ],
+  });
 }
 
 async function emojiProducts(chatId: number, page = 0) {
@@ -1160,102 +1186,70 @@ async function emojiProducts(chatId: number, page = 0) {
   });
 }
 
-async function emojiSlots(chatId: number, group: "button" | "normal" | "web", page = 0) {
-  const all = (await dbGet<Record<string, Product>>("products")) || {};
-  await collectEmojis(Object.values(all).flatMap((p) => [p.title || "", p.desc || ""])).catch(() => undefined);
-  const list = slotList(group);
-  const slice = list.slice(page * EM_PAGE, page * EM_PAGE + EM_PAGE);
-  const heading =
-    group === "button"
-      ? "🔘 <b>Button emojis</b>"
-      : group === "web"
-        ? "🌐 <b>Website emojis</b>\nThese show on your website."
-        : "✨ <b>Normal emojis</b>\nUsed inside bot messages. New emojis found in your products appear here too.";
-  const short = group === "button" ? "btn" : group === "web" ? "web" : "norm";
-  await say(chatId, `${heading}\nChoose a slot, then send the emoji.`, {
-    inline_keyboard: [
-      ...slice.map((s) => [{ text: `${s.preview} ${s.label}`, callback_data: `a:emk:${s.key}` }]),
-      ...emPager(`a:emS:${short}:`, page, list.length),
-      [{ text: "⬅️ Emojis", callback_data: "a:em" }],
-    ],
-  });
+/** Step 1: remember which emoji is being replaced. */
+async function emojiFromMessage(chatId: number, text: string, entities?: any[], sticker?: any) {
+  const value = readEmoji(text, entities, sticker);
+  if (!value) return say(chatId, "Please send one emoji.");
+  await setState(chatId, { k: "em_to", a: value.char });
+  return say(
+    chatId,
+    `2️⃣ Now send the new emoji to use instead of ${value.char}.\nPremium (custom) emojis work too — send it normally or forward the emoji.`,
+    { inline_keyboard: [[{ text: "❌ Cancel", callback_data: "a:em" }]] },
+  );
 }
 
-
-async function saveEmojiFromMessage(
+/** Step 2: save the replacement and apply it right away. */
+async function emojiToMessage(
   chatId: number,
-  state: { k: string; a?: string },
+  from: string,
   text: string,
   entities?: any[],
   sticker?: any,
 ) {
   const value = readEmoji(text, entities, sticker);
-  if (!value) {
-    return say(
-      chatId,
-      "Send a single emoji. Premium (custom) emojis work too — send it as a normal message or forward the emoji sticker.",
-    );
-  }
-
-  const saved: typeof value = { ...value };
-  let note = "";
-  const target = state.a;
-
-  // Persist the id immediately, before Telegram rendering checks or artwork
-  // downloads. This keeps every non-product slot reliable and makes the new
-  // emoji available to keyboard decoration in this same webhook request.
+  if (!value) return say(chatId, "Please send one emoji.");
   try {
-    if (state.k === "em_prod") {
-      if (!target) throw new Error("No product was selected");
-      await setProductEmoji(target, saved);
-    } else {
-      if (!target || (!EMOJI_SLOTS[target] && !target.startsWith("auto."))) {
-        throw new Error("No emoji slot was selected");
-      }
-      await setSlotEmoji(target, saved);
-    }
+    await setRule(from, value);
   } catch (error) {
-    console.error("emoji metadata save failed", error);
-    return say(chatId, "❌ The emoji could not be saved. Please choose the slot and send it again.");
-  }
-
-  if (value.id) {
-    // Keep the premium id no matter what. This message also proves that the id
-    // extracted from the admin's message is being applied immediately.
-    const ok = await tg("sendMessage", {
-      chat_id: chatId,
-      text: `<tg-emoji emoji-id="${value.id}">${value.char}</tg-emoji> premium emoji check`,
-      parse_mode: "HTML",
-    })
-      .then(() => true)
-      .catch(() => false);
-    if (!ok) {
-      note =
-        "\n\n⚠️ Telegram won't render this premium emoji inside bot messages (that needs a bot linked to a Fragment username), so the bot shows the normal emoji — but the website will show the premium artwork.";
-    }
-    // Grab the emoji artwork so the website can display the real premium emoji.
-    const img = await fetchEmojiImage(value.id);
-    if (img) {
-      saved.img = img;
-      if (!target) return say(chatId, "❌ The selected emoji slot expired. Please choose it again.");
-      if (state.k === "em_prod") await setProductEmoji(target, saved);
-      else await setSlotEmoji(target, saved);
-    }
-    else note += "\n\n⚠️ Could not download this emoji's image for the website.";
-  }
-
-  if (state.k === "em_prod") {
-    await setState(chatId, null);
-    await say(chatId, `✅ Product emoji saved: ${saved.char}${saved.id ? " (premium ✨)" : ""}${note}`);
-    return emojiProducts(chatId);
+    console.error("emoji save failed", error);
+    return say(chatId, "❌ That emoji could not be saved. Please try again.");
   }
   await setState(chatId, null);
-  await say(
-    chatId,
-    `✅ Emoji saved and applied: ${saved.id ? `<tg-emoji emoji-id="${saved.id}">${saved.char}</tg-emoji>` : saved.char}${saved.id ? " (premium ✨)" : ""}${note}`,
-  );
-  return emojiSlots(chatId, target ? (EMOJI_SLOTS[target]?.group ?? "normal") : "normal");
+  let note = "";
+  if (value.id) {
+    const img = await fetchEmojiImage(value.id);
+    if (img) await saveRuleImage(from, img);
+    else note = "\n⚠️ The website could not download this premium emoji's picture.";
+  }
+  await say(chatId, `✅ Saved: ${from} ➜ ${value.char}${value.id ? " (premium ✨)" : ""}${note}`);
+  return emojiHome(chatId);
 }
+
+/** Product emoji step. */
+async function emojiProductMessage(
+  chatId: number,
+  productId: string,
+  text: string,
+  entities?: any[],
+  sticker?: any,
+) {
+  const value = readEmoji(text, entities, sticker);
+  if (!value) return say(chatId, "Please send one emoji.");
+  try {
+    await setProductEmoji(productId, value);
+  } catch (error) {
+    console.error("product emoji save failed", error);
+    return say(chatId, "❌ That emoji could not be saved. Please try again.");
+  }
+  if (value.id) {
+    const img = await fetchEmojiImage(value.id);
+    if (img) await setProductEmoji(productId, { ...value, img });
+  }
+  await setState(chatId, null);
+  await say(chatId, `✅ Product emoji saved: ${value.char}${value.id ? " (premium ✨)" : ""}`);
+  return emojiProducts(chatId);
+}
+
 
 
 async function broadcast(chatId: number, text: string) {
