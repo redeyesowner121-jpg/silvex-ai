@@ -28,7 +28,6 @@ import {
 } from "@/lib/telegram.server";
 import {
   be,
-  collectEmojis,
   e as em,
   loadEmojis,
   productEmoji,
@@ -37,14 +36,18 @@ import {
   fetchEmojiImage,
   syncEmojiImages,
   setProductEmoji,
-  setSlotEmoji,
   setButtonColors,
-  slotList,
-  slotStats,
+  setRule,
+  saveRuleImage,
+  listRules,
+  ruleStats,
+  removeRule,
+  resetAllEmojis,
+  emojiKey,
   productEmojiStats,
-  clearSlotEmoji,
   clearProductEmoji,
   EMOJI_SLOTS,
+
 } from "@/lib/emoji.server";
 import type { ButtonColorMap } from "@/lib/button-colors";
 
