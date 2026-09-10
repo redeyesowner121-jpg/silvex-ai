@@ -452,6 +452,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       emoji: (key: string) => webEmoji(emojis, key),
       emojiImg: (key: string) => resolveEmojiImg(emojis, emojiImgs, emojiCharMap, key),
       emojiFor: (char: string) => emojiCharMap[normEmoji(char)] || { char },
+      productEmoji: (productId: string) => {
+        const saved = prodEmojis[productId];
+        const char = saved?.char || "";
+        if (!char) return { char: "" };
+        const img = prodEmojiImgs[productId] || saved?.img || emojiCharMap[normEmoji(char)]?.img || "";
+        return { char, img };
+      },
+
 
       banner,
       flashSale,
