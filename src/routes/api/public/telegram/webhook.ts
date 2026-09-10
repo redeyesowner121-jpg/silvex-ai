@@ -1442,6 +1442,8 @@ async function handleCallback(chatId: number, data: string) {
     }
     if (key === "emL") return emojiList(chatId, Number(arg) || 0);
     if (key === "emP") return emojiProducts(chatId, Number(arg) || 0);
+    if (key === "emg") return emojiGroup(chatId, String(arg), Number(arg2) || 0);
+    if (key === "emk") return emojiSlotPick(chatId, data.slice("a:emk:".length));
     if (key === "emd") {
       await removeRule(String(arg));
       await say(chatId, "🗑 Removed.");
