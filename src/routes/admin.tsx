@@ -20,6 +20,7 @@ const UsersAdmin = lazy(() => import("@/components/admin/UsersAdmin").then((m) =
 const CouponsAdmin = lazy(() => import("@/components/admin/CouponsAdmin").then((m) => ({ default: m.CouponsAdmin })));
 const ButtonsAdmin = lazy(() => import("@/components/admin/ButtonsAdmin").then((m) => ({ default: m.ButtonsAdmin })));
 const SettingsAdmin = lazy(() => import("@/components/admin/SettingsAdmin").then((m) => ({ default: m.SettingsAdmin })));
+const ProvidersAdmin = lazy(() => import("@/components/admin/ProvidersAdmin").then((m) => ({ default: m.ProvidersAdmin })));
 
 
 export const Route = createFileRoute("/admin")({
@@ -437,6 +438,8 @@ function Admin() {
       ) : null}
 
       {tab === "Products" ? <ProductsAdmin products={products} /> : null}
+
+      {tab === "API shops" ? <ProvidersAdmin products={products} /> : null}
 
       {tab === "Coupons" ? (
         <CouponsAdmin

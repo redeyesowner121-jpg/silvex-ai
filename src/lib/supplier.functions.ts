@@ -39,7 +39,12 @@ export const buyFromSupplier = createServerFn({ method: "POST" })
       const sid = Number(p?.supplierId || 0);
       if (!sid) return { ok: false as const, error: "This product is not linked to the supplier", items: [] };
       const qty = Math.max(1, Math.min(20, Number(data.qty) || 1));
-      const items = await supplierBuy(sid, qty, data.orderId || `req-${Date.now()}`);
+      const items = await supplierBuy(
+        sid,
+        qty,
+        data.orderId || `req-${Date.now()}`,
+        String(p?.provider || "custom"),
+      );
       return { ok: true as const, items };
     } catch (err) {
       return { ok: false as const, error: (err as Error).message, items: [] };

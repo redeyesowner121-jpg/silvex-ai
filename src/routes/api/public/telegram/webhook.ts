@@ -58,6 +58,10 @@ type Product = {
   delivery?: "auto" | "repeat" | "manual" | "supplier";
   supplierId?: number;
   supplierStock?: number;
+  provider?: string;
+  hidden?: boolean;
+  locked?: boolean;
+
 
   stock?: string[];
   salesCount?: number;
@@ -330,7 +334,9 @@ async function saveEmail(chatId: number, email: string) {
 
 async function sendProducts(chatId: number) {
   const all = (await dbGet<Record<string, Product>>("products")) || {};
-  const list = Object.entries(all).slice(0, 40);
+  const list = Object.entries(all)
+    .filter(([, p]) => p && p.hidden !== true)
+    .slice(0, 40);
   if (!list.length) return say(chatId, "No products available right now.", backHome);
   await collectEmojis(list.flatMap(([, p]) => [p.title || "", p.desc || ""])).catch(() => undefined);
   await say(chatId, `${em("btn.products")} <b>Products</b>\nTap any item to see details.`, {
@@ -677,7 +683,12 @@ async function buy(chatId: number, productId: string) {
   if (p.delivery === "supplier") {
     try {
       const { supplierBuy } = await import("@/lib/supplier.server");
-      const items = await supplierBuy(Number(p.supplierId || 0), 1, `tg-${chatId}-${Date.now()}`);
+      const items = await supplierBuy(
+        Number(p.supplierId || 0),
+        1,
+        `tg-${chatId}-${Date.now()}`,
+        String(p.provider || "custom"),
+      );
       for (const content of items) {
         await dbPush(`usedStock/${productId}`, {
           content,
