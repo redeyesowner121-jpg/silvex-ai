@@ -414,17 +414,17 @@ export async function syncEmojiImages(): Promise<number> {
   for (const [id, v] of Object.entries(store.products || {})) {
     if (!v?.id) continue;
     if (v.img) {
-      await dbPut(`${EMOJI_PATH}/prodimg/${id}`, v.img);
+      await dbPut(`${EMOJI_PATH}/prodimg/${encKey(id)}`, v.img);
       const meta = { char: v.char, id: v.id };
       store.products = { ...(store.products || {}), [id]: meta };
-      await dbPut(`${EMOJI_PATH}/products/${id}`, meta);
+      await dbPut(`${EMOJI_PATH}/products/${encKey(id)}`, meta);
       fixed++;
       continue;
     }
-    if (prodImgs?.[id]) continue;
+    if (prodImgs?.[encKey(id)]) continue;
     const img = await fetchEmojiImage(v.id);
     if (!img) continue;
-    await dbPut(`${EMOJI_PATH}/prodimg/${id}`, img);
+    await dbPut(`${EMOJI_PATH}/prodimg/${encKey(id)}`, img);
     fixed++;
   }
 
