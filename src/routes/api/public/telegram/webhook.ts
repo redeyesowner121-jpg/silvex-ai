@@ -366,7 +366,7 @@ async function sendProducts(chatId: number) {
 async function sendProduct(chatId: number, id: string) {
   const p = await dbGet<Product>(`products/${id}`);
   if (!p) return say(chatId, "Product not found.", backHome);
-  await collectEmojis([p.title || "", p.desc || ""]).catch(() => undefined);
+  
   const stock = Array.isArray(p.stock) ? p.stock.filter(Boolean).length : 0;
   const stockLine =
     p.delivery === "auto"
