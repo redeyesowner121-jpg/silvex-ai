@@ -22,12 +22,15 @@ type Row = {
 };
 
 export function ProvidersAdmin({ products }: { products: Product[] }) {
-  const { db, notify } = useStore();
+  const { db, notify, categories } = useStore();
   const [rows, setRows] = useState<Row[]>([]);
   const [open, setOpen] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [draft, setDraft] = useState<Record<string, Partial<Row>>>({});
   const markupRef = useRef<Record<string, string>>({});
+  const nameRef = useRef<Record<string, string>>({});
+  const typeRef = useRef<Record<string, string>>({});
+
 
   async function load() {
     setBusy("load");
