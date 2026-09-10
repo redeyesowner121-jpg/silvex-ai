@@ -124,7 +124,12 @@ async function handle(request: Request, splat: string): Promise<Response> {
     if (p.delivery === "supplier") {
       try {
         const { supplierBuy } = await import("@/lib/supplier.server");
-        const items = await supplierBuy(Number(p.supplierId || 0), qty, `api-${uid}-${Date.now()}`);
+        const items = await supplierBuy(
+          Number(p.supplierId || 0),
+          qty,
+          `api-${uid}-${Date.now()}`,
+          String(p.provider || "custom"),
+        );
         for (const content of items) {
           await dbPush(`usedStock/${productId}`, {
             content,
