@@ -37,6 +37,13 @@ export type Product = {
   supplierPrice?: number;
   supplierStock?: number;
   supplierSyncedAt?: string;
+  /** Which reseller API shop this item comes from */
+  provider?: string;
+  providerName?: string;
+  /** Hidden products are only visible in the admin panel */
+  hidden?: boolean;
+  /** Imported API products cannot be deleted, only hidden */
+  locked?: boolean;
 };
 
 
