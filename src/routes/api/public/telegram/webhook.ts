@@ -352,7 +352,7 @@ async function sendProducts(chatId: number) {
     .filter(([, p]) => p && p.hidden !== true)
     .slice(0, 40);
   if (!list.length) return say(chatId, "No products available right now.", backHome);
-  await collectEmojis(list.flatMap(([, p]) => [p.title || "", p.desc || ""])).catch(() => undefined);
+  
   await say(chatId, `${em("btn.products")} <b>Products</b>\nTap any item to see details.`, {
     inline_keyboard: [
       ...list.map(([id, p]) => [
