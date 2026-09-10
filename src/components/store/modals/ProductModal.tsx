@@ -99,6 +99,17 @@ export function ProductModal() {
             </span>
           ) : null}
           <h3 className="mt-1 text-xl font-bold leading-tight">
+            {pe.img ? (
+              <img
+                src={pe.img}
+                alt=""
+                aria-hidden
+                loading="lazy"
+                className="mr-1 inline-block h-[1.15em] w-[1.15em] align-[-0.2em] object-contain"
+              />
+            ) : pe.char ? (
+              <span className="mr-1">{pe.char}</span>
+            ) : null}
             <EmoText text={product.title || ""} />
           </h3>
         </div>
