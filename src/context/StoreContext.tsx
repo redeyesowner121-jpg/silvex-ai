@@ -288,9 +288,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const decodeKeys = (v: Record<string, any> | null) =>
         Object.fromEntries(Object.entries(v || {}).map(([k, val]) => [k.split("~").join("."), val]));
       unsubs.push(onValue(ref(d, "telegramEmoji/keys"), (s) => setEmojis(decodeKeys(s.val()))));
+      // Emojis the bot admin picked for single products.
+      unsubs.push(onValue(ref(d, "telegramEmoji/products"), (s) => setProdEmojis(decodeKeys(s.val()))));
       // Premium emoji artwork can be heavy, so it loads after the first paint.
-      const loadArt = () =>
+      const loadArt = () => {
         unsubs.push(onValue(ref(d, "telegramEmoji/img"), (s) => setEmojiImgs(decodeKeys(s.val()))));
+        unsubs.push(
+          onValue(ref(d, "telegramEmoji/prodimg"), (s) => setProdEmojiImgs(decodeKeys(s.val()))),
+        );
+      };
+
 
       if (typeof requestIdleCallback === "function") requestIdleCallback(() => loadArt());
       else setTimeout(loadArt, 1500);
