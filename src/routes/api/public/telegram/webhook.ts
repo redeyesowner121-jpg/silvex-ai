@@ -1150,6 +1150,49 @@ async function emojiAsk(chatId: number) {
   );
 }
 
+const GROUP_TITLE: Record<string, string> = {
+  button: "🔘 <b>Button emojis</b>",
+  normal: "🔤 <b>Normal emojis</b>",
+  web: "🌐 <b>Website emojis</b>",
+};
+
+/** Ready-made list of every emoji the bot/website uses, grouped by where it is shown. */
+async function emojiGroup(chatId: number, group: string, page = 0) {
+  const slots = Object.entries(EMOJI_SLOTS).filter(([, v]) => v.group === group);
+  if (!slots.length)
+    return say(chatId, "Nothing here yet.", {
+      inline_keyboard: [[{ text: "⬅️ Emojis", callback_data: "a:em" }]],
+    });
+  const slice = slots.slice(page * EM_PAGE, page * EM_PAGE + EM_PAGE);
+  await say(
+    chatId,
+    `${GROUP_TITLE[group] || "Emojis"}\nTap one, then send the emoji you want to use instead.`,
+    {
+      inline_keyboard: [
+        ...slice.map(([key, v]) => [
+          { text: `${be(key)} ${v.label}`, callback_data: `a:emk:${key}` },
+        ]),
+        ...emPager(`a:emg:${group}:`, page, slots.length),
+        [{ text: "⬅️ Emojis", callback_data: "a:em" }],
+      ],
+    },
+  );
+}
+
+/** Admin picked a ready-made slot — jump straight to "send the new emoji". */
+async function emojiSlotPick(chatId: number, slotKey: string) {
+  const slot = EMOJI_SLOTS[slotKey];
+  if (!slot) return emojiHome(chatId);
+  await setState(chatId, { k: "em_to", a: slot.char });
+  return say(
+    chatId,
+    `Send the new emoji for <b>${slot.label}</b> (now ${be(slotKey)}).\nPremium (custom) emojis work too.`,
+    {
+      inline_keyboard: [[{ text: "❌ Cancel", callback_data: `a:emg:${slot.group}:0` }]],
+    },
+  );
+}
+
 async function emojiList(chatId: number, page = 0) {
   const rules = listRules();
   if (!rules.length)
