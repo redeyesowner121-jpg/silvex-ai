@@ -212,7 +212,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [config, setConfig] = useState<SiteConfig>({});
-  const [emojis, setEmojis] = useState<WebEmojiMap>({});
+  const [emojis, setEmojis] = useState<EmojiRuleMap>({});
   const [emojiImgs, setEmojiImgs] = useState<Record<string, string>>({});
   const [prodEmojis, setProdEmojis] = useState<Record<string, { char?: string; id?: string; img?: string }>>({});
   const [prodEmojiImgs, setProdEmojiImgs] = useState<Record<string, string>>({});
