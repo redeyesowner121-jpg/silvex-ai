@@ -364,9 +364,6 @@ export async function importProvider(id: string): Promise<{ added: number; updat
     const cur = (existing || {})[key];
     const markup = Number(cur?.markup) || cfg.markup;
     const base = {
-      title: sp.name,
-      desc: sp.description || "",
-      type: category,
       delivery: "supplier" as const,
       provider: cfg.id,
       providerName: cfg.name,
@@ -377,16 +374,31 @@ export async function importProvider(id: string): Promise<{ added: number; updat
       supplierStock: sp.unlimited ? 9999 : sp.stock,
       supplierSyncedAt: new Date().toISOString(),
       locked: true,
-      ...(sp.image ? { logo: sp.image } : {}),
     };
     if (cur) {
-      await dbPatch(`products/${key}`, base);
+      // Keep whatever the admin renamed / re-categorised / re-imaged.
+      await dbPatch(`products/${key}`, {
+        ...base,
+        ...(cur.title ? {} : { title: sp.name }),
+        ...(cur.desc ? {} : { desc: sp.description || "" }),
+        ...(cur.type ? {} : { type: category }),
+        ...(cur.logo || !sp.image ? {} : { logo: sp.image }),
+      });
       updated++;
     } else {
-      await dbPut(`products/${key}`, { ...base, hidden: true, salesCount: 0 });
+      await dbPut(`products/${key}`, {
+        ...base,
+        title: sp.name,
+        desc: sp.description || "",
+        type: category,
+        ...(sp.image ? { logo: sp.image } : {}),
+        hidden: true,
+        salesCount: 0,
+      });
       added++;
     }
   }
+
   await dbPatch(`site_settings/providers/${cfg.id}`, {
     imported_at: new Date().toISOString(),
     imported_count: list.length,

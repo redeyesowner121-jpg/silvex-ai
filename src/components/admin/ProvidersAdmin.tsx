@@ -22,12 +22,15 @@ type Row = {
 };
 
 export function ProvidersAdmin({ products }: { products: Product[] }) {
-  const { db, notify } = useStore();
+  const { db, notify, categories } = useStore();
   const [rows, setRows] = useState<Row[]>([]);
   const [open, setOpen] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [draft, setDraft] = useState<Record<string, Partial<Row>>>({});
   const markupRef = useRef<Record<string, string>>({});
+  const nameRef = useRef<Record<string, string>>({});
+  const typeRef = useRef<Record<string, string>>({});
+
 
   async function load() {
     setBusy("load");
@@ -93,6 +96,16 @@ export function ProvidersAdmin({ products }: { products: Product[] }) {
     await update(ref(db, `products/${p.id}`), { hidden: !p.hidden });
     notify(p.hidden ? "Shown to customers" : "Hidden from customers");
   }
+
+  async function saveDetails(p: Product) {
+    if (!db) return;
+    const title = String(nameRef.current[p.id] ?? p.title ?? "").trim();
+    const type = String(typeRef.current[p.id] ?? p.type ?? "").trim();
+    if (!title) return notify("Give the product a name");
+    await update(ref(db, `products/${p.id}`), { title, ...(type ? { type } : {}) });
+    notify("Name and category saved");
+  }
+
 
   async function saveMarkup(p: Product) {
     if (!db) return;
@@ -271,6 +284,34 @@ export function ProvidersAdmin({ products }: { products: Product[] }) {
                             {p.hidden ? "Hidden" : "Visible"}
                           </button>
                         </div>
+                        <div className="mt-1 flex flex-wrap items-center gap-2">
+                          <input
+                            defaultValue={p.title}
+                            placeholder="Product name"
+                            onChange={(e) => (nameRef.current[p.id] = e.target.value)}
+                            className="min-w-[140px] flex-1 rounded-lg border border-border bg-card px-2 py-1 text-xs font-bold"
+                          />
+                          <select
+                            defaultValue={p.type || categories[0]?.label || ""}
+                            onChange={(e) => (typeRef.current[p.id] = e.target.value)}
+                            className="rounded-lg border border-border bg-card px-2 py-1 text-xs font-bold"
+                          >
+                            {(categories.some((c) => c.label === p.type)
+                              ? categories
+                              : [{ label: p.type || "Reseller API" }, ...categories]
+                            ).map((c) => (
+                              <option key={c.label} value={c.label}>
+                                {c.label}
+                              </option>
+                            ))}
+                          </select>
+                          <button
+                            onClick={() => saveDetails(p)}
+                            className="rounded-lg bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-600"
+                          >
+                            Save name
+                          </button>
+                        </div>
                         <div className="mt-1 flex items-center gap-2">
                           <span className="text-[10px] font-bold text-muted-foreground">
                             Profit %
@@ -290,6 +331,7 @@ export function ProvidersAdmin({ products }: { products: Product[] }) {
                         </div>
                       </div>
                     ))
+
                   )}
                 </div>
               </div>
