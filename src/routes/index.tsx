@@ -49,7 +49,9 @@ function useCountdown(endTime?: number) {
 }
 
 function Home() {
-  const { products, config, banner, flashSale, categories, addToCart, emoji, siteName } = useStore();
+  const { products: allProducts, config, banner, flashSale, categories, addToCart, emoji, siteName } =
+    useStore();
+  const products = useMemo(() => allProducts.filter((p) => !p.hidden), [allProducts]);
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
 

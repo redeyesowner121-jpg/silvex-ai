@@ -38,6 +38,7 @@ function Products() {
   const list = useMemo(() => {
     const normalizedFilter = filter.toLowerCase();
     return products.filter((p) => {
+      if (p.hidden) return false;
       const matchesText = p.title.toLowerCase().includes(normalizedFilter);
       const matchesCat = !category || p.type === category;
       return matchesText && matchesCat;
