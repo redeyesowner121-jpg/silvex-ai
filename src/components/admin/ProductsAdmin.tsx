@@ -430,15 +430,21 @@ export function ProductsAdmin({ products }: { products: Product[] }) {
                   >
                     Edit
                   </button>
-                  <button
-                    onClick={async () => {
-                      if (db && confirm("Delete this product?"))
-                        await remove(ref(db, `products/${p.id}`));
-                    }}
-                    className="rounded-lg bg-destructive/10 px-3 py-1.5 text-xs font-bold text-destructive"
-                  >
-                    Delete
-                  </button>
+                  {p.locked ? (
+                    <span className="rounded-lg bg-muted px-3 py-1.5 text-xs font-bold text-muted-foreground">
+                      API item
+                    </span>
+                  ) : (
+                    <button
+                      onClick={async () => {
+                        if (db && confirm("Delete this product?"))
+                          await remove(ref(db, `products/${p.id}`));
+                      }}
+                      className="rounded-lg bg-destructive/10 px-3 py-1.5 text-xs font-bold text-destructive"
+                    >
+                      Delete
+                    </button>
+                  )}
                 </div>
               </div>
 
