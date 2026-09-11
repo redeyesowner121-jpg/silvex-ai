@@ -20,7 +20,7 @@ export function ProductCard({ product }: { product: Product }) {
         ) : (
           <div className="flex h-full w-full items-center justify-center text-2xl">
             {pe.img ? (
-              <img src={pe.img} alt="" aria-hidden loading="lazy" className="h-8 w-8 object-contain" />
+              <EmojiArt src={pe.img} className="!h-8 !w-8" />
             ) : pe.char ? (
               <span>{pe.char}</span>
             ) : (
