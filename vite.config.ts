@@ -6,11 +6,12 @@
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
-const nodeBuild = !!process.env['NITRO_PRESET'];
+const nitroPreset = process.env['NITRO_PRESET'] ?? "";
+const nodeBuild = nitroPreset.length > 0;
 
 export default defineConfig({
   // Outside Lovable (e.g. Railway/CI) honour NITRO_PRESET, otherwise keep defaults.
-  ...(nodeBuild ? { nitro: { preset: process.env['NITRO_PRESET'] } } : {}),
+  ...(nodeBuild ? { nitro: { preset: nitroPreset } } : {}),
   // Cloudflare-only mailer swapped for a nodemailer-backed shim on Node hosts.
   ...(nodeBuild
     ? {
