@@ -1,4 +1,5 @@
 import { useStore } from "@/context/StoreContext";
+import { EmojiArt } from "./EmojiArt";
 
 /**
  * Shows the emoji chosen in the bot (/setemoji -> Website emojis). When the
@@ -9,17 +10,6 @@ export function Emo({ k, className = "" }: { k: string; className?: string }) {
   const { emoji, emojiImg } = useStore();
   const img = emojiImg(k);
   const char = emoji(k);
-  if (img) {
-    return (
-      <img
-        src={img}
-        alt=""
-        aria-hidden
-        loading="lazy"
-        decoding="async"
-        className={`inline-block h-[1.15em] w-[1.15em] align-[-0.2em] object-contain ${className}`}
-      />
-    );
-  }
+  if (img) return <EmojiArt src={img} className={className} />;
   return <span className={className}>{char}</span>;
 }

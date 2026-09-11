@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
+import { EmojiArt } from "@/components/store/EmojiArt";
 import { useNavigate } from "@tanstack/react-router";
 import {
   createUserWithEmailAndPassword,
@@ -100,13 +101,7 @@ export function ProductModal() {
           ) : null}
           <h3 className="mt-1 text-xl font-bold leading-tight">
             {pe.img ? (
-              <img
-                src={pe.img}
-                alt=""
-                aria-hidden
-                loading="lazy"
-                className="mr-1 inline-block h-[1.15em] w-[1.15em] align-[-0.2em] object-contain"
-              />
+              <EmojiArt src={pe.img} className="mr-1" />
             ) : pe.char ? (
               <span className="mr-1">{pe.char}</span>
             ) : null}
