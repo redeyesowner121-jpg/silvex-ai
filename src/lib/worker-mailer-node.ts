@@ -1,6 +1,7 @@
 // Node-runtime stand-in for `worker-mailer` (which needs Cloudflare's socket API).
 // Used only when the app is built with NITRO_PRESET (e.g. Railway / any Node host).
 import nodemailer from "nodemailer";
+import type { Transporter } from "nodemailer";
 
 type Addr = { name?: string; email: string };
 type Attachment = { filename: string; content: string; mimeType: string };
@@ -17,9 +18,9 @@ type SendOptions = {
 const fmt = (a: Addr) => (a.name ? `"${a.name}" <${a.email}>` : a.email);
 
 export class WorkerMailer {
-  private transport: nodemailer.Transporter;
+  private transport: Transporter;
 
-  private constructor(transport: nodemailer.Transporter) {
+  private constructor(transport: Transporter) {
     this.transport = transport;
   }
 
