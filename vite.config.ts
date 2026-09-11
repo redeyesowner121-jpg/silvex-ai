@@ -7,6 +7,10 @@
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
 export default defineConfig({
+  // Outside Lovable (e.g. Railway/CI) honour NITRO_PRESET, otherwise keep defaults.
+  ...(process.env.NITRO_PRESET
+    ? { nitro: { preset: process.env.NITRO_PRESET } }
+    : {}),
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
     // nitro/vite builds from this
