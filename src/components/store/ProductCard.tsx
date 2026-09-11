@@ -1,6 +1,7 @@
 import { useStore, type Product } from "@/context/StoreContext";
 import { Emo } from "@/components/store/Emo";
 import { EmoText } from "@/components/store/EmoText";
+import { EmojiArt } from "@/components/store/EmojiArt";
 
 export function ProductCard({ product }: { product: Product }) {
   const { openProduct, addToCart, productEmoji } = useStore();

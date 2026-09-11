@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
+import { EmojiArt } from "@/components/store/EmojiArt";
 import { useNavigate } from "@tanstack/react-router";
 import {
   createUserWithEmailAndPassword,
