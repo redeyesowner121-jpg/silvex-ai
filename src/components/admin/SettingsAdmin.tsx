@@ -434,6 +434,31 @@ export function SettingsAdmin({
       </div>
 
       <div className="space-y-2 rounded-2xl border border-border bg-card p-4">
+        <h2 className="text-sm font-black">Bot announcements</h2>
+        <p className="text-xs text-muted-foreground">
+          Send a message with Buy now / Browse / Website buttons to every bot user when a product is
+          added, restocked or put on flash sale.
+        </p>
+        <button
+          onClick={async () => {
+            if (!db) return;
+            const on = (config as { broadcasts?: boolean }).broadcasts !== false;
+            await update(ref(db, "site_settings/config"), { broadcasts: !on });
+            notify(on ? "Announcements turned off" : "Announcements turned on");
+          }}
+          className={`w-full rounded-xl py-2.5 text-sm font-bold ${
+            (config as { broadcasts?: boolean }).broadcasts !== false
+              ? "bg-emerald-500/10 text-emerald-600"
+              : "bg-muted text-muted-foreground"
+          }`}
+        >
+          {(config as { broadcasts?: boolean }).broadcasts !== false
+            ? "Announcements ON"
+            : "Announcements OFF"}
+        </button>
+      </div>
+
+      <div className="space-y-2 rounded-2xl border border-border bg-card p-4">
         <h2 className="text-sm font-black">Flash sale</h2>
         <select
           className={input}
