@@ -6,6 +6,7 @@ import {
   listProviders,
   saveProvider,
   importProviderProducts,
+  pruneApiProducts,
 } from "@/lib/providers.functions";
 import { syncSupplier } from "@/lib/supplier.functions";
 
