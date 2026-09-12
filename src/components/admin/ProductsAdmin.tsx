@@ -86,7 +86,7 @@ export function ProductsAdmin({ products }: { products: Product[] }) {
     } else {
       const created = await push(ref(db, "products"), { ...data, salesCount: 0, announced: true });
       notify("Product added");
-      if (created.key && !data.hidden) await announce("new", created.key);
+      if (created.key) await announce("new", created.key);
     }
     if (linked) await runSync();
     setForm(emptyProduct);
