@@ -91,6 +91,17 @@ export function ProvidersAdmin({ products }: { products: Product[] }) {
     );
   }
 
+  async function cleanup() {
+    setBusy("prune");
+    const res = await pruneApiProducts();
+    setBusy(null);
+    notify(
+      res.ok
+        ? `Removed ${res.removed} extra items, kept ${res.kept}`
+        : res.error || "Cleanup failed",
+    );
+  }
+
   async function toggleHidden(p: Product) {
     if (!db) return;
     await update(ref(db, `products/${p.id}`), { hidden: !p.hidden });
