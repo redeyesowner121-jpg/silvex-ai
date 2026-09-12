@@ -155,6 +155,93 @@ export async function saveProviderConfig(
   await dbPatch(`site_settings/providers/${id}`, clean);
 }
 
+/**
+ * Only these items are kept from each provider's catalogue.
+ * Matching is a case-insensitive "name contains keyword" check.
+ * Admin can override the list in site_settings/providers/{id}/keep (array of words).
+ */
+export const PROVIDER_KEEP: Record<string, string[]> = {
+  qamify: ["gemini", "capcut", "duolingo", "perplexity", "leonardo", "linkedin"],
+  elite: [
+    "autodesk",
+    "warp",
+    "n8n",
+    "lovable",
+    "gamma",
+    "magic pattern",
+    "granola",
+    "notion",
+    "elevenlab",
+    "eleven lab",
+    "supabase",
+    "gumloop",
+    "gemini",
+    "runway",
+    "intercom",
+    "resend",
+    "framer",
+    "mobbin",
+    "chatprd",
+    "customer.io",
+    "customer io",
+    "waking up",
+    "readwise",
+    "posthog",
+    "reclaim",
+    "brain.fm",
+    "brainfm",
+    "jam.dev",
+    "supercut",
+    "pangram",
+  ],
+  eklas: [
+    "miro",
+    "chatprd",
+    "cursor",
+    "factory",
+    "manus",
+    "posthog",
+    "railway",
+    "replit",
+    "granola",
+    "quillbot",
+    "elevenlab",
+    "eleven lab",
+    "framer",
+    "supabase",
+  ],
+  safwan: [
+    "gemini",
+    "grok",
+    "lovable",
+    "coursera",
+    "capcut",
+    "canva",
+    "figma",
+    "gamma",
+    "wispr",
+  ],
+};
+
+/** Admin-editable keep list for a provider (empty list = keep everything). */
+export async function providerKeepList(id: string): Promise<string[]> {
+  const saved = await dbGet<string[] | string>(`site_settings/providers/${id}/keep`).catch(
+    () => null,
+  );
+  const list = Array.isArray(saved)
+    ? saved
+    : typeof saved === "string"
+      ? saved.split(",")
+      : PROVIDER_KEEP[id] || [];
+  return list.map((s) => String(s).toLowerCase().trim()).filter(Boolean);
+}
+
+export function keepByList(name: string, keep: string[]): boolean {
+  if (!keep.length) return true;
+  const n = String(name || "").toLowerCase();
+  return keep.some((k) => n.includes(k));
+}
+
 export type ApiProduct = {
   id: number;
   name: string;
