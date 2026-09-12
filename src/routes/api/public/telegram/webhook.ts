@@ -702,18 +702,40 @@ async function sendSupport(chatId: number) {
 
 /* ---------------- buying ---------------- */
 
-async function buy(chatId: number, productId: string) {
+/** Asks how many copies the buyer wants before taking the money. */
+async function askQty(chatId: number, productId: string) {
+  const p = await dbGet<Product>(`products/${productId}`);
+  if (!p) return say(chatId, "Product not found.", backHome);
+  const price = Number(p.price || 0);
+  const stock = Array.isArray(p.stock) ? p.stock.filter(Boolean).length : 0;
+  const max = p.delivery === "auto" ? Math.min(stock, 5) : 5;
+  const choices = [1, 2, 3, 4, 5].filter((n) => n <= Math.max(max, 1));
+  await say(
+    chatId,
+    `🛒 <b>${p.title}</b>\n\nPrice: <b>${money(price)}</b> each\nHow many do you want?`,
+    {
+      inline_keyboard: [
+        choices.map((n) => ({ text: `${n} • ${money(price * n)}`, callback_data: `bq:${productId}:${n}` })),
+        [{ text: "⬅️ Back", callback_data: `p:${productId}` }],
+      ],
+    },
+  );
+}
+
+async function buy(chatId: number, productId: string, qty = 1) {
   const uid = await ensureUser(chatId);
   const [p, storedUser] = await Promise.all([
     dbGet<Product>(`products/${productId}`),
     dbGet<any>(`users/${uid}`),
   ]);
   if (!p) return say(chatId, "Product not found.", backHome);
-  const price = Number(p.price || 0);
+  const count = Math.max(1, Math.min(Math.floor(Number(qty) || 1), 20));
+  const unitPrice = Number(p.price || 0);
+  const price = Math.round(unitPrice * count * 100) / 100;
   const user = storedUser || {};
   const wallet = Number(user.wallet || 0);
   if (wallet < price) {
-    return say(chatId, `Not enough wallet balance. You have ${money(wallet)}, the item costs ${money(price)}.`, {
+    return say(chatId, `Not enough wallet balance. You have ${money(wallet)}, this order costs ${money(price)}.`, {
       inline_keyboard: [[{ text: `🟢 ${be("btn.deposit")} Deposit`, callback_data: "dep" }]],
     });
   }
@@ -725,7 +747,7 @@ async function buy(chatId: number, productId: string) {
       const { supplierBuy } = await import("@/lib/supplier.server");
       const items = await supplierBuy(
         Number(p.supplierId || 0),
-        1,
+        count,
         `tg-${chatId}-${Date.now()}`,
         String(p.provider || "custom"),
       );
@@ -743,32 +765,34 @@ async function buy(chatId: number, productId: string) {
       complete = false;
     }
   } else if (p.delivery === "repeat" && p.link) {
-    delivered.push({ title: p.title || "Item", content: p.link });
+    for (let i = 0; i < count; i++) delivered.push({ title: p.title || "Item", content: p.link });
     complete = true;
   } else if (p.delivery === "auto") {
     const stock = Array.isArray(p.stock) ? p.stock.filter(Boolean) : [];
-    if (stock.length >= 1) {
-      const taken = stock[0] as string;
-      await dbPut(`products/${productId}/stock`, stock.slice(1));
-      await dbPush(`usedStock/${productId}`, {
-        content: taken,
-        orderId: "",
-        email: user.email || `tg:${chatId}`,
-        date: new Date().toISOString(),
-      });
-      delivered.push({ title: p.title || "Item", content: taken });
+    if (stock.length >= count) {
+      const taken = stock.slice(0, count) as string[];
+      await dbPut(`products/${productId}/stock`, stock.slice(count));
+      for (const content of taken) {
+        await dbPush(`usedStock/${productId}`, {
+          content,
+          orderId: "",
+          email: user.email || `tg:${chatId}`,
+          date: new Date().toISOString(),
+        });
+        delivered.push({ title: p.title || "Item", content });
+      }
       complete = true;
     }
   }
 
 
   const orderId = "ORD" + Date.now();
-  await dbPut(`users/${uid}/wallet`, wallet - price);
+  await dbPut(`users/${uid}/wallet`, Math.round((wallet - price) * 100) / 100);
   await dbPut(`orders/${orderId}`, {
     orderId,
     uid,
     email: user.email || "",
-    items: [{ ...p, id: productId, qty: 1, price }],
+    items: [{ ...p, id: productId, qty: count, price: unitPrice }],
     subTotal: price,
     couponDiscount: 0,
     couponCode: null,
@@ -787,7 +811,7 @@ async function buy(chatId: number, productId: string) {
     desc: `Order ${orderId.slice(-4)}`,
     date: new Date().toISOString(),
   });
-  await dbPut(`products/${productId}/salesCount`, Number(p.salesCount || 0) + 1);
+  await dbPut(`products/${productId}/salesCount`, Number(p.salesCount || 0) + count);
   await payReferralCommission(uid, price);
 
   const body = complete
