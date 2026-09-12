@@ -192,16 +192,25 @@ export function ProductsAdmin({ products }: { products: Product[] }) {
           </p>
           <div className="space-y-1">
             {lowStock.map((p) => (
-              <button
+              <div
                 key={p.id}
-                onClick={() => setViewing(p.id)}
-                className="flex w-full items-center justify-between rounded-lg bg-card px-3 py-2 text-left text-xs font-bold"
+                className="flex w-full items-center gap-2 rounded-lg bg-card px-3 py-2 text-xs font-bold"
               >
-                <span className="truncate">{p.title}</span>
+                <button onClick={() => setViewing(p.id)} className="min-w-0 flex-1 truncate text-left">
+                  {p.title}
+                </button>
                 <span className="text-destructive">
                   {(p.stock || []).filter(Boolean).length} left
                 </span>
-              </button>
+                <button
+                  onClick={() =>
+                    announce("low", p.id, { left: (p.stock || []).filter(Boolean).length })
+                  }
+                  className="rounded-lg bg-destructive/10 px-2 py-1 text-[11px] font-bold text-destructive"
+                >
+                  📣 Announce
+                </button>
+              </div>
             ))}
           </div>
         </div>
