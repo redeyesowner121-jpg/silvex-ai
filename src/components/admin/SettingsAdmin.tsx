@@ -8,6 +8,7 @@ import { sendSmtpMail } from "@/lib/mail.functions";
 import { deliveryBlock, emailShell, sendMail } from "@/lib/mailer";
 import { notifyTelegramOrder } from "@/lib/telegram.functions";
 import { connectTelegramBot } from "@/lib/bot-setup.functions";
+import { broadcastProductEvent } from "@/lib/broadcast.functions";
 
 
 import { input, Stat, Empty, ImageField, type OrderRow } from "@/components/admin/shared";
@@ -433,6 +434,31 @@ export function SettingsAdmin({
       </div>
 
       <div className="space-y-2 rounded-2xl border border-border bg-card p-4">
+        <h2 className="text-sm font-black">Bot announcements</h2>
+        <p className="text-xs text-muted-foreground">
+          Send a message with Buy now / Browse / Website buttons to every bot user when a product is
+          added, restocked or put on flash sale.
+        </p>
+        <button
+          onClick={async () => {
+            if (!db) return;
+            const on = (config as { broadcasts?: boolean }).broadcasts !== false;
+            await update(ref(db, "site_settings/config"), { broadcasts: !on });
+            notify(on ? "Announcements turned off" : "Announcements turned on");
+          }}
+          className={`w-full rounded-xl py-2.5 text-sm font-bold ${
+            (config as { broadcasts?: boolean }).broadcasts !== false
+              ? "bg-emerald-500/10 text-emerald-600"
+              : "bg-muted text-muted-foreground"
+          }`}
+        >
+          {(config as { broadcasts?: boolean }).broadcasts !== false
+            ? "Announcements ON"
+            : "Announcements OFF"}
+        </button>
+      </div>
+
+      <div className="space-y-2 rounded-2xl border border-border bg-card p-4">
         <h2 className="text-sm font-black">Flash sale</h2>
         <select
           className={input}
@@ -462,12 +488,17 @@ export function SettingsAdmin({
           <button
             onClick={async () => {
               if (!db || !fs.pid || !fs.price) return notify("Pick a product and price");
+              const endTime = Date.now() + Number(fs.hours || 1) * 3600000;
               await set(ref(db, "site_settings/flash_sale"), {
                 pid: fs.pid,
                 price: Number(fs.price),
-                endTime: Date.now() + Number(fs.hours || 1) * 3600000,
+                endTime,
               });
               notify("Flash sale started");
+              const r = await broadcastProductEvent({
+                data: { kind: "flash", productId: fs.pid, price: Number(fs.price), ends: endTime },
+              });
+              if (r.ok) notify(`📣 Sale announced to ${r.sent} bot users`);
             }}
             className="flex-1 rounded-xl bg-destructive py-2.5 text-sm font-bold text-destructive-foreground"
           >

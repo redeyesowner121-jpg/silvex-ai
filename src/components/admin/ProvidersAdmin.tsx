@@ -9,6 +9,7 @@ import {
   pruneApiProducts,
 } from "@/lib/providers.functions";
 import { syncSupplier } from "@/lib/supplier.functions";
+import { broadcastProductEvent } from "@/lib/broadcast.functions";
 
 type Row = {
   id: string;
@@ -105,8 +106,15 @@ export function ProvidersAdmin({ products }: { products: Product[] }) {
 
   async function toggleHidden(p: Product) {
     if (!db) return;
+    const showing = Boolean(p.hidden);
     await update(ref(db, `products/${p.id}`), { hidden: !p.hidden });
-    notify(p.hidden ? "Shown to customers" : "Hidden from customers");
+    notify(showing ? "Shown to customers" : "Hidden from customers");
+    // First time an API product goes live, announce it in the bot.
+    if (showing && !(p as { announced?: boolean }).announced) {
+      await update(ref(db, `products/${p.id}`), { announced: true });
+      const r = await broadcastProductEvent({ data: { kind: "new", productId: p.id } });
+      if (r.ok) notify(`📣 Announced to ${r.sent} bot users`);
+    }
   }
 
   async function saveDetails(p: Product) {

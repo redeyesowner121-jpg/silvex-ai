@@ -576,12 +576,18 @@ export async function syncAllProviders(force = true): Promise<{
     if (!sp) continue;
     const price = sellPrice(sp.price, Number(p.markup) || 130);
     const stock = sp.unlimited ? 9999 : Math.max(0, sp.stock);
+    const wasOut = Number(p.supplierStock ?? 0) <= 0;
     await dbPatch(`products/${id}`, {
       price,
       supplierPrice: sp.price,
       supplierStock: stock,
       supplierSyncedAt: new Date().toISOString(),
     });
+    // Back in stock at the provider: tell every bot user.
+    if (wasOut && stock > 0 && !p.hidden) {
+      const { announce } = await import("./broadcast.server");
+      await announce("restock", id, { left: stock }).catch(() => undefined);
+    }
     updated.push({ id, title: String(p.title || sp.name), price, stock });
   }
   return { updated };

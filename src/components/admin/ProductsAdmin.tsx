@@ -11,6 +11,7 @@ import { notifyTelegramOrder } from "@/lib/telegram.functions";
 
 import { input, Stat, Empty, ImageField, emptyProduct, type OrderRow } from "@/components/admin/shared";
 import { fetchSupplierCatalogue, fetchSupplierBalance, syncSupplier } from "@/lib/supplier.functions";
+import { broadcastProductEvent } from "@/lib/broadcast.functions";
 
 type SupItem = { id: number; name: string; price: number; stock: number; unlimited_stock?: boolean; description?: string };
 
@@ -83,8 +84,9 @@ export function ProductsAdmin({ products }: { products: Product[] }) {
       await update(ref(db, `products/${id}`), data);
       notify("Product updated");
     } else {
-      await push(ref(db, "products"), { ...data, salesCount: 0 });
+      const created = await push(ref(db, "products"), { ...data, salesCount: 0, announced: true });
       notify("Product added");
+      if (created.key) await announce("new", created.key);
     }
     if (linked) await runSync();
     setForm(emptyProduct);
@@ -128,6 +130,17 @@ export function ProductsAdmin({ products }: { products: Product[] }) {
     await set(ref(db, `products/${form.id}/stock`), [...current, ...lines]);
     setBulk("");
     notify(`${lines.length} stock added`);
+    await announce("restock", form.id, { left: current.length + lines.length });
+  }
+
+  /** Push a store announcement with buttons to every bot user. */
+  async function announce(
+    kind: "new" | "restock" | "low",
+    productId: string,
+    extra: { left?: number } = {},
+  ) {
+    const r = await broadcastProductEvent({ data: { kind, productId, ...extra } });
+    notify(r.ok ? `📣 Sent to ${r.sent}/${r.total} bot users` : r.error || "Broadcast failed");
   }
 
   return (
@@ -179,16 +192,25 @@ export function ProductsAdmin({ products }: { products: Product[] }) {
           </p>
           <div className="space-y-1">
             {lowStock.map((p) => (
-              <button
+              <div
                 key={p.id}
-                onClick={() => setViewing(p.id)}
-                className="flex w-full items-center justify-between rounded-lg bg-card px-3 py-2 text-left text-xs font-bold"
+                className="flex w-full items-center gap-2 rounded-lg bg-card px-3 py-2 text-xs font-bold"
               >
-                <span className="truncate">{p.title}</span>
+                <button onClick={() => setViewing(p.id)} className="min-w-0 flex-1 truncate text-left">
+                  {p.title}
+                </button>
                 <span className="text-destructive">
                   {(p.stock || []).filter(Boolean).length} left
                 </span>
-              </button>
+                <button
+                  onClick={() =>
+                    announce("low", p.id, { left: (p.stock || []).filter(Boolean).length })
+                  }
+                  className="rounded-lg bg-destructive/10 px-2 py-1 text-[11px] font-bold text-destructive"
+                >
+                  📣 Announce
+                </button>
+              </div>
             ))}
           </div>
         </div>
@@ -397,7 +419,13 @@ export function ProductsAdmin({ products }: { products: Product[] }) {
                     </p>
                   </div>
                 </div>
-                <div className="flex shrink-0 gap-2">
+                <div className="flex shrink-0 flex-wrap justify-end gap-2">
+                  <button
+                    onClick={() => announce("new", p.id)}
+                    className="rounded-lg bg-amber-500/10 px-3 py-1.5 text-xs font-bold text-amber-600"
+                  >
+                    📣 Announce
+                  </button>
                   <button
                     onClick={async () => {
                       if (db) await update(ref(db, `products/${p.id}`), { hidden: !p.hidden });
