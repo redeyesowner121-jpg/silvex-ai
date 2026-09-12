@@ -163,3 +163,88 @@ export async function verifyWebhook(rawBody: string, signature: string): Promise
   if (!conf.webhookSecret || !signature) return false;
   return timingSafe(await hmacHex(conf.webhookSecret, rawBody), signature.trim());
 }
+
+/**
+ * Adds a paid amount to a wallet exactly once and tells the buyer.
+ * Used by the Razorpay callback and by the "I have paid" check in the bot.
+ */
+export async function creditDeposit(opts: {
+  uid: string;
+  usd: number;
+  inr: number;
+  paymentId: string;
+  email?: string;
+}): Promise<{ credited: boolean; balance: number }> {
+  const { dbGet, dbPut, dbPush, notifyOwners, money, tg } = await import("./telegram.server");
+  const current = Number((await dbGet<number>(`users/${opts.uid}/wallet`)) || 0);
+  if (!opts.uid || !opts.paymentId || !(opts.usd > 0)) return { credited: false, balance: current };
+  const seen = await dbGet<any>(`razorpayPayments/${opts.paymentId}`).catch(() => null);
+  if (seen) return { credited: false, balance: current };
+
+  const date = new Date().toISOString();
+  await dbPut(`razorpayPayments/${opts.paymentId}`, {
+    uid: opts.uid,
+    usd: opts.usd,
+    inr: opts.inr,
+    status: "Credited",
+    email: opts.email || "",
+    date,
+  });
+  const balance = Math.round((current + opts.usd) * 100) / 100;
+  await dbPut(`users/${opts.uid}/wallet`, balance);
+  await dbPush(`users/${opts.uid}/history`, {
+    type: "Deposit",
+    amount: opts.usd,
+    desc: `Card/UPI payment (₹${opts.inr.toFixed(0)})`,
+    date,
+  });
+
+  const tgId = Number(opts.uid.startsWith("tg_") ? opts.uid.slice(3) : 0);
+  if (tgId > 0) {
+    await tg("sendMessage", {
+      chat_id: tgId,
+      parse_mode: "HTML",
+      text: `✅ <b>Deposit done</b>\n${money(opts.usd)} added by card/UPI (₹${opts.inr.toFixed(0)}).\nNew balance: <b>${money(balance)}</b>`,
+    }).catch(() => undefined);
+  }
+  await notifyOwners(
+    `💳 Deposit credited\nUser: ${opts.uid}\nAmount: ${money(opts.usd)} (₹${opts.inr.toFixed(0)})\nPayment: ${opts.paymentId}`,
+  ).catch(() => undefined);
+  return { credited: true, balance };
+}
+
+/**
+ * Asks Razorpay whether one payment link was paid, and credits it if so.
+ * This keeps deposits working even before the callback address is saved in
+ * the Razorpay dashboard.
+ */
+export async function settlePaymentLink(
+  linkId: string,
+): Promise<{ status: "paid" | "pending" | "error"; message: string; balance?: number }> {
+  const conf = await razorpayConfig();
+  if (!conf.keyId || !conf.keySecret) return { status: "error", message: "Card/UPI payments are not set up yet." };
+  let res: Response;
+  try {
+    res = await fetch(`https://api.razorpay.com/v1/payment_links/${encodeURIComponent(linkId)}`, {
+      headers: { authorization: authHeader(conf) },
+    });
+  } catch {
+    return { status: "error", message: "Could not reach the payment provider. Try again." };
+  }
+  const json = (await res.json().catch(() => ({}))) as any;
+  if (!res.ok) return { status: "error", message: String(json?.error?.description || `Provider error (${res.status})`) };
+
+  const paid = String(json?.status || "") === "paid" || Number(json?.amount_paid || 0) > 0;
+  if (!paid) return { status: "pending", message: "We have not received this payment yet." };
+
+  const notes = (json?.notes || {}) as Record<string, string>;
+  const inr = Number(json?.amount_paid || json?.amount || 0) / 100;
+  const usd =
+    Number(notes["usd"]) > 0 ? Number(notes["usd"]) : Math.round((inr / conf.inrPerDollar) * 100) / 100;
+  const uid = String(notes["uid"] || "");
+  const paymentId = String(json?.id || linkId);
+  const out = await creditDeposit({ uid, usd, inr, paymentId, email: notes["email"] || "" });
+  return out.credited
+    ? { status: "paid", message: "Payment received.", balance: out.balance }
+    : { status: "paid", message: "This payment was already added to your wallet.", balance: out.balance };
+}

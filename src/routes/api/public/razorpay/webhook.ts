@@ -36,8 +36,7 @@ export const Route = createFileRoute("/api/public/razorpay/webhook")({
         const paymentId = String(payment.id || link.id || "");
         const inrPaid = Number(payment.amount ?? link.amount_paid ?? 0) / 100;
 
-        const { dbGet, dbPut, dbPush, notifyOwners, money } = await import("@/lib/telegram.server");
-        const { razorpayConfig } = await import("@/lib/razorpay.server");
+        const { razorpayConfig, creditDeposit } = await import("@/lib/razorpay.server");
         const conf = await razorpayConfig();
         const usd =
           Number(notes["usd"]) > 0
@@ -46,44 +45,7 @@ export const Route = createFileRoute("/api/public/razorpay/webhook")({
 
         if (!uid || !paymentId || !(usd > 0)) return new Response("ignored");
 
-        // One payment can only ever be credited once.
-        const seen = await dbGet<any>(`razorpayPayments/${paymentId}`).catch(() => null);
-        if (seen) return new Response("ok");
-
-        const date = new Date().toISOString();
-        await dbPut(`razorpayPayments/${paymentId}`, {
-          uid,
-          usd,
-          inr: inrPaid,
-          status: "Credited",
-          email: notes["email"] || "",
-          date,
-        });
-
-        const current = Number((await dbGet<number>(`users/${uid}/wallet`)) || 0);
-        await dbPut(`users/${uid}/wallet`, Math.round((current + usd) * 100) / 100);
-        await dbPush(`users/${uid}/history`, {
-          type: "Deposit",
-          amount: usd,
-          desc: `Card/UPI payment (₹${inrPaid.toFixed(0)})`,
-          date,
-        });
-
-        // Telegram buyers get the good news right inside the bot.
-        const tgId = Number(uid.startsWith("tg_") ? uid.slice(3) : 0);
-        if (tgId > 0) {
-          const { tg } = await import("@/lib/telegram.server");
-          const bal = Math.round((current + usd) * 100) / 100;
-          await tg("sendMessage", {
-            chat_id: tgId,
-            parse_mode: "HTML",
-            text: `✅ <b>Deposit done</b>\n${money(usd)} added by card/UPI (₹${inrPaid.toFixed(0)}).\nNew balance: <b>${money(bal)}</b>`,
-          }).catch(() => undefined);
-        }
-
-        await notifyOwners(
-          `💳 Deposit credited\nUser: ${uid}\nAmount: ${money(usd)} (₹${inrPaid.toFixed(0)})\nPayment: ${paymentId}`,
-        ).catch(() => undefined);
+        await creditDeposit({ uid, usd, inr: inrPaid, paymentId, email: notes["email"] || "" });
 
         return new Response("ok");
       },

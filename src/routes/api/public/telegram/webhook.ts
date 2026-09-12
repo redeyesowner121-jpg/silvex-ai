@@ -485,8 +485,34 @@ async function createCardLink(chatId: number, text: string) {
   return say(
     chatId,
     `💳 <b>Payment link ready</b>\n\nFor: wallet top-up of ${money(usd)}\nAmount: ₹${res.baseInr.toFixed(2)}\nVerification fee (${res.feePercent}%): ₹${res.feeInr.toFixed(2)}\n<b>Total to pay: ₹${res.inr.toFixed(2)}</b>\n\nPay with any card, UPI or netbanking. Your balance is topped up on its own right after the payment.`,
-    { inline_keyboard: [[{ text: "💳 Pay now", url: res.url }], [{ text: "🏠 Home", callback_data: "home" }]] },
+    {
+      inline_keyboard: [
+        [{ text: "💳 Pay now", url: res.url }],
+        [{ text: "✅ I have paid", callback_data: `pchk:${res.id}` }],
+        [{ text: "🏠 Home", callback_data: "home" }],
+      ],
+    },
   );
+}
+
+/** Checks one payment link with Razorpay and tops the wallet up when it is paid. */
+async function checkCardPayment(chatId: number, linkId: string) {
+  const uid = await ensureUser(chatId);
+  const { settlePaymentLink } = await import("@/lib/razorpay.server");
+  const out = await settlePaymentLink(linkId);
+  if (out.status === "paid") {
+    const wallet = (await dbGet<number>(`users/${uid}/wallet`)) || 0;
+    return say(chatId, `✅ <b>Payment received</b>\n\nBalance: <b>${money(out.balance ?? wallet)}</b>`, backHome);
+  }
+  if (out.status === "pending") {
+    return say(chatId, "⏳ The payment has not arrived yet. Pay first, then press “I have paid” again.", {
+      inline_keyboard: [
+        [{ text: "✅ I have paid", callback_data: `pchk:${linkId}` }],
+        [{ text: "🏠 Home", callback_data: "home" }],
+      ],
+    });
+  }
+  return say(chatId, `❌ ${out.message}`, backHome);
 }
 
 async function startWithdraw(chatId: number) {
@@ -676,18 +702,40 @@ async function sendSupport(chatId: number) {
 
 /* ---------------- buying ---------------- */
 
-async function buy(chatId: number, productId: string) {
+/** Asks how many copies the buyer wants before taking the money. */
+async function askQty(chatId: number, productId: string) {
+  const p = await dbGet<Product>(`products/${productId}`);
+  if (!p) return say(chatId, "Product not found.", backHome);
+  const price = Number(p.price || 0);
+  const stock = Array.isArray(p.stock) ? p.stock.filter(Boolean).length : 0;
+  const max = p.delivery === "auto" ? Math.min(stock, 5) : 5;
+  const choices = [1, 2, 3, 4, 5].filter((n) => n <= Math.max(max, 1));
+  await say(
+    chatId,
+    `🛒 <b>${p.title}</b>\n\nPrice: <b>${money(price)}</b> each\nHow many do you want?`,
+    {
+      inline_keyboard: [
+        choices.map((n) => ({ text: `${n} • ${money(price * n)}`, callback_data: `bq:${productId}:${n}` })),
+        [{ text: "⬅️ Back", callback_data: `p:${productId}` }],
+      ],
+    },
+  );
+}
+
+async function buy(chatId: number, productId: string, qty = 1) {
   const uid = await ensureUser(chatId);
   const [p, storedUser] = await Promise.all([
     dbGet<Product>(`products/${productId}`),
     dbGet<any>(`users/${uid}`),
   ]);
   if (!p) return say(chatId, "Product not found.", backHome);
-  const price = Number(p.price || 0);
+  const count = Math.max(1, Math.min(Math.floor(Number(qty) || 1), 20));
+  const unitPrice = Number(p.price || 0);
+  const price = Math.round(unitPrice * count * 100) / 100;
   const user = storedUser || {};
   const wallet = Number(user.wallet || 0);
   if (wallet < price) {
-    return say(chatId, `Not enough wallet balance. You have ${money(wallet)}, the item costs ${money(price)}.`, {
+    return say(chatId, `Not enough wallet balance. You have ${money(wallet)}, this order costs ${money(price)}.`, {
       inline_keyboard: [[{ text: `🟢 ${be("btn.deposit")} Deposit`, callback_data: "dep" }]],
     });
   }
@@ -699,7 +747,7 @@ async function buy(chatId: number, productId: string) {
       const { supplierBuy } = await import("@/lib/supplier.server");
       const items = await supplierBuy(
         Number(p.supplierId || 0),
-        1,
+        count,
         `tg-${chatId}-${Date.now()}`,
         String(p.provider || "custom"),
       );
@@ -717,32 +765,34 @@ async function buy(chatId: number, productId: string) {
       complete = false;
     }
   } else if (p.delivery === "repeat" && p.link) {
-    delivered.push({ title: p.title || "Item", content: p.link });
+    for (let i = 0; i < count; i++) delivered.push({ title: p.title || "Item", content: p.link });
     complete = true;
   } else if (p.delivery === "auto") {
     const stock = Array.isArray(p.stock) ? p.stock.filter(Boolean) : [];
-    if (stock.length >= 1) {
-      const taken = stock[0] as string;
-      await dbPut(`products/${productId}/stock`, stock.slice(1));
-      await dbPush(`usedStock/${productId}`, {
-        content: taken,
-        orderId: "",
-        email: user.email || `tg:${chatId}`,
-        date: new Date().toISOString(),
-      });
-      delivered.push({ title: p.title || "Item", content: taken });
+    if (stock.length >= count) {
+      const taken = stock.slice(0, count) as string[];
+      await dbPut(`products/${productId}/stock`, stock.slice(count));
+      for (const content of taken) {
+        await dbPush(`usedStock/${productId}`, {
+          content,
+          orderId: "",
+          email: user.email || `tg:${chatId}`,
+          date: new Date().toISOString(),
+        });
+        delivered.push({ title: p.title || "Item", content });
+      }
       complete = true;
     }
   }
 
 
   const orderId = "ORD" + Date.now();
-  await dbPut(`users/${uid}/wallet`, wallet - price);
+  await dbPut(`users/${uid}/wallet`, Math.round((wallet - price) * 100) / 100);
   await dbPut(`orders/${orderId}`, {
     orderId,
     uid,
     email: user.email || "",
-    items: [{ ...p, id: productId, qty: 1, price }],
+    items: [{ ...p, id: productId, qty: count, price: unitPrice }],
     subTotal: price,
     couponDiscount: 0,
     couponCode: null,
@@ -761,7 +811,7 @@ async function buy(chatId: number, productId: string) {
     desc: `Order ${orderId.slice(-4)}`,
     date: new Date().toISOString(),
   });
-  await dbPut(`products/${productId}/salesCount`, Number(p.salesCount || 0) + 1);
+  await dbPut(`products/${productId}/salesCount`, Number(p.salesCount || 0) + count);
   await payReferralCommission(uid, price);
 
   const body = complete
@@ -1494,7 +1544,12 @@ async function handleCallback(chatId: number, data: string) {
   if (data === "support") return sendSupport(chatId);
   if (data === "link" || data === "setmail") return askEmail(chatId);
   if (data.startsWith("p:")) return sendProduct(chatId, data.slice(2));
-  if (data.startsWith("b:")) return buy(chatId, data.slice(2));
+  if (data.startsWith("bq:")) {
+    const [, pid, n] = data.split(":");
+    return buy(chatId, String(pid), Number(n) || 1);
+  }
+  if (data.startsWith("pchk:")) return checkCardPayment(chatId, data.slice(5));
+  if (data.startsWith("b:")) return askQty(chatId, data.slice(2));
 }
 
 async function submitReview(chatId: number, text: string) {
