@@ -11,6 +11,7 @@ import { notifyTelegramOrder } from "@/lib/telegram.functions";
 
 import { input, Stat, Empty, ImageField, emptyProduct, type OrderRow } from "@/components/admin/shared";
 import { fetchSupplierCatalogue, fetchSupplierBalance, syncSupplier } from "@/lib/supplier.functions";
+import { broadcastProductEvent } from "@/lib/broadcast.functions";
 
 type SupItem = { id: number; name: string; price: number; stock: number; unlimited_stock?: boolean; description?: string };
 
@@ -83,8 +84,9 @@ export function ProductsAdmin({ products }: { products: Product[] }) {
       await update(ref(db, `products/${id}`), data);
       notify("Product updated");
     } else {
-      await push(ref(db, "products"), { ...data, salesCount: 0 });
+      const created = await push(ref(db, "products"), { ...data, salesCount: 0, announced: true });
       notify("Product added");
+      if (created.key && !data.hidden) await announce("new", created.key);
     }
     if (linked) await runSync();
     setForm(emptyProduct);
@@ -128,6 +130,17 @@ export function ProductsAdmin({ products }: { products: Product[] }) {
     await set(ref(db, `products/${form.id}/stock`), [...current, ...lines]);
     setBulk("");
     notify(`${lines.length} stock added`);
+    await announce("restock", form.id, { left: current.length + lines.length });
+  }
+
+  /** Push a store announcement with buttons to every bot user. */
+  async function announce(
+    kind: "new" | "restock" | "low",
+    productId: string,
+    extra: { left?: number } = {},
+  ) {
+    const r = await broadcastProductEvent({ data: { kind, productId, ...extra } });
+    notify(r.ok ? `📣 Sent to ${r.sent}/${r.total} bot users` : r.error || "Broadcast failed");
   }
 
   return (
