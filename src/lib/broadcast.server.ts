@@ -68,7 +68,7 @@ export async function announce(
     inline_keyboard: [
       [{ text: "🛒 Buy now", callback_data: `p:${productId}` }],
       [
-        { text: "🏬 Browse shop", callback_data: "shop" },
+        { text: "🏬 Browse shop", callback_data: "products" },
         ...(site ? [{ text: "🌐 Website", url: site }] : []),
       ],
     ],
