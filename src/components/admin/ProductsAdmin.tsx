@@ -419,7 +419,13 @@ export function ProductsAdmin({ products }: { products: Product[] }) {
                     </p>
                   </div>
                 </div>
-                <div className="flex shrink-0 gap-2">
+                <div className="flex shrink-0 flex-wrap justify-end gap-2">
+                  <button
+                    onClick={() => announce("new", p.id)}
+                    className="rounded-lg bg-amber-500/10 px-3 py-1.5 text-xs font-bold text-amber-600"
+                  >
+                    📣 Announce
+                  </button>
                   <button
                     onClick={async () => {
                       if (db) await update(ref(db, `products/${p.id}`), { hidden: !p.hidden });
