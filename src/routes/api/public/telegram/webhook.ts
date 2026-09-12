@@ -716,16 +716,18 @@ async function askQty(chatId: number, productId: string) {
         ? Number(anyP.supplierStock || 0)
         : 20;
   const max = Math.max(1, Math.min(20, available || 1));
-  const choices = Array.from({ length: max }, (_, i) => i + 1);
+  const choices = [1, 3, 5, 10, 20].filter((n) => n <= max);
+  if (!choices.length) choices.push(1);
   const rows: { text: string; callback_data: string }[][] = [];
-  for (let i = 0; i < choices.length; i += 5) {
+  for (let i = 0; i < choices.length; i += 3) {
     rows.push(
-      choices.slice(i, i + 5).map((n) => ({
+      choices.slice(i, i + 3).map((n) => ({
         text: `${n} • ${money(price * n)}`,
         callback_data: `bq:${productId}:${n}`,
       })),
     );
   }
+  rows.push([{ text: "✏️ Custom number", callback_data: `bqc:${productId}` }]);
   await say(
     chatId,
     `🛒 <b>${p.title}</b>\n\nPrice: <b>${money(price)}</b> each\nHow many do you want? (1–${max})`,
