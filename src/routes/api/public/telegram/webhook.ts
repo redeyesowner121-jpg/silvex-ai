@@ -1544,7 +1544,12 @@ async function handleCallback(chatId: number, data: string) {
   if (data === "support") return sendSupport(chatId);
   if (data === "link" || data === "setmail") return askEmail(chatId);
   if (data.startsWith("p:")) return sendProduct(chatId, data.slice(2));
-  if (data.startsWith("b:")) return buy(chatId, data.slice(2));
+  if (data.startsWith("bq:")) {
+    const [, pid, n] = data.split(":");
+    return buy(chatId, String(pid), Number(n) || 1);
+  }
+  if (data.startsWith("pchk:")) return checkCardPayment(chatId, data.slice(5));
+  if (data.startsWith("b:")) return askQty(chatId, data.slice(2));
 }
 
 async function submitReview(chatId: number, text: string) {
