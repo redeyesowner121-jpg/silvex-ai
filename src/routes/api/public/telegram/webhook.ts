@@ -1633,6 +1633,14 @@ async function handleText(chatId: number, text: string, entities?: any[], sticke
     return saveEmail(chatId, t);
   }
 
+  if (k === "buy_qty") {
+    const n = Math.floor(Number(t.trim()));
+    if (!Number.isFinite(n) || n < 1 || n > 20)
+      return say(chatId, "Please send a number between 1 and 20.");
+    await setState(chatId, null);
+    return buy(chatId, String(state?.a || ""), n);
+  }
+
   if (k === "dep_card") return createCardLink(chatId, t);
 
   if (k === "dep_hash") {
