@@ -1560,6 +1560,13 @@ async function handleCallback(chatId: number, data: string) {
   if (data === "support") return sendSupport(chatId);
   if (data === "link" || data === "setmail") return askEmail(chatId);
   if (data.startsWith("p:")) return sendProduct(chatId, data.slice(2));
+  if (data.startsWith("bqc:")) {
+    const pid = data.slice(4);
+    await setState(chatId, { k: "buy_qty", a: pid });
+    return say(chatId, "✏️ Send the number of items you want (1–20).", {
+      inline_keyboard: [[{ text: "⬅️ Back", callback_data: `b:${pid}` }]],
+    });
+  }
   if (data.startsWith("bq:")) {
     const [, pid, n] = data.split(":");
     return buy(chatId, String(pid), Number(n) || 1);
