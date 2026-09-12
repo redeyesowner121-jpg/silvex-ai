@@ -155,6 +155,98 @@ export async function saveProviderConfig(
   await dbPatch(`site_settings/providers/${id}`, clean);
 }
 
+/**
+ * Only these items are kept from each provider's catalogue.
+ * Matching is a case-insensitive "name contains keyword" check.
+ * Admin can override the list in site_settings/providers/{id}/keep (array of words).
+ */
+export const PROVIDER_KEEP: Record<string, string[]> = {
+  qamify: ["gemini", "capcut", "duolingo", "perplexity", "leonardo", "linkedin"],
+  elite: [
+    "autodesk",
+    "warp",
+    "n8n",
+    "lovable",
+    "gamma",
+    "magic pattern",
+    "granola",
+    "notion",
+    "elevenlab",
+    "eleven lab",
+    "supabase",
+    "gumloop",
+    "gemini",
+    "google ai pro",
+    "google pro ai",
+    "runway",
+    "intercom",
+    "resend",
+    "framer",
+    "mobbin",
+    "chatprd",
+    "customer.io",
+    "customer io",
+    "waking up",
+    "readwise",
+    "posthog",
+    "reclaim",
+    "brain.fm",
+    "brainfm",
+    "jam.dev",
+    "jam pro",
+    "supercut",
+    "pangram",
+  ],
+  eklas: [
+    "miro",
+    "chatprd",
+    "cursor",
+    "factory",
+    "manus",
+    "posthog",
+    "railway",
+    "replit",
+    "granola",
+    "quillbot",
+    "elevenlab",
+    "eleven lab",
+    "framer",
+    "supabase",
+  ],
+  safwan: [
+    "gemini",
+    "google ai pro",
+    "google pro ai",
+    "grok",
+    "lovable",
+    "coursera",
+    "capcut",
+    "canva",
+    "figma",
+    "gamma",
+    "wispr",
+  ],
+};
+
+/** Admin-editable keep list for a provider (empty list = keep everything). */
+export async function providerKeepList(id: string): Promise<string[]> {
+  const saved = await dbGet<string[] | string>(`site_settings/providers/${id}/keep`).catch(
+    () => null,
+  );
+  const list = Array.isArray(saved)
+    ? saved
+    : typeof saved === "string"
+      ? saved.split(",")
+      : PROVIDER_KEEP[id] || [];
+  return list.map((s) => String(s).toLowerCase().trim()).filter(Boolean);
+}
+
+export function keepByList(name: string, keep: string[]): boolean {
+  if (!keep.length) return true;
+  const n = String(name || "").toLowerCase();
+  return keep.some((k) => n.includes(k));
+}
+
 export type ApiProduct = {
   id: number;
   name: string;
@@ -350,15 +442,31 @@ export async function apiCategoryName(): Promise<string> {
  * Existing items are refreshed (price/stock/description) and keep their
  * profit % and hidden flag. Imported products are locked (cannot be deleted).
  */
-export async function importProvider(id: string): Promise<{ added: number; updated: number }> {
+export async function importProvider(
+  id: string,
+): Promise<{ added: number; updated: number; removed: number }> {
   const cfg = await providerConfig(id);
-  const [list, existing, category] = await Promise.all([
+  const [all, existing, category, keep] = await Promise.all([
     providerProducts(id),
     dbGet<Record<string, any>>("products"),
     apiCategoryName(),
+    providerKeepList(id),
   ]);
+  const list = all.filter((p) => keepByList(p.name, keep));
+  const wanted = new Set(list.map((p) => apiProductKey(cfg.id, p.id)));
   let added = 0;
   let updated = 0;
+  let removed = 0;
+
+  // Drop anything from this provider that is no longer on the keep list.
+  for (const [key, p] of Object.entries(existing || {})) {
+    if (!p || p.delivery !== "supplier") continue;
+    if (String(p.provider || "custom") !== cfg.id) continue;
+    if (wanted.has(key)) continue;
+    await dbPut(`products/${key}`, null);
+    removed++;
+  }
+
   for (const sp of list) {
     const key = apiProductKey(cfg.id, sp.id);
     const cur = (existing || {})[key];
@@ -403,8 +511,36 @@ export async function importProvider(id: string): Promise<{ added: number; updat
     imported_at: new Date().toISOString(),
     imported_count: list.length,
   });
-  return { added, updated };
+  return { added, updated, removed };
 }
+
+/** Delete every imported API product that is not on its provider's keep list. */
+export async function pruneImportedProducts(): Promise<{
+  removed: number;
+  kept: number;
+  titles: string[];
+}> {
+  const products = (await dbGet<Record<string, any>>("products")) || {};
+  const keeps = new Map<string, string[]>();
+  let removed = 0;
+  let kept = 0;
+  const titles: string[] = [];
+  for (const [key, p] of Object.entries(products)) {
+    if (!p || p.delivery !== "supplier") continue;
+    const pid = String(p.provider || "custom");
+    if (!keeps.has(pid)) keeps.set(pid, await providerKeepList(pid));
+    const name = `${p.title || ""} ${p.desc || ""}`;
+    if (keepByList(name, keeps.get(pid) || [])) {
+      kept++;
+      continue;
+    }
+    await dbPut(`products/${key}`, null);
+    titles.push(String(p.title || key));
+    removed++;
+  }
+  return { removed, kept, titles };
+}
+
 
 /** Refresh price and stock of every linked product, per provider. */
 export async function syncAllProviders(force = true): Promise<{

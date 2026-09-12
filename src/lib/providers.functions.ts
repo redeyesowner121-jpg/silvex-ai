@@ -55,9 +55,25 @@ export const importProviderProducts = createServerFn({ method: "POST" })
     try {
       return { ok: true as const, ...(await importProvider(data.id)) };
     } catch (err) {
-      return { ok: false as const, error: (err as Error).message, added: 0, updated: 0 };
+      return {
+        ok: false as const,
+        error: (err as Error).message,
+        added: 0,
+        updated: 0,
+        removed: 0,
+      };
     }
   });
+
+/** Delete imported API products that are not on the keep list. */
+export const pruneApiProducts = createServerFn({ method: "POST" }).handler(async () => {
+  const { pruneImportedProducts } = await import("./providers.server");
+  try {
+    return { ok: true as const, ...(await pruneImportedProducts()) };
+  } catch (err) {
+    return { ok: false as const, error: (err as Error).message, removed: 0, kept: 0, titles: [] };
+  }
+});
 
 /** Live catalogue of one provider (used for previews). */
 export const fetchProviderProducts = createServerFn({ method: "POST" })

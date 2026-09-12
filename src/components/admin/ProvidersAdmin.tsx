@@ -6,6 +6,7 @@ import {
   listProviders,
   saveProvider,
   importProviderProducts,
+  pruneApiProducts,
 } from "@/lib/providers.functions";
 import { syncSupplier } from "@/lib/supplier.functions";
 
@@ -91,6 +92,17 @@ export function ProvidersAdmin({ products }: { products: Product[] }) {
     );
   }
 
+  async function cleanup() {
+    setBusy("prune");
+    const res = await pruneApiProducts();
+    setBusy(null);
+    notify(
+      res.ok
+        ? `Removed ${res.removed} extra items, kept ${res.kept}`
+        : res.error || "Cleanup failed",
+    );
+  }
+
   async function toggleHidden(p: Product) {
     if (!db) return;
     await update(ref(db, `products/${p.id}`), { hidden: !p.hidden });
@@ -125,12 +137,21 @@ export function ProvidersAdmin({ products }: { products: Product[] }) {
             Import products from each API shop, set the profit %, and show or hide them.
           </p>
         </div>
-        <button
-          onClick={() => load()}
-          className="rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary"
-        >
-          Refresh
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => cleanup()}
+            disabled={busy === "prune"}
+            className="rounded-lg bg-destructive/10 px-3 py-1.5 text-xs font-bold text-destructive"
+          >
+            {busy === "prune" ? "Cleaning…" : "Remove extra items"}
+          </button>
+          <button
+            onClick={() => load()}
+            className="rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary"
+          >
+            Refresh
+          </button>
+        </div>
       </div>
 
       {rows.length === 0 ? <Empty text="Loading API shops…" /> : null}
