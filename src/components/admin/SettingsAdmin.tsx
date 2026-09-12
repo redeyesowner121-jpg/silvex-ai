@@ -462,12 +462,17 @@ export function SettingsAdmin({
           <button
             onClick={async () => {
               if (!db || !fs.pid || !fs.price) return notify("Pick a product and price");
+              const endTime = Date.now() + Number(fs.hours || 1) * 3600000;
               await set(ref(db, "site_settings/flash_sale"), {
                 pid: fs.pid,
                 price: Number(fs.price),
-                endTime: Date.now() + Number(fs.hours || 1) * 3600000,
+                endTime,
               });
               notify("Flash sale started");
+              const r = await broadcastProductEvent({
+                data: { kind: "flash", productId: fs.pid, price: Number(fs.price), ends: endTime },
+              });
+              if (r.ok) notify(`📣 Sale announced to ${r.sent} bot users`);
             }}
             className="flex-1 rounded-xl bg-destructive py-2.5 text-sm font-bold text-destructive-foreground"
           >
