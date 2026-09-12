@@ -707,19 +707,33 @@ async function askQty(chatId: number, productId: string) {
   const p = await dbGet<Product>(`products/${productId}`);
   if (!p) return say(chatId, "Product not found.", backHome);
   const price = Number(p.price || 0);
+  const anyP = p as unknown as { delivery?: string; supplierStock?: number };
   const stock = Array.isArray(p.stock) ? p.stock.filter(Boolean).length : 0;
-  const max = p.delivery === "auto" ? Math.min(stock, 5) : 5;
-  const choices = [1, 2, 3, 4, 5].filter((n) => n <= Math.max(max, 1));
+  const available =
+    anyP.delivery === "auto"
+      ? stock
+      : anyP.delivery === "supplier"
+        ? Number(anyP.supplierStock || 0)
+        : 20;
+  const max = Math.max(1, Math.min(20, available || 1));
+  const choices = Array.from({ length: max }, (_, i) => i + 1);
+  const rows: { text: string; callback_data: string }[][] = [];
+  for (let i = 0; i < choices.length; i += 5) {
+    rows.push(
+      choices.slice(i, i + 5).map((n) => ({
+        text: `${n} • ${money(price * n)}`,
+        callback_data: `bq:${productId}:${n}`,
+      })),
+    );
+  }
   await say(
     chatId,
-    `🛒 <b>${p.title}</b>\n\nPrice: <b>${money(price)}</b> each\nHow many do you want?`,
+    `🛒 <b>${p.title}</b>\n\nPrice: <b>${money(price)}</b> each\nHow many do you want? (1–${max})`,
     {
-      inline_keyboard: [
-        choices.map((n) => ({ text: `${n} • ${money(price * n)}`, callback_data: `bq:${productId}:${n}` })),
-        [{ text: "⬅️ Back", callback_data: `p:${productId}` }],
-      ],
+      inline_keyboard: [...rows, [{ text: "⬅️ Back", callback_data: `p:${productId}` }]],
     },
   );
+
 }
 
 async function buy(chatId: number, productId: string, qty = 1) {
