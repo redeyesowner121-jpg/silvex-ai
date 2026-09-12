@@ -485,8 +485,34 @@ async function createCardLink(chatId: number, text: string) {
   return say(
     chatId,
     `💳 <b>Payment link ready</b>\n\nFor: wallet top-up of ${money(usd)}\nAmount: ₹${res.baseInr.toFixed(2)}\nVerification fee (${res.feePercent}%): ₹${res.feeInr.toFixed(2)}\n<b>Total to pay: ₹${res.inr.toFixed(2)}</b>\n\nPay with any card, UPI or netbanking. Your balance is topped up on its own right after the payment.`,
-    { inline_keyboard: [[{ text: "💳 Pay now", url: res.url }], [{ text: "🏠 Home", callback_data: "home" }]] },
+    {
+      inline_keyboard: [
+        [{ text: "💳 Pay now", url: res.url }],
+        [{ text: "✅ I have paid", callback_data: `pchk:${res.id}` }],
+        [{ text: "🏠 Home", callback_data: "home" }],
+      ],
+    },
   );
+}
+
+/** Checks one payment link with Razorpay and tops the wallet up when it is paid. */
+async function checkCardPayment(chatId: number, linkId: string) {
+  const uid = await ensureUser(chatId);
+  const { settlePaymentLink } = await import("@/lib/razorpay.server");
+  const out = await settlePaymentLink(linkId);
+  if (out.status === "paid") {
+    const wallet = (await dbGet<number>(`users/${uid}/wallet`)) || 0;
+    return say(chatId, `✅ <b>Payment received</b>\n\nBalance: <b>${money(out.balance ?? wallet)}</b>`, backHome);
+  }
+  if (out.status === "pending") {
+    return say(chatId, "⏳ The payment has not arrived yet. Pay first, then press “I have paid” again.", {
+      inline_keyboard: [
+        [{ text: "✅ I have paid", callback_data: `pchk:${linkId}` }],
+        [{ text: "🏠 Home", callback_data: "home" }],
+      ],
+    });
+  }
+  return say(chatId, `❌ ${out.message}`, backHome);
 }
 
 async function startWithdraw(chatId: number) {
