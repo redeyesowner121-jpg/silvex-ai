@@ -716,16 +716,18 @@ async function askQty(chatId: number, productId: string) {
         ? Number(anyP.supplierStock || 0)
         : 20;
   const max = Math.max(1, Math.min(20, available || 1));
-  const choices = Array.from({ length: max }, (_, i) => i + 1);
+  const choices = [1, 3, 5, 10, 20].filter((n) => n <= max);
+  if (!choices.length) choices.push(1);
   const rows: { text: string; callback_data: string }[][] = [];
-  for (let i = 0; i < choices.length; i += 5) {
+  for (let i = 0; i < choices.length; i += 3) {
     rows.push(
-      choices.slice(i, i + 5).map((n) => ({
+      choices.slice(i, i + 3).map((n) => ({
         text: `${n} • ${money(price * n)}`,
         callback_data: `bq:${productId}:${n}`,
       })),
     );
   }
+  rows.push([{ text: "✏️ Custom number", callback_data: `bqc:${productId}` }]);
   await say(
     chatId,
     `🛒 <b>${p.title}</b>\n\nPrice: <b>${money(price)}</b> each\nHow many do you want? (1–${max})`,
@@ -1558,6 +1560,13 @@ async function handleCallback(chatId: number, data: string) {
   if (data === "support") return sendSupport(chatId);
   if (data === "link" || data === "setmail") return askEmail(chatId);
   if (data.startsWith("p:")) return sendProduct(chatId, data.slice(2));
+  if (data.startsWith("bqc:")) {
+    const pid = data.slice(4);
+    await setState(chatId, { k: "buy_qty", a: pid });
+    return say(chatId, "✏️ Send the number of items you want (1–20).", {
+      inline_keyboard: [[{ text: "⬅️ Back", callback_data: `b:${pid}` }]],
+    });
+  }
   if (data.startsWith("bq:")) {
     const [, pid, n] = data.split(":");
     return buy(chatId, String(pid), Number(n) || 1);
@@ -1622,6 +1631,14 @@ async function handleText(chatId: number, text: string, entities?: any[], sticke
   if (k === "await_email") {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t)) return say(chatId, "That does not look like an email. Send it like name@mail.com");
     return saveEmail(chatId, t);
+  }
+
+  if (k === "buy_qty") {
+    const n = Math.floor(Number(t.trim()));
+    if (!Number.isFinite(n) || n < 1 || n > 20)
+      return say(chatId, "Please send a number between 1 and 20.");
+    await setState(chatId, null);
+    return buy(chatId, String(state?.a || ""), n);
   }
 
   if (k === "dep_card") return createCardLink(chatId, t);
