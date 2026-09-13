@@ -149,6 +149,7 @@ async function isBotAdmin(chatId: number): Promise<boolean> {
     if (!String(c?.telegramOwners ?? "").trim()) {
       await dbPut(`telegramAdmins/${chatId}`, true);
       await dbPut("site_settings/config/telegramOwners", String(chatId));
+      adminCache.set(chatId, { v: true, at: Date.now() });
       return true;
     }
   }
