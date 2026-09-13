@@ -266,7 +266,7 @@ export function keepByList(name: string, keep: string[]): boolean {
 }
 
 export type ApiProduct = {
-  id: number;
+  id: string | number;
   name: string;
   price: number;
   stock: number;
@@ -283,6 +283,7 @@ function num(v: unknown): number {
 
 function pickPrice(p: any): number {
   if (p?.price != null && num(p.price) > 0) return num(p.price);
+  if (p?.price_usd != null && num(p.price_usd) > 0) return num(p.price_usd);
   if (p?.unit_price != null && num(p.unit_price) > 0) return num(p.unit_price);
   if (p?.price_cents != null) return num(p.price_cents) / 100;
   if (p?.unit_price_cents != null) return num(p.unit_price_cents) / 100;
@@ -290,7 +291,7 @@ function pickPrice(p: any): number {
 }
 
 function pickStock(p: any): { stock: number; unlimited: boolean } {
-  for (const k of ["stock", "available_stock", "quantity", "stock_count"]) {
+  for (const k of ["stock", "stock_available", "available_stock", "quantity", "stock_count"]) {
     if (p?.[k] != null && p[k] !== "") return { stock: Math.max(0, Math.floor(num(p[k]))), unlimited: false };
   }
   if (p?.unlimited_stock) return { stock: 9999, unlimited: true };
