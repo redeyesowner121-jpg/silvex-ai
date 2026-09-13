@@ -137,7 +137,8 @@ export async function allProducts(): Promise<Record<string, Product>> {
     return productCache.v;
   }
   await pullProducts();
-  return productCache?.v || {};
+  const loaded: typeof productCache = productCache;
+  return loaded?.v || {};
 }
 export function invalidateProducts() {
   productCache = null;
@@ -161,7 +162,8 @@ export async function allUsers(): Promise<Record<string, any>> {
     return userCache.v;
   }
   await pullUsers();
-  return userCache?.v || {};
+  const loaded: typeof userCache = userCache;
+  return loaded?.v || {};
 }
 export function invalidateUsers() {
   userCache = null;
