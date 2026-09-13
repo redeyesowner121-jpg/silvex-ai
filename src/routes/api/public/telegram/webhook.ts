@@ -18,7 +18,13 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
         if (!telegramWebhookOk(actual)) return new Response("Unauthorized", { status: 401 });
 
         try {
-          if (update?.callback_query) {
+          if (update?.business_connection) {
+            const { handleBusinessConnection } = await import("@/lib/bot/business");
+            await handleBusinessConnection(update.business_connection);
+          } else if (update?.business_message || update?.edited_business_message) {
+            const { handleBusinessMessage } = await import("@/lib/bot/business");
+            await handleBusinessMessage(update.business_message ?? update.edited_business_message);
+          } else if (update?.callback_query) {
             const cq = update.callback_query;
             // Stop the button spinner right away; don't wait for Telegram.
             void tg("answerCallbackQuery", { callback_query_id: cq.id }).catch(() => undefined);
