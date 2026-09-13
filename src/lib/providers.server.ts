@@ -470,13 +470,17 @@ export async function importProvider(
   id: string,
 ): Promise<{ added: number; updated: number; removed: number }> {
   const cfg = await providerConfig(id);
-  const [all, existing, category, keep] = await Promise.all([
+  const [all, existing, category, keep, deleted] = await Promise.all([
     providerProducts(id),
     dbGet<Record<string, any>>("products"),
     apiCategoryName(),
     providerKeepList(id),
+    dbGet<Record<string, boolean>>("site_settings/apiDeleted").catch(() => null),
   ]);
-  const list = all.filter((p) => keepByList(p.name, keep));
+  // Items the admin deleted by hand never come back on the next import.
+  const list = all.filter(
+    (p) => keepByList(p.name, keep) && !(deleted || {})[apiProductKey(cfg.id, p.id)],
+  );
   const wanted = new Set(list.map((p) => apiProductKey(cfg.id, p.id)));
   let added = 0;
   let updated = 0;
