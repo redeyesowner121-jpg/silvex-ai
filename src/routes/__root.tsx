@@ -133,8 +133,10 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-  // Store settings travel with the page, so Firebase starts without a round trip.
-  primeFirebaseConfig(Route.useLoaderData());
+  // Settings and shop data travel with the page, so the store shows instantly.
+  const data = Route.useLoaderData();
+  primeFirebaseConfig(data?.config);
+  primeStoreSnapshot(data?.snapshot);
 
   return (
     <QueryClientProvider client={queryClient}>
