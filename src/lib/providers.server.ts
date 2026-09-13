@@ -493,6 +493,12 @@ export async function pruneImportedProducts(): Promise<{
   for (const [key, p] of Object.entries(products)) {
     if (!p || p.delivery !== "supplier") continue;
     const pid = String(p.provider || "custom");
+    if (RETIRED_PROVIDERS.includes(pid)) {
+      await dbPut(`products/${key}`, null);
+      titles.push(String(p.title || key));
+      removed++;
+      continue;
+    }
     if (!keeps.has(pid)) keeps.set(pid, await providerKeepList(pid));
     const name = `${p.title || ""} ${p.desc || ""}`;
     if (keepByList(name, keeps.get(pid) || [])) {
