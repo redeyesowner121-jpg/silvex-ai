@@ -251,6 +251,19 @@ export function SettingsAdmin({
           value={cfg.supportTelegram}
           onChange={(e) => setCfg({ ...cfg, supportTelegram: e.target.value })}
         />
+        <select
+          className={input}
+          value={cfg.messageEffect}
+          onChange={(e) => setCfg({ ...cfg, messageEffect: e.target.value })}
+        >
+          <option value="fire">Bot message effect: 🔥 Fire</option>
+          <option value="party">Bot message effect: 🎉 Party</option>
+          <option value="heart">Bot message effect: ❤️ Heart</option>
+          <option value="like">Bot message effect: 👍 Like</option>
+          <option value="dislike">Bot message effect: 👎 Dislike</option>
+          <option value="poop">Bot message effect: 💩 Poop</option>
+          <option value="none">Bot message effect: off</option>
+        </select>
         <input
           className={input}
           placeholder="Scrolling notice text"
