@@ -215,6 +215,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }));
   const decodeDots = (v: Record<string, any> | null | undefined) =>
     Object.fromEntries(Object.entries(v || {}).map(([k, val]) => [k.split("~").join("."), val]));
+  if (snap?.config) {
+    applyOwnerEmails((snap.config as SiteConfig).ownerEmails);
+    applyReferralConfig(snap.config as SiteConfig);
+  }
 
   const [auth, setAuth] = useState<Auth | null>(null);
   const [db, setDb] = useState<Database | null>(null);
