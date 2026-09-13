@@ -1623,6 +1623,18 @@ async function handleCallback(chatId: number, data: string) {
   }
   if (data.startsWith("bq:")) {
     const [, pid, n] = data.split(":");
+    return askQty(chatId, String(pid), Number(n) || 1);
+  }
+  if (data.startsWith("bpm:")) {
+    const [, pid, n] = data.split(":");
+    return askPayMethod(chatId, String(pid), Number(n) || 1);
+  }
+  if (data.startsWith("bcf:")) {
+    const [, pid, n] = data.split(":");
+    return confirmWalletPay(chatId, String(pid), Number(n) || 1);
+  }
+  if (data.startsWith("bgo:")) {
+    const [, pid, n] = data.split(":");
     return buy(chatId, String(pid), Number(n) || 1);
   }
   if (data.startsWith("pchk:")) return checkCardPayment(chatId, data.slice(5));
