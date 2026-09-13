@@ -277,8 +277,13 @@ async function execTool(chatId: number, uid: string, name: string, args: any): P
 
 /* ---------------- the assistant ---------------- */
 
-async function aiReply(chatId: number, uid: string, question: string) {
-  if (!hasAiKey()) return;
+/** Writes the assistant's answer (empty string when it cannot answer). */
+export async function buildSupportReply(
+  chatId: number,
+  uid: string,
+  question: string,
+): Promise<string> {
+  if (!hasAiKey()) return "";
   const [c, name, style, history, products, user] = await Promise.all([
     cfg(),
     siteName(),
@@ -328,9 +333,14 @@ async function aiReply(chatId: number, uid: string, question: string) {
     });
   } catch (err) {
     console.error("support ai failed", err);
-    return;
+    return "";
   }
-  if (!reply.trim()) return;
+  return reply.trim();
+}
+
+async function aiReply(chatId: number, uid: string, question: string) {
+  const reply = await buildSupportReply(chatId, uid, question);
+  if (!reply) return;
 
   await dbPush(`support/${uid}/messages`, {
     from: "bot",
