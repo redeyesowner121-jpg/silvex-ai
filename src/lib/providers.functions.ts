@@ -3,7 +3,7 @@ import { createServerFn } from "@tanstack/react-start";
 /** All reseller API providers with their settings and live balance. */
 export const listProviders = createServerFn({ method: "GET" }).handler(async () => {
   const { PROVIDERS, providerConfig, providerBalance } = await import("./providers.server");
-  const ids = [...PROVIDERS.map((p) => p.id), "custom" as const];
+  const ids = PROVIDERS.map((p) => p.id);
   const rows = await Promise.all(
     ids.map(async (id) => {
       const cfg = await providerConfig(id);
