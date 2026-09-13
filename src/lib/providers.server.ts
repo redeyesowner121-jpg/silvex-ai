@@ -219,6 +219,8 @@ function num(v: unknown): number {
 }
 
 function pickPrice(p: any): number {
+  // Some shops send price as an object: { amount: 0.34, currency: "USD" }
+  if (p?.price && typeof p.price === "object" && num(p.price.amount) > 0) return num(p.price.amount);
   if (p?.price != null && num(p.price) > 0) return num(p.price);
   if (p?.price_usd != null && num(p.price_usd) > 0) return num(p.price_usd);
   if (p?.unit_price != null && num(p.unit_price) > 0) return num(p.unit_price);
@@ -228,6 +230,8 @@ function pickPrice(p: any): number {
 }
 
 function pickStock(p: any): { stock: number; unlimited: boolean } {
+  if (p?.availability?.available != null)
+    return { stock: Math.max(0, Math.floor(num(p.availability.available))), unlimited: false };
   for (const k of ["stock", "stock_available", "available_stock", "quantity", "stock_count"]) {
     if (p?.[k] != null && p[k] !== "") return { stock: Math.max(0, Math.floor(num(p[k]))), unlimited: false };
   }
