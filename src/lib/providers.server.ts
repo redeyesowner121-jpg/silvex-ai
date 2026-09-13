@@ -115,6 +115,21 @@ export const PROVIDERS: ProviderDef[] = [
       orderExtra: { currency: "USD" },
     },
   },
+  {
+    id: "canboso",
+    name: "Canboso",
+    url: "https://canboso.com/api/v2/telegram-buyer",
+    key: "tgb_a7706ca2b1e10b1bdefeaf76d067d635615c78ff9a2322ef",
+    docs: "https://canboso.com/api/swagger",
+    markup: 130,
+    shape: {
+      productsPath: "products?per_page=100",
+      balancePath: "balance",
+      orderPath: "purchase",
+      qtyField: "quantity",
+      refField: "idempotency_key",
+    },
+  },
 ];
 
 export function providerDef(id: string): ProviderDef | null {
