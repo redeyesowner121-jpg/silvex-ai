@@ -40,16 +40,27 @@ export const ownerIds = () =>
 
 const GATEWAY = "https://connector-gateway.lovable.dev/telegram";
 
+/**
+ * Read a setting from the hosting environment at the moment it is needed.
+ * Going through globalThis keeps the value out of the build, so changing it on
+ * the host takes effect on the next restart without rebuilding the site.
+ */
+function envVar(name: string): string {
+  const env = (globalThis as any)?.process?.env;
+  const v = env ? env[name] : undefined;
+  return typeof v === "string" ? v.trim() : "";
+}
+
 /** Bot token set in the admin panel (preferred) or in the project secrets. */
 export function botToken(): string {
-  return runtimeBotToken || process.env["TELEGRAM_BOT_TOKEN"] || "";
+  return runtimeBotToken || envVar("TELEGRAM_BOT_TOKEN");
 }
 
 /** Where to send Bot API calls: the admin token first, the linked bot otherwise. */
 export function tgApi(method: string): { url: string; headers: Record<string, string> } | null {
   const token = botToken();
   if (token) return { url: `https://api.telegram.org/bot${token}/${method}`, headers: {} };
-  const lovableKey = process.env["LOVABLE_API_KEY"];
+  const lovableKey = envVar("LOVABLE_API_KEY");
   const connKey = telegramConnectionKey();
   if (!lovableKey || !connKey) return null;
   return {
@@ -68,12 +79,10 @@ export function tgFileUrl(path: string): { url: string; headers: Record<string, 
 
 /** Latest linked Telegram connection key (newest slot wins). */
 export function telegramConnectionKey(): string | undefined {
-  return (
-    process.env["TELEGRAM_API_KEY_1"] ||
-    process.env["TELEGRAM_API_KEY"] ||
-    undefined
-  );
+  return envVar("TELEGRAM_API_KEY_1") || envVar("TELEGRAM_API_KEY") || undefined;
 }
+
+
 
 /* ---------------- inline button styling ---------------- */
 
