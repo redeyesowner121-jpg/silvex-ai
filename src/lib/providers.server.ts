@@ -582,15 +582,15 @@ export async function syncAllProviders(force = true): Promise<{
 
   const products = (await dbGet<Record<string, any>>("products")) || {};
   const linked = Object.entries(products).filter(
-    ([, p]) => p && p.delivery === "supplier" && Number(p.supplierId || 0) > 0,
+    ([, p]) => p && p.delivery === "supplier" && String(p.supplierId ?? "").trim() !== "",
   );
   const providers = [...new Set(linked.map(([, p]) => String(p.provider || "custom")))];
-  const catalogues = new Map<string, Map<number, ApiProduct>>();
+  const catalogues = new Map<string, Map<string, ApiProduct>>();
   await Promise.all(
     providers.map(async (pid) => {
       try {
         const items = await providerProducts(pid);
-        catalogues.set(pid, new Map(items.map((i) => [i.id, i])));
+        catalogues.set(pid, new Map(items.map((i) => [String(i.id), i])));
       } catch {
         /* provider down — keep old values */
       }
