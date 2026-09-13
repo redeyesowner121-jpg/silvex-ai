@@ -313,6 +313,29 @@ export function ProvidersAdmin({ products }: { products: Product[] }) {
                   ) : null}
                 </div>
 
+                {items.length ? (
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <button
+                      onClick={() => setAllHidden(items, true)}
+                      className="rounded-xl bg-muted px-4 py-2 text-xs font-bold"
+                    >
+                      Hide all
+                    </button>
+                    <button
+                      onClick={() => setAllHidden(items, false)}
+                      className="rounded-xl bg-emerald-500/10 px-4 py-2 text-xs font-bold text-emerald-600"
+                    >
+                      Show all
+                    </button>
+                    <button
+                      onClick={() => deleteAll(items)}
+                      className="rounded-xl bg-destructive/10 px-4 py-2 text-xs font-bold text-destructive"
+                    >
+                      Delete all
+                    </button>
+                  </div>
+                ) : null}
+
                 <div className="space-y-1 pt-2">
                   {items.length === 0 ? (
                     <p className="text-[11px] text-muted-foreground">
