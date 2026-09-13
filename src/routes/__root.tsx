@@ -104,7 +104,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "preconnect", href: "https://identitytoolkit.googleapis.com" },
     ],
   }),
-  loader: () => getFirebaseConfig(),
+  loader: async () => {
+    const [config, snapshot] = await Promise.all([
+      getFirebaseConfig(),
+      getStoreSnapshot().catch(() => null),
+    ]);
+    return { config, snapshot };
+  },
   shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
