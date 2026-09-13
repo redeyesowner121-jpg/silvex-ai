@@ -5,7 +5,14 @@ import { dbGet, dbPatch, dbPut } from "./telegram.server";
  * Every value here is only a fallback — the admin panel can change the name,
  * base URL, key, profit % and whether a provider is on, in site_settings/providers.
  */
-export type ProviderId = "qamify" | "elite" | "eklas" | "safwan" | "mmostore" | "custom";
+export type ProviderId =
+  | "qamify"
+  | "elite"
+  | "eklas"
+  | "safwan"
+  | "mmostore"
+  | "canboso"
+  | "custom";
 
 export type ProviderShape = {
   productsPath: string;
