@@ -7,7 +7,19 @@ import { handleText } from "@/lib/bot/route-text";
 export const Route = createFileRoute("/api/public/telegram/webhook")({
   server: {
     handlers: {
+      // Health view for the store owner: says whether this server can talk to
+      // Telegram at all. It never shows any key, only yes/no.
+      GET: async () =>
+        Response.json({
+          ok: true,
+          hasBotToken: Boolean(process.env["TELEGRAM_BOT_TOKEN"]),
+          hasConnectionKey: Boolean(
+            process.env["TELEGRAM_API_KEY_1"] || process.env["TELEGRAM_API_KEY"],
+          ),
+          hasLovableKey: Boolean(process.env["LOVABLE_API_KEY"]),
+        }),
       POST: async ({ request }) => {
+
         // Settings, styling and the update body load together instead of one by one.
         const [, , update] = await Promise.all([
           loadBotRuntime().catch(() => undefined),
