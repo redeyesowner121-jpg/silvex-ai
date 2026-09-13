@@ -1,0 +1,355 @@
+/** Shared pieces of the Telegram bot: settings, state, sending, users. */
+import {
+  dbGet,
+  dbPatch,
+  dbPut,
+  siteUrl,
+  tg,
+  ownerIds,
+  applyBotConfig,
+} from "@/lib/telegram.server";
+import { be, e as em, loadEmojis, setButtonColors } from "@/lib/emoji.server";
+import { applyReferralConfig } from "@/lib/referral";
+import type { ButtonColorMap } from "@/lib/button-colors";
+
+export type Product = {
+  id?: string;
+  title?: string;
+  desc?: string;
+  price?: number;
+  logo?: string;
+  link?: string;
+  delivery?: "auto" | "repeat" | "manual" | "supplier";
+  supplierId?: string | number;
+  supplierStock?: number;
+  provider?: string;
+  hidden?: boolean;
+  locked?: boolean;
+  stock?: string[];
+  salesCount?: number;
+};
+
+export type Cfg = {
+  siteName?: string;
+  supportLink?: string;
+  depositAddress?: string;
+  forceJoin?: string;
+  reviewChannel?: string;
+  razorpayKeyId?: string;
+  inrPerDollar?: number | string;
+  telegramOwners?: string | number[];
+};
+
+export const CFG = "site_settings/config";
+export const BOT_CACHE_MS = 30_000;
+const LIST_CACHE_MS = 15_000;
+
+let cachedCfg: Cfg | null = null;
+let cfgLoadedAt = 0;
+let cachedButtonColors: ButtonColorMap | null = null;
+let colorsLoadedAt = 0;
+
+export async function cfg(): Promise<Cfg> {
+  if (cachedCfg && Date.now() - cfgLoadedAt < BOT_CACHE_MS) return cachedCfg;
+  cachedCfg = (await dbGet<Cfg>(CFG)) || {};
+  cfgLoadedAt = Date.now();
+  applyBotConfig(cachedCfg as any);
+  applyReferralConfig(cachedCfg as any);
+  return cachedCfg;
+}
+
+export async function saveConfig(patch: Record<string, unknown>) {
+  await dbPatch(CFG, patch);
+  cachedCfg = null;
+}
+
+export async function siteName(): Promise<string> {
+  return (await cfg()).siteName || "SILENT SELLER";
+}
+
+export async function loadBotPresentation(): Promise<void> {
+  const now = Date.now();
+  await Promise.all([
+    loadEmojis().catch(() => undefined),
+    now - colorsLoadedAt < BOT_CACHE_MS && cachedButtonColors
+      ? Promise.resolve()
+      : dbGet<ButtonColorMap>("site_settings/button_colors")
+          .then((colors) => {
+            cachedButtonColors = colors || {};
+            colorsLoadedAt = Date.now();
+          })
+          .catch(() => undefined),
+  ]);
+  setButtonColors(cachedButtonColors);
+}
+
+/* ---------------- shared lists (short cache keeps taps fast) ---------------- */
+
+let productCache: { at: number; v: Record<string, Product> } | null = null;
+let userCache: { at: number; v: Record<string, any> } | null = null;
+
+export async function allProducts(): Promise<Record<string, Product>> {
+  if (productCache && Date.now() - productCache.at < LIST_CACHE_MS) return productCache.v;
+  const v = (await dbGet<Record<string, Product>>("products")) || {};
+  productCache = { at: Date.now(), v };
+  return v;
+}
+export function invalidateProducts() {
+  productCache = null;
+}
+
+export async function allUsers(): Promise<Record<string, any>> {
+  if (userCache && Date.now() - userCache.at < LIST_CACHE_MS) return userCache.v;
+  const v = (await dbGet<Record<string, any>>("users")) || {};
+  userCache = { at: Date.now(), v };
+  return v;
+}
+export function invalidateUsers() {
+  userCache = null;
+}
+
+/* ---------------- state ---------------- */
+
+export type State = { k: string; a?: string; b?: string } | null;
+
+export async function getState(chatId: number): Promise<State> {
+  const raw = await dbGet<any>(`telegramState/${chatId}`);
+  if (!raw) return null;
+  if (typeof raw === "string") return { k: raw };
+  return raw as State;
+}
+export async function setState(chatId: number, s: State) {
+  await dbPut(`telegramState/${chatId}`, s);
+}
+
+/** Remember who is an admin for a short while so every tap isn't a fresh lookup. */
+const adminCache = new Map<number, { v: boolean; at: number }>();
+
+export async function isBotAdmin(chatId: number): Promise<boolean> {
+  if (ownerIds().includes(chatId)) return true;
+  const hit = adminCache.get(chatId);
+  if (hit && Date.now() - hit.at < BOT_CACHE_MS) return hit.v;
+  if (await dbGet<boolean>(`telegramAdmins/${chatId}`)) {
+    adminCache.set(chatId, { v: true, at: Date.now() });
+    return true;
+  }
+  adminCache.set(chatId, { v: false, at: Date.now() });
+  // Fresh database: the very first person who opens the bot becomes its owner.
+  const existing = await dbGet<any>("telegramAdmins");
+  if (!existing || Object.keys(existing).length === 0) {
+    const c = await cfg();
+    if (!String(c?.telegramOwners ?? "").trim()) {
+      await dbPut(`telegramAdmins/${chatId}`, true);
+      await dbPut("site_settings/config/telegramOwners", String(chatId));
+      adminCache.set(chatId, { v: true, at: Date.now() });
+      return true;
+    }
+  }
+  return false;
+}
+
+/* ---------------- sending ---------------- */
+
+/** Message ids we should edit instead of sending a new message (per chat). */
+export const editTarget = new Map<number, number>();
+
+export async function say(chatId: number, text: string, keyboard?: any) {
+  const messageId = editTarget.get(chatId);
+  if (messageId) {
+    editTarget.delete(chatId);
+    try {
+      await tg("editMessageText", {
+        chat_id: chatId,
+        message_id: messageId,
+        text,
+        parse_mode: "HTML",
+        disable_web_page_preview: true,
+        reply_markup: keyboard ?? { inline_keyboard: [] },
+      });
+      return;
+    } catch {
+      /* message too old / identical — fall back to a new message */
+    }
+  }
+  await tg("sendMessage", {
+    chat_id: chatId,
+    text,
+    parse_mode: "HTML",
+    disable_web_page_preview: true,
+    ...(keyboard ? { reply_markup: keyboard } : {}),
+  });
+}
+
+export const backHome = { inline_keyboard: [[{ text: "⬅️ Menu", callback_data: "home" }]] };
+export const adminBack = { inline_keyboard: [[{ text: "⬅️ Admin", callback_data: "a:home" }]] };
+
+/* ---------------- force join ---------------- */
+
+export function channelLink(handle: string) {
+  const h = handle.trim();
+  if (h.startsWith("http")) return h;
+  return `https://t.me/${h.replace(/^@/, "")}`;
+}
+
+/** Accepts "@name", "name" or a full https://t.me/name link. */
+export function channelHandle(raw: string): string {
+  const h = raw.trim().replace(/\/+$/, "");
+  const m = h.match(/t\.me\/(?:s\/)?([A-Za-z0-9_]{4,})$/i);
+  const name = m ? m[1] : h.replace(/^@/, "");
+  if (!name || /^\+/.test(name) || /joinchat/i.test(h)) return "";
+  return `@${name}`;
+}
+
+export async function forceJoinBlocked(chatId: number): Promise<boolean> {
+  const c = await cfg();
+  const ch = (c.forceJoin || "").trim();
+  const handle = ch ? channelHandle(ch) : "";
+  if (!ch || !handle) return false;
+  try {
+    const res = await tg("getChatMember", { chat_id: handle, user_id: chatId });
+    const status = res?.result?.status;
+    if (["creator", "administrator", "member"].includes(status)) return false;
+  } catch {
+    return false;
+  }
+
+  await say(
+    chatId,
+    "🔒 <b>Join our channel first</b>\n\nYou must join the channel below to use this bot.",
+    {
+      inline_keyboard: [
+        [{ text: "📢 Join channel", url: channelLink(ch) }],
+        [{ text: "✅ I joined", callback_data: "home" }],
+      ],
+    },
+  );
+  return true;
+}
+
+/* ---------------- menus ---------------- */
+
+/**
+ * Telegram does not let bots pick button colours, so buttons are colour-coded
+ * with coloured markers + the admin's chosen emoji for each slot.
+ */
+export const DOT = {
+  green: "🟢",
+  blue: "🔵",
+  violet: "🟣",
+  orange: "🟠",
+  red: "🔴",
+  yellow: "🟡",
+} as const;
+
+export function cbtn(dot: string, key: string, label: string, data: string) {
+  return { text: `${dot} ${be(key)} ${label}`, callback_data: data };
+}
+
+export function mainKeyboard() {
+  return {
+    inline_keyboard: [
+      [cbtn(DOT.green, "btn.products", "View Products", "products")],
+      [
+        cbtn(DOT.blue, "btn.wallet", "Wallet", "wallet"),
+        cbtn(DOT.violet, "btn.profile", "Profile", "profile"),
+      ],
+      [
+        cbtn(DOT.yellow, "btn.reviews", "Reviews", "reviews"),
+        cbtn(DOT.orange, "btn.refer", "Refer & Earn", "refer"),
+      ],
+      [
+        cbtn(DOT.red, "btn.support", "Support", "support"),
+        cbtn(DOT.blue, "btn.orders", "Orders", "orders"),
+      ],
+      [cbtn(DOT.violet, "btn.apikey", "Reseller API key", "apikey")],
+      [{ text: `${be("btn.website")} Visit Website`, url: siteUrl() }],
+    ],
+  };
+}
+
+export async function welcome(chatId: number) {
+  const name = await siteName();
+  await say(
+    chatId,
+    `${em("norm.welcome")} <b>Welcome to ${name} !</b>\n\n` +
+      `${em("norm.star")} Premium digital products at the cheapest prices\n` +
+      `${em("norm.fast")} Instant delivery\n` +
+      `${em("norm.secure")} Secure payments\n` +
+      `${em("norm.support")} 24/7 Support\n\n` +
+      `Choose an option below:`,
+    mainKeyboard(),
+  );
+  const uid = await ensureUser(chatId);
+  if (!(await userEmail(uid))) {
+    await askEmail(
+      chatId,
+      "Send your email address so we can mail your orders and delivery details. You can skip and add it later from Profile.",
+    );
+  }
+}
+
+/* ---------------- users ---------------- */
+
+export async function linkedUid(chatId: number): Promise<string | null> {
+  return await dbGet<string>(`telegramLinks/${chatId}`);
+}
+
+/** Every Telegram user gets a store account keyed by their numeric Telegram id. */
+export async function ensureUser(chatId: number): Promise<string> {
+  const existing = await linkedUid(chatId);
+  if (existing) return existing;
+  const uid = `tg_${chatId}`;
+  const current = await dbGet<any>(`users/${uid}`);
+  if (!current) {
+    await dbPut(`users/${uid}`, {
+      name: `Telegram ${chatId}`,
+      email: "",
+      wallet: 0,
+      telegramChatId: chatId,
+      myRefCode: `TG${String(chatId).slice(-6)}`,
+      source: "telegram",
+      joined: new Date().toISOString(),
+    });
+  } else {
+    await dbPatch(`users/${uid}`, { telegramChatId: chatId });
+  }
+  await dbPut(`telegramLinks/${chatId}`, uid);
+  invalidateUsers();
+  return uid;
+}
+
+export async function userEmail(uid: string): Promise<string> {
+  return String((await dbGet<string>(`users/${uid}/email`)) || "");
+}
+
+/** Ask for an email so delivery + order mails can be sent. */
+export async function askEmail(chatId: number, why?: string) {
+  await setState(chatId, { k: "await_email" });
+  await say(
+    chatId,
+    `📧 <b>Add your email</b>\n\n${why || "Send your email address so we can mail your order and delivery details."}`,
+    { inline_keyboard: [[{ text: "⏭ Skip for now", callback_data: "home" }]] },
+  );
+}
+
+export async function saveEmail(chatId: number, email: string) {
+  const uid = await ensureUser(chatId);
+  const users = await allUsers();
+  const hit = Object.entries(users).find(
+    ([id, u]: [string, any]) =>
+      id !== uid && String(u?.email || "").toLowerCase() === email.toLowerCase(),
+  );
+  if (hit && !hit[1]?.telegramChatId) {
+    // Same email already used on the website — join the two accounts.
+    const [target] = hit;
+    await dbPut(`telegramLinks/${chatId}`, target);
+    await dbPatch(`users/${target}`, { telegramChatId: chatId });
+    await setState(chatId, null);
+    invalidateUsers();
+    return say(chatId, "✅ Email saved and your existing store account is now connected here.", mainKeyboard());
+  }
+  await dbPatch(`users/${uid}`, { email });
+  invalidateUsers();
+  await setState(chatId, null);
+  await say(chatId, `✅ Email saved: <code>${email}</code>\nOrder and delivery mails will go there.`, mainKeyboard());
+}
