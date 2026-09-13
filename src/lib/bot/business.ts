@@ -19,6 +19,36 @@ const esc = (s: unknown) =>
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
 
+/** The bot's own @username, read once and kept in memory. */
+let botUsername = "";
+async function getBotUsername(): Promise<string> {
+  if (botUsername) return botUsername;
+  try {
+    const me = await tg("getMe", {});
+    botUsername = String(me?.result?.username || "").toLowerCase();
+  } catch {
+    botUsername = "";
+  }
+  return botUsername;
+}
+
+/** True when the message tags the bot (@name) or replies to one of its messages. */
+async function taggedBot(msg: any): Promise<boolean> {
+  const name = await getBotUsername();
+  if (!name) return false;
+  const text = String(msg?.text ?? msg?.caption ?? "");
+  if (new RegExp(`@${name}\\b`, "i").test(text)) return true;
+  const ents = [...(msg?.entities ?? []), ...(msg?.caption_entities ?? [])];
+  for (const e of ents) {
+    if (e?.type === "mention") {
+      const at = text.substr(e.offset, e.length).toLowerCase();
+      if (at === `@${name}`) return true;
+    }
+  }
+  return false;
+}
+
+
 /** The owner connected / changed / removed the bot in their Business settings. */
 export async function handleBusinessConnection(conn: any) {
   const id = String(conn?.id || "");
@@ -50,7 +80,24 @@ export async function handleBusinessMessage(msg: any) {
   const uid = await ensureUser(customerChatId);
   const at = Date.now();
 
+  const tagged = await taggedBot(msg);
+  const question = tagged
+    ? text.replace(new RegExp(`@${botUsername}`, "ig"), "").trim() || text
+    : text;
+
   if (fromId === ownerId) {
+    // The owner tagged the bot in their own chat — answer right away.
+    if (tagged) {
+      const ownerReply = await buildSupportReply(customerChatId, uid, question);
+      if (ownerReply)
+        await tg("sendMessage", {
+          business_connection_id: connId,
+          chat_id: chatId,
+          text: esc(ownerReply),
+          parse_mode: "HTML",
+        }).catch(() => undefined);
+      return;
+    }
     await Promise.all([
       dbPush(`support/${uid}/messages`, { from: "owner", text, date: new Date().toISOString() }),
       dbPut(`support/${uid}/lastOwnerAt`, at),
@@ -64,15 +111,19 @@ export async function handleBusinessMessage(msg: any) {
     dbPut(`support/${uid}/lastUserAt`, at),
   ]);
 
-  // The owner answered this person moments ago — they are online, stay quiet.
-  const lastOwnerAt = Number((await dbGet<number>(`support/${uid}/lastOwnerAt`)) || 0);
-  if (at - lastOwnerAt < OWNER_ONLINE_MS) return;
+  // Tagged directly → answer instantly, whether or not the owner is around.
+  if (!tagged) {
+    // The owner answered this person moments ago — they are online, stay quiet.
+    const lastOwnerAt = Number((await dbGet<number>(`support/${uid}/lastOwnerAt`)) || 0);
+    if (at - lastOwnerAt < OWNER_ONLINE_MS) return;
 
-  await new Promise((r) => setTimeout(r, WAIT_FOR_OWNER_MS));
-  if (Number((await dbGet<number>(`support/${uid}/lastOwnerAt`)) || 0) >= at) return;
+    await new Promise((r) => setTimeout(r, WAIT_FOR_OWNER_MS));
+    if (Number((await dbGet<number>(`support/${uid}/lastOwnerAt`)) || 0) >= at) return;
+  }
 
-  const reply = await buildSupportReply(customerChatId, uid, text);
+  const reply = await buildSupportReply(customerChatId, uid, question);
   if (!reply) return;
+
 
   await dbPush(`support/${uid}/messages`, {
     from: "bot",
