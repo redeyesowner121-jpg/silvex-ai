@@ -39,6 +39,7 @@ export type Cfg = {
   razorpayKeyId?: string;
   inrPerDollar?: number | string;
   telegramOwners?: string | number[];
+  messageEffect?: string;
 };
 
 export const CFG = "site_settings/config";
@@ -222,6 +223,24 @@ export async function isBotAdmin(chatId: number): Promise<boolean> {
 /** Message ids we should edit instead of sending a new message (per chat). */
 export const editTarget = new Map<number, number>();
 
+/** Telegram's animated message effects (private chats only). */
+export const EFFECTS: Record<string, string> = {
+  fire: "5104841245755180586",
+  like: "5107584321108051014",
+  dislike: "5104858069142078462",
+  heart: "5159385139981059251",
+  party: "5046509860389126442",
+  poop: "5046589136895476101",
+};
+
+/** Which effect to play on new bot messages — admin choice, fire by default. */
+export async function effectId(): Promise<string> {
+  const c = await cfg();
+  const raw = String(c.messageEffect ?? "fire").trim();
+  if (!raw || raw === "none" || raw === "off") return "";
+  return EFFECTS[raw.toLowerCase()] || (/^\d{6,}$/.test(raw) ? raw : EFFECTS["fire"] || "");
+}
+
 export async function say(chatId: number, text: string, keyboard?: any) {
   const messageId = editTarget.get(chatId);
   if (messageId) {
@@ -240,13 +259,23 @@ export async function say(chatId: number, text: string, keyboard?: any) {
       /* message too old / identical — fall back to a new message */
     }
   }
-  await tg("sendMessage", {
+  const body: Record<string, unknown> = {
     chat_id: chatId,
     text,
     parse_mode: "HTML",
     disable_web_page_preview: true,
     ...(keyboard ? { reply_markup: keyboard } : {}),
-  });
+  };
+  const effect = await effectId().catch(() => "");
+  if (effect) {
+    try {
+      await tg("sendMessage", { ...body, message_effect_id: effect });
+      return;
+    } catch {
+      /* group chat or effect refused — send it plain */
+    }
+  }
+  await tg("sendMessage", body);
 }
 
 export const backHome = { inline_keyboard: [[{ text: "⬅️ Menu", callback_data: "home" }]] };

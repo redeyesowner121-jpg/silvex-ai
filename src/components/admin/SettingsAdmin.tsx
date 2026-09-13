@@ -27,6 +27,7 @@ export function SettingsAdmin({
     depositAddress?: string;
     supportLink?: string;
     supportTelegram?: string;
+    messageEffect?: string;
     minOrder?: number;
     categories?: Category[];
     siteUrl?: string;
@@ -57,6 +58,7 @@ export function SettingsAdmin({
     depositAddress: config.depositAddress ?? "",
     supportLink: config.supportLink ?? "",
     supportTelegram: config.supportTelegram ?? "",
+    messageEffect: config.messageEffect ?? "fire",
     minOrder: String(config.minOrder ?? 0),
     lowStockAlert: String((config as { lowStockAlert?: number }).lowStockAlert ?? 5),
     siteUrl: config.siteUrl ?? "",
@@ -112,6 +114,7 @@ export function SettingsAdmin({
       depositAddress: cfg.depositAddress.trim(),
       supportLink: cfg.supportLink,
       supportTelegram: cfg.supportTelegram.trim(),
+      messageEffect: cfg.messageEffect.trim().toLowerCase(),
       minOrder: Number(cfg.minOrder || 0),
       lowStockAlert: Number(cfg.lowStockAlert || 0),
       siteUrl: cfg.siteUrl.trim(),
@@ -248,6 +251,19 @@ export function SettingsAdmin({
           value={cfg.supportTelegram}
           onChange={(e) => setCfg({ ...cfg, supportTelegram: e.target.value })}
         />
+        <select
+          className={input}
+          value={cfg.messageEffect}
+          onChange={(e) => setCfg({ ...cfg, messageEffect: e.target.value })}
+        >
+          <option value="fire">Bot message effect: 🔥 Fire</option>
+          <option value="party">Bot message effect: 🎉 Party</option>
+          <option value="heart">Bot message effect: ❤️ Heart</option>
+          <option value="like">Bot message effect: 👍 Like</option>
+          <option value="dislike">Bot message effect: 👎 Dislike</option>
+          <option value="poop">Bot message effect: 💩 Poop</option>
+          <option value="none">Bot message effect: off</option>
+        </select>
         <input
           className={input}
           placeholder="Scrolling notice text"
