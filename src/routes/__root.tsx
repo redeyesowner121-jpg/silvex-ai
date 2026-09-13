@@ -15,7 +15,9 @@ import { StoreProvider } from "@/context/StoreContext";
 import { AppShell } from "@/components/store/AppShell";
 import { Toaster } from "@/components/ui/sonner";
 import { getFirebaseConfig } from "@/lib/firebase.functions";
+import { getStoreSnapshot } from "@/lib/store-snapshot.functions";
 import { primeFirebaseConfig } from "@/lib/firebase";
+import { primeStoreSnapshot } from "@/context/store-prime";
 
 function NotFoundComponent() {
   return (
@@ -102,7 +104,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "preconnect", href: "https://identitytoolkit.googleapis.com" },
     ],
   }),
-  loader: () => getFirebaseConfig(),
+  loader: async () => {
+    const [config, snapshot] = await Promise.all([
+      getFirebaseConfig(),
+      getStoreSnapshot().catch(() => null),
+    ]);
+    return { config, snapshot };
+  },
   shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
@@ -125,8 +133,10 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-  // Store settings travel with the page, so Firebase starts without a round trip.
-  primeFirebaseConfig(Route.useLoaderData());
+  // Settings and shop data travel with the page, so the store shows instantly.
+  const data = Route.useLoaderData();
+  primeFirebaseConfig(data?.config);
+  primeStoreSnapshot(data?.snapshot);
 
   return (
     <QueryClientProvider client={queryClient}>
