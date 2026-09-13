@@ -5,14 +5,10 @@ import { dbGet, dbPatch, dbPut } from "./telegram.server";
  * Every value here is only a fallback — the admin panel can change the name,
  * base URL, key, profit % and whether a provider is on, in site_settings/providers.
  */
-export type ProviderId =
-  | "qamify"
-  | "elite"
-  | "eklas"
-  | "safwan"
-  | "mmostore"
-  | "canboso"
-  | "custom";
+export type ProviderId = "qamify" | "safwan" | "mmostore" | "canboso" | "custom";
+
+/** Shops that were removed — their imported products get cleaned up. */
+export const RETIRED_PROVIDERS = ["elite", "eklas"];
 
 export type ProviderShape = {
   productsPath: string;
@@ -52,36 +48,6 @@ export const PROVIDERS: ProviderDef[] = [
       qtyField: "qty",
       refField: "",
       idempotencyHeader: true,
-    },
-  },
-  {
-    id: "elite",
-    name: "Elite Digital Emporium",
-    url: "https://shop.elitedigitalemporium.com/api/telegram-buyer",
-    key: "tgb_4ac9c109b339209bb87179fdb3f5e637957797e68528600a",
-    docs: "https://shop.elitedigitalemporium.com/api/swagger",
-    markup: 130,
-    shape: {
-      productsPath: "products?per_page=100",
-      balancePath: "balance",
-      orderPath: "purchase",
-      qtyField: "quantity",
-      refField: "idempotency_key",
-    },
-  },
-  {
-    id: "eklas",
-    name: "Eklas ESB",
-    url: "https://api-esb.eklas.dev/v1",
-    key: "tgb_O0aZZYoosD_gMgAo8DCGcNJyVO7YwrnkpAeRMd4z21z8kXEQ",
-    docs: "https://api-esb.eklas.dev/docs",
-    markup: 130,
-    shape: {
-      productsPath: "products",
-      balancePath: "balance",
-      orderPath: "orders",
-      qtyField: "quantity",
-      refField: "client_order_id",
     },
   },
   {
@@ -202,57 +168,6 @@ export async function saveProviderConfig(
  */
 export const PROVIDER_KEEP: Record<string, string[]> = {
   qamify: ["gemini", "capcut", "duolingo", "perplexity", "leonardo", "linkedin"],
-  elite: [
-    "autodesk",
-    "warp",
-    "n8n",
-    "lovable",
-    "gamma",
-    "magic pattern",
-    "granola",
-    "notion",
-    "elevenlab",
-    "eleven lab",
-    "supabase",
-    "gumloop",
-    "gemini",
-    "google ai pro",
-    "google pro ai",
-    "runway",
-    "intercom",
-    "resend",
-    "framer",
-    "mobbin",
-    "chatprd",
-    "customer.io",
-    "customer io",
-    "waking up",
-    "readwise",
-    "posthog",
-    "reclaim",
-    "brain.fm",
-    "brainfm",
-    "jam.dev",
-    "jam pro",
-    "supercut",
-    "pangram",
-  ],
-  eklas: [
-    "miro",
-    "chatprd",
-    "cursor",
-    "factory",
-    "manus",
-    "posthog",
-    "railway",
-    "replit",
-    "granola",
-    "quillbot",
-    "elevenlab",
-    "eleven lab",
-    "framer",
-    "supabase",
-  ],
   safwan: [
     "gemini",
     "google ai pro",
@@ -578,6 +493,12 @@ export async function pruneImportedProducts(): Promise<{
   for (const [key, p] of Object.entries(products)) {
     if (!p || p.delivery !== "supplier") continue;
     const pid = String(p.provider || "custom");
+    if (RETIRED_PROVIDERS.includes(pid)) {
+      await dbPut(`products/${key}`, null);
+      titles.push(String(p.title || key));
+      removed++;
+      continue;
+    }
     if (!keeps.has(pid)) keeps.set(pid, await providerKeepList(pid));
     const name = `${p.title || ""} ${p.desc || ""}`;
     if (keepByList(name, keeps.get(pid) || [])) {
