@@ -60,7 +60,9 @@ export const getStoreSnapshot = createServerFn({ method: "GET" }).handler(async 
   for (const [id, p] of Object.entries((rawProducts || {}) as Record<string, any>)) {
     if (!p || typeof p !== "object") continue;
     const { stock, usedStock, ...rest } = p as Record<string, any>;
-    products[id] = rest;
+    // Keep only how many are left, not the secret stock lines themselves.
+    const left = Array.isArray(stock) ? stock.filter(Boolean).length : 0;
+    products[id] = left ? { ...rest, stock: Array.from({ length: left }, () => "1") } : rest;
   }
 
   const data: StoreSnapshot = {
