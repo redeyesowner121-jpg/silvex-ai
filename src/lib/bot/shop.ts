@@ -36,6 +36,7 @@ import {
   setState,
   type Product,
 } from "./core";
+import { payReferralCommission } from "./wallet";
 
 export { defaultDepositAddress };
 export {
