@@ -1,0 +1,4 @@
+# Pin the Node version: Nixpacks' default (Node 18) was removed from nixpkgs
+# and makes the Railway build fail with "Node.js 18.x has reached End-Of-Life".
+[phases.setup]
+nixPkgs = ["nodejs_22", "bun"]
