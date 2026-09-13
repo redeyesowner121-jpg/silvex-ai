@@ -29,7 +29,7 @@ export {
 export async function sendProducts(chatId: number) {
   const all = await allProducts();
   const list = Object.entries(all)
-    .filter(([, p]) => p && p.hidden !== true)
+    .filter(([, p]) => p && p.hidden !== true && String(p.title || "").trim() !== "")
     .slice(0, 40);
   if (!list.length) return say(chatId, "No products available right now.", backHome);
 
