@@ -5,7 +5,7 @@ import { dbGet, dbPatch, dbPut } from "./telegram.server";
  * Every value here is only a fallback — the admin panel can change the name,
  * base URL, key, profit % and whether a provider is on, in site_settings/providers.
  */
-export type ProviderId = "qamify" | "elite" | "eklas" | "safwan" | "custom";
+export type ProviderId = "qamify" | "elite" | "eklas" | "safwan" | "mmostore" | "custom";
 
 export type ProviderShape = {
   productsPath: string;
@@ -16,6 +16,8 @@ export type ProviderShape = {
   refField: "idempotency_key" | "client_order_id" | "request_id" | "";
   /** provider needs the Idempotency-Key header instead of a body field */
   idempotencyHeader?: boolean;
+  /** extra fields always sent with an order (e.g. currency) */
+  orderExtra?: Record<string, unknown>;
 };
 
 export type ProviderDef = {
