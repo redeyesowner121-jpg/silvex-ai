@@ -3,9 +3,24 @@ import { defaultDepositAddress, verifyDepositAnyChain } from "@/lib/deposit.serv
 import { dbGet, dbPatch, dbPush, dbPut, money, notifyOwners } from "@/lib/telegram.server";
 
 import { adminBack, askEmail, backHome, cfg, ensureUser, forceJoinBlocked, getState, invalidateProducts, isBotAdmin, say, saveConfig, saveEmail, setState, welcome } from "@/lib/bot/core";
-import { applyStartReferral, askQty, createCardLink, submitReview } from "@/lib/bot/shop";
+import {
+  applyStartReferral,
+  askQty,
+  createCardLink,
+  sendApiKey,
+  sendOrders,
+  sendProducts,
+  sendProfile,
+  sendRefer,
+  sendReviews,
+  sendSupport,
+  sendWallet,
+  startDeposit,
+  submitReview,
+} from "@/lib/bot/shop";
 import { adminDeliver, adminFindUser, adminHome, adminProduct, adminUser, broadcast } from "@/lib/bot/admin";
 import { emojiFromMessage, emojiHome, emojiProductMessage, emojiToMessage } from "@/lib/bot/emoji-ui";
+import { ADMIN_COMMANDS, USER_COMMANDS, registerAdminCommands, registerBotCommands } from "@/lib/bot/commands";
 
 export async function handleText(chatId: number, text: string, entities?: any[], sticker?: any) {
   const t = text.trim();
@@ -13,6 +28,7 @@ export async function handleText(chatId: number, text: string, entities?: any[],
 
   if (t === "/start" || t === "/menu" || t.startsWith("/start ")) {
     await setState(chatId, null);
+    void registerBotCommands().catch(() => undefined);
     if (await forceJoinBlocked(chatId)) return;
     if (t.startsWith("/start ")) {
       const uid = await ensureUser(chatId);
@@ -25,12 +41,56 @@ export async function handleText(chatId: number, text: string, entities?: any[],
   if (t === "/admin") {
     if (!(await isBotAdmin(chatId))) return say(chatId, "This command is for store owners only.");
     await setState(chatId, null);
+    void registerAdminCommands(chatId).catch(() => undefined);
     return adminHome(chatId);
   }
   if (t === "/setemoji") {
     if (!(await isBotAdmin(chatId))) return say(chatId, "This command is for store owners only.");
     await setState(chatId, null);
     return emojiHome(chatId);
+  }
+  if (t === "/products" || t === "/shop") {
+    await setState(chatId, null);
+    return sendProducts(chatId);
+  }
+  if (t === "/wallet" || t === "/balance") {
+    await setState(chatId, null);
+    return sendWallet(chatId);
+  }
+  if (t === "/deposit" || t === "/topup") {
+    await setState(chatId, null);
+    return startDeposit(chatId);
+  }
+  if (t === "/orders") {
+    await setState(chatId, null);
+    return sendOrders(chatId);
+  }
+  if (t === "/profile" || t === "/account") {
+    await setState(chatId, null);
+    return sendProfile(chatId);
+  }
+  if (t === "/refer" || t === "/referral") {
+    await setState(chatId, null);
+    return sendRefer(chatId);
+  }
+  if (t === "/reviews") {
+    await setState(chatId, null);
+    return sendReviews(chatId);
+  }
+  if (t === "/apikey" || t === "/api") {
+    await setState(chatId, null);
+    return sendApiKey(chatId, false);
+  }
+  if (t === "/support" || t === "/contact") {
+    await setState(chatId, null);
+    return sendSupport(chatId);
+  }
+  if (t === "/help" || t === "/commands") {
+    await setState(chatId, null);
+    const list = ((await isBotAdmin(chatId)) ? ADMIN_COMMANDS : USER_COMMANDS)
+      .map((c) => `/${c.command} — ${c.description}`)
+      .join("\n");
+    return say(chatId, `📋 <b>Commands</b>\n\n${list}`, backHome);
   }
 
   const state = await getState(chatId);

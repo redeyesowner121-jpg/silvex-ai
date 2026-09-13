@@ -23,6 +23,8 @@ export const connectTelegramBot = createServerFn({ method: "POST" })
         allowed_updates: ["message", "edited_message", "callback_query", "my_chat_member"],
         drop_pending_updates: false,
       });
+      const { registerBotCommands } = await import("./bot/commands");
+      await registerBotCommands(true).catch(() => undefined);
       return {
         ok: true as const,
         username: String(me?.result?.username ?? ""),
