@@ -47,40 +47,67 @@ const LIST_CACHE_MS = 15_000;
 
 let cachedCfg: Cfg | null = null;
 let cfgLoadedAt = 0;
+let cfgRefreshing: Promise<void> | null = null;
 let cachedButtonColors: ButtonColorMap | null = null;
 let colorsLoadedAt = 0;
+let colorsRefreshing: Promise<void> | null = null;
 
+function refreshCfg(): Promise<void> {
+  cfgRefreshing ||= dbGet<Cfg>(CFG)
+    .then((c) => {
+      cachedCfg = c || {};
+      cfgLoadedAt = Date.now();
+      applyBotConfig(cachedCfg as any);
+      applyReferralConfig(cachedCfg as any);
+    })
+    .catch(() => undefined)
+    .finally(() => {
+      cfgRefreshing = null;
+    });
+  return cfgRefreshing;
+}
+
+/** Settings are served from memory and refreshed in the background (never blocks a tap). */
 export async function cfg(): Promise<Cfg> {
-  if (cachedCfg && Date.now() - cfgLoadedAt < BOT_CACHE_MS) return cachedCfg;
-  cachedCfg = (await dbGet<Cfg>(CFG)) || {};
-  cfgLoadedAt = Date.now();
-  applyBotConfig(cachedCfg as any);
-  applyReferralConfig(cachedCfg as any);
-  return cachedCfg;
+  if (cachedCfg) {
+    if (Date.now() - cfgLoadedAt >= BOT_CACHE_MS) void refreshCfg();
+    return cachedCfg;
+  }
+  await refreshCfg();
+  return cachedCfg || {};
 }
 
 export async function saveConfig(patch: Record<string, unknown>) {
   await dbPatch(CFG, patch);
   cachedCfg = null;
+  cfgLoadedAt = 0;
 }
 
 export async function siteName(): Promise<string> {
   return (await cfg()).siteName || "SILENT SELLER";
 }
 
+function refreshColors(): Promise<void> {
+  colorsRefreshing ||= dbGet<ButtonColorMap>("site_settings/button_colors")
+    .then((colors) => {
+      cachedButtonColors = colors || {};
+      colorsLoadedAt = Date.now();
+    })
+    .catch(() => undefined)
+    .finally(() => {
+      colorsRefreshing = null;
+    });
+  return colorsRefreshing;
+}
+
 export async function loadBotPresentation(): Promise<void> {
-  const now = Date.now();
-  await Promise.all([
-    loadEmojis().catch(() => undefined),
-    now - colorsLoadedAt < BOT_CACHE_MS && cachedButtonColors
-      ? Promise.resolve()
-      : dbGet<ButtonColorMap>("site_settings/button_colors")
-          .then((colors) => {
-            cachedButtonColors = colors || {};
-            colorsLoadedAt = Date.now();
-          })
-          .catch(() => undefined),
-  ]);
+  const stale = Date.now() - colorsLoadedAt >= BOT_CACHE_MS;
+  if (cachedButtonColors) {
+    if (stale) void refreshColors();
+    void loadEmojis().catch(() => undefined);
+  } else {
+    await Promise.all([loadEmojis().catch(() => undefined), refreshColors()]);
+  }
   setButtonColors(cachedButtonColors);
 }
 
