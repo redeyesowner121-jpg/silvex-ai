@@ -16,6 +16,7 @@ import { getFirebase } from "@/lib/firebase";
 import { isOriginProject } from "@/lib/origin";
 import { applyReferralConfig } from "@/lib/referral";
 import { buildEmojiCharMap, normEmoji, slotChar, type EmojiRuleMap } from "@/lib/web-emoji";
+import { readStoreSnapshot } from "@/context/store-prime";
 
 export type Product = {
   id: string;
