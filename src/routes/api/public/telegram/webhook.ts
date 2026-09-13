@@ -59,7 +59,7 @@ type Product = {
   logo?: string;
   link?: string;
   delivery?: "auto" | "repeat" | "manual" | "supplier";
-  supplierId?: number;
+  supplierId?: string | number;
   supplierStock?: number;
   provider?: string;
   hidden?: boolean;
@@ -762,7 +762,7 @@ async function buy(chatId: number, productId: string, qty = 1) {
     try {
       const { supplierBuy } = await import("@/lib/supplier.server");
       const items = await supplierBuy(
-        Number(p.supplierId || 0),
+        p.supplierId ?? "",
         count,
         `tg-${chatId}-${Date.now()}`,
         String(p.provider || "custom"),

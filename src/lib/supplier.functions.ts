@@ -36,7 +36,7 @@ export const buyFromSupplier = createServerFn({ method: "POST" })
     const { supplierBuy } = await import("./supplier.server");
     try {
       const p = await dbGet<any>(`products/${data.productId}`);
-      const sid = Number(p?.supplierId || 0);
+      const sid = String(p?.supplierId ?? "").trim();
       if (!sid) return { ok: false as const, error: "This product is not linked to the supplier", items: [] };
       const qty = Math.max(1, Math.min(20, Number(data.qty) || 1));
       const items = await supplierBuy(

@@ -28,7 +28,7 @@ export async function syncSupplierProducts(force = true) {
 
 /** Buy one linked product. `provider` defaults to the custom supplier shop. */
 export async function supplierBuy(
-  supplierId: number,
+  supplierId: string | number,
   qty: number,
   requestId: string,
   provider = "custom",

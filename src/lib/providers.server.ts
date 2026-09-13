@@ -5,7 +5,7 @@ import { dbGet, dbPatch, dbPut } from "./telegram.server";
  * Every value here is only a fallback — the admin panel can change the name,
  * base URL, key, profit % and whether a provider is on, in site_settings/providers.
  */
-export type ProviderId = "qamify" | "elite" | "eklas" | "safwan" | "custom";
+export type ProviderId = "qamify" | "elite" | "eklas" | "safwan" | "mmostore" | "custom";
 
 export type ProviderShape = {
   productsPath: string;
@@ -16,6 +16,8 @@ export type ProviderShape = {
   refField: "idempotency_key" | "client_order_id" | "request_id" | "";
   /** provider needs the Idempotency-Key header instead of a body field */
   idempotencyHeader?: boolean;
+  /** extra fields always sent with an order (e.g. currency) */
+  orderExtra?: Record<string, unknown>;
 };
 
 export type ProviderDef = {
@@ -88,6 +90,22 @@ export const PROVIDERS: ProviderDef[] = [
       orderPath: "order",
       qtyField: "quantity",
       refField: "request_id",
+    },
+  },
+  {
+    id: "mmostore",
+    name: "MMO Store",
+    url: "https://api.mmostore.qzz.io/api/v1",
+    key: "mmostore_c716a85591c17abfd64c9fce3bb05010ee3ce53336d1da27",
+    docs: "https://api.mmostore.qzz.io/apidocumentation",
+    markup: 130,
+    shape: {
+      productsPath: "products",
+      balancePath: "balance",
+      orderPath: "orders",
+      qtyField: "qty",
+      refField: "",
+      orderExtra: { currency: "USD" },
     },
   },
 ];
@@ -248,7 +266,7 @@ export function keepByList(name: string, keep: string[]): boolean {
 }
 
 export type ApiProduct = {
-  id: number;
+  id: string | number;
   name: string;
   price: number;
   stock: number;
@@ -265,6 +283,7 @@ function num(v: unknown): number {
 
 function pickPrice(p: any): number {
   if (p?.price != null && num(p.price) > 0) return num(p.price);
+  if (p?.price_usd != null && num(p.price_usd) > 0) return num(p.price_usd);
   if (p?.unit_price != null && num(p.unit_price) > 0) return num(p.unit_price);
   if (p?.price_cents != null) return num(p.price_cents) / 100;
   if (p?.unit_price_cents != null) return num(p.unit_price_cents) / 100;
@@ -272,7 +291,7 @@ function pickPrice(p: any): number {
 }
 
 function pickStock(p: any): { stock: number; unlimited: boolean } {
-  for (const k of ["stock", "available_stock", "quantity", "stock_count"]) {
+  for (const k of ["stock", "stock_available", "available_stock", "quantity", "stock_count"]) {
     if (p?.[k] != null && p[k] !== "") return { stock: Math.max(0, Math.floor(num(p[k]))), unlimited: false };
   }
   if (p?.unlimited_stock) return { stock: 9999, unlimited: true };
@@ -335,13 +354,14 @@ export async function providerProducts(id: string): Promise<ApiProduct[]> {
   const list = body?.products || body?.data || body?.items || [];
   return (Array.isArray(list) ? list : []).map((p: any) => {
     const s = pickStock(p);
+    const raw = String(p.id ?? "");
     return {
-      id: Number(p.id),
-      name: String(p.name ?? p.title ?? `#${p.id}`),
+      id: /^\d+$/.test(raw) ? Number(raw) : raw,
+      name: String(p.name_en ?? p.name ?? p.title ?? `#${raw}`),
       price: pickPrice(p),
       stock: s.stock,
       unlimited: s.unlimited,
-      description: cleanText(String(p.description ?? "")),
+      description: cleanText(String(p.description_en ?? p.description ?? "")),
       image: String(p.image_url ?? p.image ?? p.photo ?? ""),
     };
   });
@@ -356,9 +376,11 @@ export async function providerBalance(
   const balance =
     w?.balance != null
       ? num(w.balance)
-      : w?.balance_cents != null
-        ? num(w.balance_cents) / 100
-        : 0;
+      : w?.balance_usd != null
+        ? num(w.balance_usd)
+        : w?.balance_cents != null
+          ? num(w.balance_cents) / 100
+          : 0;
   return { balance, currency: String(w?.currency || body?.currency || "USD") };
 }
 
@@ -398,15 +420,17 @@ function collectItems(body: any): string[] {
 /** Buy from a provider and return the delivered lines. */
 export async function providerBuy(
   id: string,
-  productId: number,
+  productId: string | number,
   qty: number,
   reference: string,
 ): Promise<string[]> {
   const cfg = await providerConfig(id);
   if (!cfg.enabled) throw new Error(`${cfg.name} is turned off`);
+  const raw = String(productId);
   const body: Record<string, unknown> = {
-    product_id: Number(productId),
+    product_id: /^\d+$/.test(raw) ? Number(raw) : raw,
     [cfg.shape.qtyField]: Math.max(1, Number(qty) || 1),
+    ...(cfg.shape.orderExtra || {}),
   };
   if (cfg.shape.refField) body[cfg.shape.refField] = reference;
   const res = await call(cfg, cfg.shape.orderPath, {
@@ -420,8 +444,8 @@ export async function providerBuy(
 }
 
 /** Firebase-safe product key for an imported provider item. */
-export function apiProductKey(provider: string, id: number): string {
-  return `api_${provider}_${id}`;
+export function apiProductKey(provider: string, id: string | number): string {
+  return `api_${provider}_${String(id).replace(/[^A-Za-z0-9_-]/g, "_")}`;
 }
 
 /** Category (folder) the imported API products live in, created if missing. */
@@ -446,13 +470,17 @@ export async function importProvider(
   id: string,
 ): Promise<{ added: number; updated: number; removed: number }> {
   const cfg = await providerConfig(id);
-  const [all, existing, category, keep] = await Promise.all([
+  const [all, existing, category, keep, deleted] = await Promise.all([
     providerProducts(id),
     dbGet<Record<string, any>>("products"),
     apiCategoryName(),
     providerKeepList(id),
+    dbGet<Record<string, boolean>>("site_settings/apiDeleted").catch(() => null),
   ]);
-  const list = all.filter((p) => keepByList(p.name, keep));
+  // Items the admin deleted by hand never come back on the next import.
+  const list = all.filter(
+    (p) => keepByList(p.name, keep) && !(deleted || {})[apiProductKey(cfg.id, p.id)],
+  );
   const wanted = new Set(list.map((p) => apiProductKey(cfg.id, p.id)));
   let added = 0;
   let updated = 0;
@@ -554,15 +582,15 @@ export async function syncAllProviders(force = true): Promise<{
 
   const products = (await dbGet<Record<string, any>>("products")) || {};
   const linked = Object.entries(products).filter(
-    ([, p]) => p && p.delivery === "supplier" && Number(p.supplierId || 0) > 0,
+    ([, p]) => p && p.delivery === "supplier" && String(p.supplierId ?? "").trim() !== "",
   );
   const providers = [...new Set(linked.map(([, p]) => String(p.provider || "custom")))];
-  const catalogues = new Map<string, Map<number, ApiProduct>>();
+  const catalogues = new Map<string, Map<string, ApiProduct>>();
   await Promise.all(
     providers.map(async (pid) => {
       try {
         const items = await providerProducts(pid);
-        catalogues.set(pid, new Map(items.map((i) => [i.id, i])));
+        catalogues.set(pid, new Map(items.map((i) => [String(i.id), i])));
       } catch {
         /* provider down — keep old values */
       }
@@ -572,7 +600,7 @@ export async function syncAllProviders(force = true): Promise<{
   const updated: { id: string; title: string; price: number; stock: number }[] = [];
   for (const [id, p] of linked) {
     const cat = catalogues.get(String(p.provider || "custom"));
-    const sp = cat?.get(Number(p.supplierId));
+    const sp = cat?.get(String(p.supplierId));
     if (!sp) continue;
     const price = sellPrice(sp.price, Number(p.markup) || 130);
     const stock = sp.unlimited ? 9999 : Math.max(0, sp.stock);

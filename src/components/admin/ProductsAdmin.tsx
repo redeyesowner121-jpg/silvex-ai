@@ -13,7 +13,7 @@ import { input, Stat, Empty, ImageField, emptyProduct, type OrderRow } from "@/c
 import { fetchSupplierCatalogue, fetchSupplierBalance, syncSupplier } from "@/lib/supplier.functions";
 import { broadcastProductEvent } from "@/lib/broadcast.functions";
 
-type SupItem = { id: number; name: string; price: number; stock: number; unlimited_stock?: boolean; description?: string };
+type SupItem = { id: string | number; name: string; price: number; stock: number; unlimited_stock?: boolean; description?: string };
 
 export function ProductsAdmin({ products }: { products: Product[] }) {
   const { db, notify, categories, config } = useStore();
@@ -77,7 +77,11 @@ export function ProductsAdmin({ products }: { products: Product[] }) {
     const data = {
       ...rest,
       price: Number(form.price),
-      supplierId: linked ? Number(supplierId) : null,
+      supplierId: linked
+        ? /^\d+$/.test(String(supplierId))
+          ? Number(supplierId)
+          : String(supplierId)
+        : null,
       markup: linked ? Number(markup) || 130 : null,
     };
     if (id) {
@@ -462,17 +466,27 @@ export function ProductsAdmin({ products }: { products: Product[] }) {
                     <span className="rounded-lg bg-muted px-3 py-1.5 text-xs font-bold text-muted-foreground">
                       API item
                     </span>
-                  ) : (
-                    <button
-                      onClick={async () => {
-                        if (db && confirm("Delete this product?"))
-                          await remove(ref(db, `products/${p.id}`));
-                      }}
-                      className="rounded-lg bg-destructive/10 px-3 py-1.5 text-xs font-bold text-destructive"
-                    >
-                      Delete
-                    </button>
-                  )}
+                  ) : null}
+                  <button
+                    onClick={async () => {
+                      if (!db) return;
+                      if (
+                        !confirm(
+                          p.locked
+                            ? "Delete this API product? It will not come back on the next import."
+                            : "Delete this product?",
+                        )
+                      )
+                        return;
+                      // Remember deleted API items so importing again does not re-add them.
+                      if (p.locked) await update(ref(db, "site_settings/apiDeleted"), { [p.id]: true });
+                      await remove(ref(db, `products/${p.id}`));
+                      notify("Product deleted");
+                    }}
+                    className="rounded-lg bg-destructive/10 px-3 py-1.5 text-xs font-bold text-destructive"
+                  >
+                    Delete
+                  </button>
                 </div>
               </div>
 
