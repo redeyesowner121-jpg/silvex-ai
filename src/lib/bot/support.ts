@@ -333,9 +333,14 @@ export async function buildSupportReply(
     });
   } catch (err) {
     console.error("support ai failed", err);
-    return;
+    return "";
   }
-  if (!reply.trim()) return;
+  return reply.trim();
+}
+
+async function aiReply(chatId: number, uid: string, question: string) {
+  const reply = await buildSupportReply(chatId, uid, question);
+  if (!reply) return;
 
   await dbPush(`support/${uid}/messages`, {
     from: "bot",
