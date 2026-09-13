@@ -140,14 +140,20 @@ export function invalidateUsers() {
 
 export type State = { k: string; a?: string; b?: string } | null;
 
+/** The bot's own memory of what each chat is doing — saves a database read per tap. */
+const stateCache = new Map<number, State>();
+
 export async function getState(chatId: number): Promise<State> {
+  if (stateCache.has(chatId)) return stateCache.get(chatId) ?? null;
   const raw = await dbGet<any>(`telegramState/${chatId}`);
-  if (!raw) return null;
-  if (typeof raw === "string") return { k: raw };
-  return raw as State;
+  const v: State = !raw ? null : typeof raw === "string" ? { k: raw } : (raw as State);
+  stateCache.set(chatId, v);
+  return v;
 }
 export async function setState(chatId: number, s: State) {
-  await dbPut(`telegramState/${chatId}`, s);
+  stateCache.set(chatId, s);
+  // Saved in the background: the reply goes out without waiting for the database.
+  void dbPut(`telegramState/${chatId}`, s).catch(() => undefined);
 }
 
 /** Remember who is an admin for a short while so every tap isn't a fresh lookup. */
