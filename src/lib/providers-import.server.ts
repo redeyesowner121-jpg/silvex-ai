@@ -140,8 +140,20 @@ export async function syncAllProviders(force = true): Promise<{
   await dbPatch("site_settings", { supplier_synced_at: new Date().toISOString() });
 
   const products = (await dbGet<Record<string, any>>("products")) || {};
+  const deleted = (await dbGet<Record<string, boolean>>("site_settings/apiDeleted").catch(() => null)) || {};
+  // Ghost rows (deleted mid-sync: price only, no title) are cleaned up, never refreshed.
+  for (const [id, p] of Object.entries(products)) {
+    if (p && String(p.title || "").trim() === "" && String(p.delivery || "") !== "manual") {
+      await dbPut(`products/${id}`, null);
+      delete (products as any)[id];
+    }
+  }
   const linked = Object.entries(products).filter(
-    ([, p]) => p && p.delivery === "supplier" && String(p.supplierId ?? "").trim() !== "",
+    ([id, p]) =>
+      p &&
+      p.delivery === "supplier" &&
+      String(p.supplierId ?? "").trim() !== "" &&
+      !deleted[id],
   );
   const providers = [...new Set(linked.map(([, p]) => String(p.provider || "custom")))];
   const catalogues = new Map<string, Map<string, ApiProduct>>();
