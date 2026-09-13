@@ -19,6 +19,36 @@ const esc = (s: unknown) =>
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
 
+/** The bot's own @username, read once and kept in memory. */
+let botUsername = "";
+async function getBotUsername(): Promise<string> {
+  if (botUsername) return botUsername;
+  try {
+    const me = await tg("getMe", {});
+    botUsername = String(me?.result?.username || "").toLowerCase();
+  } catch {
+    botUsername = "";
+  }
+  return botUsername;
+}
+
+/** True when the message tags the bot (@name) or replies to one of its messages. */
+async function taggedBot(msg: any): Promise<boolean> {
+  const name = await getBotUsername();
+  if (!name) return false;
+  const text = String(msg?.text ?? msg?.caption ?? "");
+  if (new RegExp(`@${name}\\b`, "i").test(text)) return true;
+  const ents = [...(msg?.entities ?? []), ...(msg?.caption_entities ?? [])];
+  for (const e of ents) {
+    if (e?.type === "mention") {
+      const at = text.substr(e.offset, e.length).toLowerCase();
+      if (at === `@${name}`) return true;
+    }
+  }
+  return false;
+}
+
+
 /** The owner connected / changed / removed the bot in their Business settings. */
 export async function handleBusinessConnection(conn: any) {
   const id = String(conn?.id || "");
