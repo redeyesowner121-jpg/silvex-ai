@@ -33,10 +33,16 @@ export async function sendProducts(chatId: number) {
     .slice(0, 40);
   if (!list.length) return say(chatId, "No products available right now.", backHome);
 
-  await say(chatId, `${em("btn.products")} <b>Products</b>\nTap any item to see details.`, {
+  // Premium (custom) emoji only render inside message text, never on buttons,
+  // so the list itself carries them and the buttons stay plain.
+  const lines = list
+    .map(([id, p]) => `${productEmoji(id)} <b>${p.title}</b> — ${money(p.price || 0)}`)
+    .join("\n");
+
+  await say(chatId, `${em("btn.products")} <b>Products</b>\n\n${lines}\n\nTap any item below to see details.`, {
     inline_keyboard: [
       ...list.map(([id, p]) => [
-        { text: `${productEmojiChar(id)} ${p.title || "Item"} — ${money(p.price || 0)}`, callback_data: `p:${id}` },
+        { text: `${productEmojiChar(id)} ${p.title} — ${money(p.price || 0)}`, callback_data: `p:${id}` },
       ]),
       [{ text: `🔵 ${be("btn.back")} Menu`, callback_data: "home" }],
     ],

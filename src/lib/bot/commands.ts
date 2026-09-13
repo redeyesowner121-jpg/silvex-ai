@@ -46,7 +46,6 @@ export const QUICK_MENU = {
   keyboard: [
     [{ text: "🛍 Products" }, { text: "💬 Support" }],
     [{ text: "👛 Wallet" }, { text: "🔗 API" }],
-    [{ text: "🛡 Warranty" }],
   ],
   resize_keyboard: true,
   is_persistent: true,
