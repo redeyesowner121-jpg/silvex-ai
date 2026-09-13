@@ -255,6 +255,11 @@ export async function handleText(
   }
   if (k === "review") return submitReview(chatId, t);
 
+  if (k === "support") {
+    const { handleSupportMessage } = await import("@/lib/bot/support");
+    return handleSupportMessage(chatId, t);
+  }
+
   if (state && (await isBotAdmin(chatId))) {
     if (k === "em_from") return emojiFromMessage(chatId, text, entities, sticker);
     if (k === "em_to") return emojiToMessage(chatId, state.a!, text, entities, sticker);
