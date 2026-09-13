@@ -20,7 +20,7 @@ import {
 } from "@/lib/bot/shop";
 import { adminDeliver, adminFindUser, adminHome, adminProduct, adminUser, broadcast } from "@/lib/bot/admin";
 import { emojiFromMessage, emojiHome, emojiProductMessage, emojiToMessage } from "@/lib/bot/emoji-ui";
-import { ADMIN_COMMANDS, USER_COMMANDS, registerAdminCommands, registerBotCommands } from "@/lib/bot/commands";
+import { ADMIN_COMMANDS, USER_COMMANDS, registerAdminCommands, registerBotCommands, showQuickMenu } from "@/lib/bot/commands";
 
 export async function handleText(chatId: number, text: string, entities?: any[], sticker?: any) {
   const t = text.trim();
@@ -34,9 +34,41 @@ export async function handleText(chatId: number, text: string, entities?: any[],
       const uid = await ensureUser(chatId);
       await applyStartReferral(uid, t.slice(7));
     }
+    void showQuickMenu(chatId).catch(() => undefined);
     return welcome(chatId);
   }
   if (await forceJoinBlocked(chatId)) return;
+
+  /* quick-menu buttons under the message box */
+  const quick = t.replace(/^[^\p{L}\p{N}]+/u, "").toLowerCase();
+  if (quick === "products") {
+    await setState(chatId, null);
+    return sendProducts(chatId);
+  }
+  if (quick === "support") {
+    await setState(chatId, null);
+    return sendSupport(chatId);
+  }
+  if (quick === "wallet") {
+    await setState(chatId, null);
+    return sendWallet(chatId);
+  }
+  if (quick === "api") {
+    await setState(chatId, null);
+    return sendApiKey(chatId, false);
+  }
+  if (quick === "warranty") {
+    await setState(chatId, null);
+    const c = await cfg();
+    const txt =
+      (c as any).warrantyText ||
+      "Every product comes with a replacement warranty for the period written on its page.\n\n" +
+        "• Report any issue with your order id\n" +
+        "• Valid within the warranty period only\n" +
+        "• Misuse, password change or sharing voids it";
+    return say(chatId, `🛡 <b>Warranty</b>\n\n${txt}`, backHome);
+  }
+
   if (t === "/link" || t === "/email") return askEmail(chatId);
   if (t === "/admin") {
     if (!(await isBotAdmin(chatId))) return say(chatId, "This command is for store owners only.");
