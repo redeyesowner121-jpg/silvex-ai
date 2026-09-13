@@ -130,9 +130,18 @@ async function setState(chatId: number, s: State) {
   await dbPut(`telegramState/${chatId}`, s);
 }
 
+/** Remember who is an admin for a short while so every tap isn't a fresh lookup. */
+const adminCache = new Map<number, { v: boolean; at: number }>();
+
 async function isBotAdmin(chatId: number): Promise<boolean> {
   if (ownerIds().includes(chatId)) return true;
-  if (await dbGet<boolean>(`telegramAdmins/${chatId}`)) return true;
+  const hit = adminCache.get(chatId);
+  if (hit && Date.now() - hit.at < BOT_CACHE_MS) return hit.v;
+  if (await dbGet<boolean>(`telegramAdmins/${chatId}`)) {
+    adminCache.set(chatId, { v: true, at: Date.now() });
+    return true;
+  }
+  adminCache.set(chatId, { v: false, at: Date.now() });
   // Fresh database: the very first person who opens the bot becomes its owner.
   const existing = await dbGet<any>("telegramAdmins");
   if (!existing || Object.keys(existing).length === 0) {
