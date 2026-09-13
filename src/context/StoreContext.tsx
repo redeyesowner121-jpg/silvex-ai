@@ -205,19 +205,31 @@ export function isOwnerEmail(email?: string | null) {
 
 
 export function StoreProvider({ children }: { children: ReactNode }) {
+  // Shop data that came with the page HTML: shown instantly, then kept live.
+  const snap = readStoreSnapshot();
+  const snapProducts: Product[] = Object.entries(snap?.products || {}).map(([id, p]: any) => ({
+    id,
+    ...(p as Omit<Product, "id">),
+    price: Number(p?.price) || 0,
+  }));
+  const decodeDots = (v: Record<string, any> | null | undefined) =>
+    Object.fromEntries(Object.entries(v || {}).map(([k, val]) => [k.split("~").join("."), val]));
+
   const [auth, setAuth] = useState<Auth | null>(null);
   const [db, setDb] = useState<Database | null>(null);
   const [ready, setReady] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [config, setConfig] = useState<SiteConfig>({});
-  const [emojis, setEmojis] = useState<EmojiRuleMap>({});
+  const [products, setProducts] = useState<Product[]>(snapProducts);
+  const [config, setConfig] = useState<SiteConfig>((snap?.config || {}) as SiteConfig);
+  const [emojis, setEmojis] = useState<EmojiRuleMap>((snap?.emojis || {}) as EmojiRuleMap);
   const [emojiImgs, setEmojiImgs] = useState<Record<string, string>>({});
-  const [prodEmojis, setProdEmojis] = useState<Record<string, { char?: string; id?: string; img?: string }>>({});
+  const [prodEmojis, setProdEmojis] = useState<Record<string, { char?: string; id?: string; img?: string }>>(
+    decodeDots(snap?.prodEmojis),
+  );
   const [prodEmojiImgs, setProdEmojiImgs] = useState<Record<string, string>>({});
-  const [banner, setBanner] = useState<Banner>({});
-  const [flashSale, setFlashSale] = useState<FlashSale>(null);
+  const [banner, setBanner] = useState<Banner>((snap?.banner || {}) as Banner);
+  const [flashSale, setFlashSale] = useState<FlashSale>((snap?.flashSale || null) as FlashSale);
   const [notices, setNotices] = useState<NoticeItem[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [modal, setModal] = useState<ModalName>(null);
