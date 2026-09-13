@@ -14,6 +14,8 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { StoreProvider } from "@/context/StoreContext";
 import { AppShell } from "@/components/store/AppShell";
 import { Toaster } from "@/components/ui/sonner";
+import { getFirebaseConfig } from "@/lib/firebase.functions";
+import { primeFirebaseConfig } from "@/lib/firebase";
 
 function NotFoundComponent() {
   return (
