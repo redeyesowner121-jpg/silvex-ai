@@ -20,7 +20,15 @@ export const connectTelegramBot = createServerFn({ method: "POST" })
       await tg("setWebhook", {
         url,
         secret_token: telegramWebhookSecret(),
-        allowed_updates: ["message", "edited_message", "callback_query", "my_chat_member"],
+        allowed_updates: [
+          "message",
+          "edited_message",
+          "callback_query",
+          "my_chat_member",
+          "business_connection",
+          "business_message",
+          "edited_business_message",
+        ],
         drop_pending_updates: false,
       });
       const { registerBotCommands } = await import("./bot/commands");
