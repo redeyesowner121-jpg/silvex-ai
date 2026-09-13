@@ -374,16 +374,19 @@ export function mainKeyboard() {
   };
 }
 
+/** Names Telegram sends with each update, used to greet people personally. */
+const chatNames = new Map<number, string>();
+export function rememberName(chatId: number, name?: string) {
+  const n = String(name || "").trim();
+  if (n) chatNames.set(chatId, n);
+}
+
 export async function welcome(chatId: number) {
   const name = await siteName();
+  const who = chatNames.get(chatId) || "there";
   await say(
     chatId,
-    `${em("norm.welcome")} <b>Welcome to ${name} !</b>\n\n` +
-      `${em("norm.star")} Premium digital products at the cheapest prices\n` +
-      `${em("norm.fast")} Instant delivery\n` +
-      `${em("norm.secure")} Secure payments\n` +
-      `${em("norm.support")} 24/7 Support\n\n` +
-      `Choose an option below:`,
+    `Hey <b>${who}</b> ${em("norm.ok")} <b>Welcome to ${name} !</b>`,
     mainKeyboard(),
   );
   const uid = await ensureUser(chatId);

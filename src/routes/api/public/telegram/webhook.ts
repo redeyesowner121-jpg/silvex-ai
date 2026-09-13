@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { loadBotRuntime, telegramWebhookOk, tg } from "@/lib/telegram.server";
-import { editTarget, loadBotPresentation } from "@/lib/bot/core";
+import { editTarget, loadBotPresentation, rememberName } from "@/lib/bot/core";
 import { handleCallback } from "@/lib/bot/route-callback";
 import { handleText } from "@/lib/bot/route-text";
 
@@ -24,6 +24,7 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
             void tg("answerCallbackQuery", { callback_query_id: cq.id }).catch(() => undefined);
             const chatId = cq.message?.chat?.id;
             const messageId = cq.message?.message_id;
+            if (chatId) rememberName(Number(chatId), cq.from?.first_name || cq.from?.username);
             if (chatId && messageId) editTarget.set(Number(chatId), Number(messageId));
             if (chatId) {
               try {
@@ -35,6 +36,7 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
           } else {
             const msg = update?.message ?? update?.edited_message;
             const chatId = msg?.chat?.id;
+            if (chatId) rememberName(Number(chatId), msg?.from?.first_name || msg?.from?.username);
             if (chatId)
               await handleText(
                 Number(chatId),
