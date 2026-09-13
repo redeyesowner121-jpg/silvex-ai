@@ -1,41 +1,9 @@
 /** Everything a shopper does in the bot: products, wallet, orders, buying. */
 import { defaultDepositAddress } from "@/lib/deposit.server";
-import {
-  botReferralLink,
-  referralEarnings,
-  referralCap,
-  referralPercent,
-  referralRate,
-  websiteReferralLink,
-} from "@/lib/referral";
-import {
-  dbGet,
-  dbPatch,
-  dbPush,
-  dbPut,
-  money,
-  notifyOwners,
-  sendDeliveryFiles,
-  siteUrl,
-  tg,
-  tgSendPhoto,
-} from "@/lib/telegram.server";
+
+import { dbGet, dbPush, dbPut, money, notifyOwners, sendDeliveryFiles, siteUrl, tg, tgSendPhoto } from "@/lib/telegram.server";
 import { be, e as em, productEmoji, productEmojiChar } from "@/lib/emoji.server";
-import {
-  allProducts,
-  allUsers,
-  askEmail,
-  backHome,
-  cfg,
-  channelLink,
-  editTarget,
-  ensureUser,
-  invalidateProducts,
-  invalidateUsers,
-  say,
-  setState,
-  type Product,
-} from "./core";
+import { allProducts, askEmail, backHome, cfg, editTarget, ensureUser, invalidateProducts, invalidateUsers, say, type Product } from "./core";
 import { payReferralCommission } from "./wallet";
 
 export { defaultDepositAddress };

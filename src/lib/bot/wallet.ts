@@ -1,5 +1,5 @@
 /** Wallet, profile, referrals and support screens in the bot. */
-import { defaultDepositAddress } from "@/lib/deposit.server";
+
 import {
   botReferralLink,
   referralEarnings,
@@ -8,34 +8,9 @@ import {
   referralRate,
   websiteReferralLink,
 } from "@/lib/referral";
-import {
-  dbGet,
-  dbPatch,
-  dbPush,
-  dbPut,
-  money,
-  notifyOwners,
-  sendDeliveryFiles,
-  siteUrl,
-  tg,
-  tgSendPhoto,
-} from "@/lib/telegram.server";
-import { be, e as em, productEmoji, productEmojiChar } from "@/lib/emoji.server";
-import {
-  allProducts,
-  allUsers,
-  askEmail,
-  backHome,
-  cfg,
-  channelLink,
-  editTarget,
-  ensureUser,
-  invalidateProducts,
-  invalidateUsers,
-  say,
-  setState,
-  type Product,
-} from "./core";
+import { dbGet, dbPatch, dbPush, dbPut, money, siteUrl, tg } from "@/lib/telegram.server";
+import { be } from "@/lib/emoji.server";
+import { allUsers, backHome, cfg, channelLink, ensureUser, invalidateUsers, say, setState } from "./core";
 
 
 export async function sendWallet(chatId: number) {
