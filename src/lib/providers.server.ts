@@ -420,15 +420,17 @@ function collectItems(body: any): string[] {
 /** Buy from a provider and return the delivered lines. */
 export async function providerBuy(
   id: string,
-  productId: number,
+  productId: string | number,
   qty: number,
   reference: string,
 ): Promise<string[]> {
   const cfg = await providerConfig(id);
   if (!cfg.enabled) throw new Error(`${cfg.name} is turned off`);
+  const raw = String(productId);
   const body: Record<string, unknown> = {
-    product_id: Number(productId),
+    product_id: /^\d+$/.test(raw) ? Number(raw) : raw,
     [cfg.shape.qtyField]: Math.max(1, Number(qty) || 1),
+    ...(cfg.shape.orderExtra || {}),
   };
   if (cfg.shape.refField) body[cfg.shape.refField] = reference;
   const res = await call(cfg, cfg.shape.orderPath, {
@@ -442,8 +444,8 @@ export async function providerBuy(
 }
 
 /** Firebase-safe product key for an imported provider item. */
-export function apiProductKey(provider: string, id: number): string {
-  return `api_${provider}_${id}`;
+export function apiProductKey(provider: string, id: string | number): string {
+  return `api_${provider}_${String(id).replace(/[^A-Za-z0-9_-]/g, "_")}`;
 }
 
 /** Category (folder) the imported API products live in, created if missing. */
