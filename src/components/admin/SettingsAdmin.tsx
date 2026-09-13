@@ -27,6 +27,7 @@ export function SettingsAdmin({
     depositAddress?: string;
     supportLink?: string;
     supportTelegram?: string;
+    messageEffect?: string;
     minOrder?: number;
     categories?: Category[];
     siteUrl?: string;
@@ -57,6 +58,7 @@ export function SettingsAdmin({
     depositAddress: config.depositAddress ?? "",
     supportLink: config.supportLink ?? "",
     supportTelegram: config.supportTelegram ?? "",
+    messageEffect: config.messageEffect ?? "fire",
     minOrder: String(config.minOrder ?? 0),
     lowStockAlert: String((config as { lowStockAlert?: number }).lowStockAlert ?? 5),
     siteUrl: config.siteUrl ?? "",
@@ -112,6 +114,7 @@ export function SettingsAdmin({
       depositAddress: cfg.depositAddress.trim(),
       supportLink: cfg.supportLink,
       supportTelegram: cfg.supportTelegram.trim(),
+      messageEffect: cfg.messageEffect.trim().toLowerCase(),
       minOrder: Number(cfg.minOrder || 0),
       lowStockAlert: Number(cfg.lowStockAlert || 0),
       siteUrl: cfg.siteUrl.trim(),

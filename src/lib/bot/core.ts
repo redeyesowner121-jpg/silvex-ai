@@ -39,6 +39,7 @@ export type Cfg = {
   razorpayKeyId?: string;
   inrPerDollar?: number | string;
   telegramOwners?: string | number[];
+  messageEffect?: string;
 };
 
 export const CFG = "site_settings/config";
@@ -234,7 +235,8 @@ export const EFFECTS: Record<string, string> = {
 
 /** Which effect to play on new bot messages — admin choice, fire by default. */
 export async function effectId(): Promise<string> {
-  const raw = String((await cfg()) ? ((await cfg()) as any).messageEffect ?? "fire" : "fire").trim();
+  const c = await cfg();
+  const raw = String(c.messageEffect ?? "fire").trim();
   if (!raw || raw === "none" || raw === "off") return "";
   return EFFECTS[raw.toLowerCase()] || (/^\d{6,}$/.test(raw) ? raw : EFFECTS["fire"] || "");
 }
