@@ -22,6 +22,12 @@ function resetLocalState() {
   }
 }
 
+/** Settings sent with the page itself, so the browser needs no extra request. */
+let primed: WebConfig | null = null;
+export function primeFirebaseConfig(config?: WebConfig | null) {
+  if (config?.apiKey) primed = config;
+}
+
 async function loadConfig(): Promise<WebConfig> {
   let saved: WebConfig | null = null;
   try {
@@ -31,11 +37,13 @@ async function loadConfig(): Promise<WebConfig> {
     /* storage unavailable */
   }
 
-  let config: WebConfig | null = null;
-  try {
-    config = await getFirebaseConfig();
-  } catch {
-    config = null;
+  let config: WebConfig | null = primed;
+  if (!config?.apiKey) {
+    try {
+      config = await getFirebaseConfig();
+    } catch {
+      config = null;
+    }
   }
   if (!config?.apiKey) {
     if (saved) {

@@ -226,7 +226,11 @@ export async function loadBotRuntime(force = false): Promise<void> {
 
 
 async function dbWrite(method: string, path: string, value: unknown): Promise<void> {
-  const res = await fetch(`${rtdbUrl()}/${path}.json`, { method, body: JSON.stringify(value) });
+  // print=silent: the database replies with nothing instead of echoing the data back.
+  const res = await fetch(`${rtdbUrl()}/${path}.json?print=silent`, {
+    method,
+    body: JSON.stringify(value),
+  });
   if (!res.ok) {
     const detail = await res.text().catch(() => "");
     throw new Error(`Database write failed (${res.status}): ${detail.slice(0, 200)}`);
@@ -242,7 +246,7 @@ export async function dbPatch(path: string, value: Record<string, unknown>): Pro
 }
 
 export async function dbPush(path: string, value: unknown): Promise<void> {
-  await fetch(`${rtdbUrl()}/${path}.json`, {
+  await fetch(`${rtdbUrl()}/${path}.json?print=silent`, {
     method: "POST",
     body: JSON.stringify(value),
   });

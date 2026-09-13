@@ -14,6 +14,8 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { StoreProvider } from "@/context/StoreContext";
 import { AppShell } from "@/components/store/AppShell";
 import { Toaster } from "@/components/ui/sonner";
+import { getFirebaseConfig } from "@/lib/firebase.functions";
+import { primeFirebaseConfig } from "@/lib/firebase";
 
 function NotFoundComponent() {
   return (
@@ -96,8 +98,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: "https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap",
       },
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "preconnect", href: "https://silvex-ai-default-rtdb.firebaseio.com" },
+      { rel: "preconnect", href: "https://identitytoolkit.googleapis.com" },
     ],
   }),
+  loader: () => getFirebaseConfig(),
   shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
@@ -120,6 +125,8 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  // Store settings travel with the page, so Firebase starts without a round trip.
+  primeFirebaseConfig(Route.useLoaderData());
 
   return (
     <QueryClientProvider client={queryClient}>
