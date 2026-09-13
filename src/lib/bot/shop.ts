@@ -117,7 +117,7 @@ export async function askQty(chatId: number, productId: string, qty = 1) {
   for (let i = 0; i < choices.length; i += 3) {
     rows.push(
       choices.slice(i, i + 3).map((n) => ({
-        text: n === count ? `✅ ${n}` : `${n}`,
+        text: n === count ? `${productEmojiChar(productId)} ${n}` : `${n}`,
         callback_data: `bq:${productId}:${n}`,
       })),
     );
@@ -126,7 +126,7 @@ export async function askQty(chatId: number, productId: string, qty = 1) {
   rows.push([{ text: "➡️ Continue", callback_data: `bpm:${productId}:${count}` }]);
   await say(
     chatId,
-    `🛒 <b>${p.title}</b>\n\n` +
+    `${productEmoji(productId)} <b>${p.title}</b>\n\n` +
       `Price: <b>${money(price)}</b> each\n` +
       `Selected quantity: <b>${count}</b>\n` +
       `Total: <b>${money(Math.round(price * count * 100) / 100)}</b>\n\n` +
@@ -153,7 +153,7 @@ export async function askPayMethod(chatId: number, productId: string, qty: numbe
   rows.push([{ text: "⬅️ Back", callback_data: `bq:${productId}:${qty}` }]);
   await say(
     chatId,
-    `💳 <b>Payment method</b>\n\n${p.title}\nQuantity: <b>${qty}</b>\nTotal: <b>${money(total)}</b>\n` +
+    `💳 <b>Payment method</b>\n\n${productEmoji(productId)} ${p.title}\nQuantity: <b>${qty}</b>\nTotal: <b>${money(total)}</b>\n` +
       `Wallet balance: ${money(wallet)}\n\n` +
       (wallet < total
         ? "Your wallet is short for this order — top it up with card or crypto first."
@@ -169,10 +169,10 @@ export async function confirmWalletPay(chatId: number, productId: string, qty: n
   const total = Math.round(Number(p.price || 0) * qty * 100) / 100;
   await say(
     chatId,
-    `🧾 <b>Confirm your order</b>\n\n${p.title}\nQuantity: <b>${qty}</b>\nTotal: <b>${money(total)}</b>\n\nThis amount will be taken from your wallet.`,
+    `${productEmoji(productId)} <b>Confirm your order</b>\n\n${p.title}\nQuantity: <b>${qty}</b>\nTotal: <b>${money(total)}</b>\n\nThis amount will be taken from your wallet.`,
     {
       inline_keyboard: [
-        [{ text: "✅ Confirm & pay", callback_data: `bgo:${productId}:${qty}` }],
+        [{ text: `${productEmojiChar(productId)} Confirm & pay`, callback_data: `bgo:${productId}:${qty}` }],
         [{ text: "⬅️ Back", callback_data: `bpm:${productId}:${qty}` }],
       ],
     },
