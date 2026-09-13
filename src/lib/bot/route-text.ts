@@ -81,7 +81,7 @@ export async function handleText(chatId: number, text: string, entities?: any[],
     await setState(chatId, null);
     return sendApiKey(chatId, false);
   }
-  if (t === "/support" || t === "/help" + "\u0000") {
+  if (t === "/support" || t === "/contact") {
     await setState(chatId, null);
     return sendSupport(chatId);
   }
