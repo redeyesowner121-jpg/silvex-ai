@@ -47,63 +47,125 @@ const LIST_CACHE_MS = 15_000;
 
 let cachedCfg: Cfg | null = null;
 let cfgLoadedAt = 0;
+let cfgRefreshing: Promise<void> | null = null;
 let cachedButtonColors: ButtonColorMap | null = null;
 let colorsLoadedAt = 0;
+let colorsRefreshing: Promise<void> | null = null;
 
+function refreshCfg(): Promise<void> {
+  cfgRefreshing ||= dbGet<Cfg>(CFG)
+    .then((c) => {
+      cachedCfg = c || {};
+      cfgLoadedAt = Date.now();
+      applyBotConfig(cachedCfg as any);
+      applyReferralConfig(cachedCfg as any);
+    })
+    .catch(() => undefined)
+    .finally(() => {
+      cfgRefreshing = null;
+    });
+  return cfgRefreshing;
+}
+
+/** Settings are served from memory and refreshed in the background (never blocks a tap). */
 export async function cfg(): Promise<Cfg> {
-  if (cachedCfg && Date.now() - cfgLoadedAt < BOT_CACHE_MS) return cachedCfg;
-  cachedCfg = (await dbGet<Cfg>(CFG)) || {};
-  cfgLoadedAt = Date.now();
-  applyBotConfig(cachedCfg as any);
-  applyReferralConfig(cachedCfg as any);
-  return cachedCfg;
+  if (cachedCfg) {
+    if (Date.now() - cfgLoadedAt >= BOT_CACHE_MS) void refreshCfg();
+    return cachedCfg;
+  }
+  await refreshCfg();
+  return cachedCfg || {};
 }
 
 export async function saveConfig(patch: Record<string, unknown>) {
   await dbPatch(CFG, patch);
   cachedCfg = null;
+  cfgLoadedAt = 0;
 }
 
 export async function siteName(): Promise<string> {
   return (await cfg()).siteName || "SILENT SELLER";
 }
 
+function refreshColors(): Promise<void> {
+  colorsRefreshing ||= dbGet<ButtonColorMap>("site_settings/button_colors")
+    .then((colors) => {
+      cachedButtonColors = colors || {};
+      colorsLoadedAt = Date.now();
+    })
+    .catch(() => undefined)
+    .finally(() => {
+      colorsRefreshing = null;
+    });
+  return colorsRefreshing;
+}
+
 export async function loadBotPresentation(): Promise<void> {
-  const now = Date.now();
-  await Promise.all([
-    loadEmojis().catch(() => undefined),
-    now - colorsLoadedAt < BOT_CACHE_MS && cachedButtonColors
-      ? Promise.resolve()
-      : dbGet<ButtonColorMap>("site_settings/button_colors")
-          .then((colors) => {
-            cachedButtonColors = colors || {};
-            colorsLoadedAt = Date.now();
-          })
-          .catch(() => undefined),
-  ]);
+  const stale = Date.now() - colorsLoadedAt >= BOT_CACHE_MS;
+  if (cachedButtonColors) {
+    if (stale) void refreshColors();
+    void loadEmojis().catch(() => undefined);
+  } else {
+    await Promise.all([loadEmojis().catch(() => undefined), refreshColors()]);
+  }
   setButtonColors(cachedButtonColors);
 }
 
 /* ---------------- shared lists (short cache keeps taps fast) ---------------- */
 
-let productCache: { at: number; v: Record<string, Product> } | null = null;
-let userCache: { at: number; v: Record<string, any> } | null = null;
+type ProductCache = { at: number; v: Record<string, Product> } | null;
+type UserCache = { at: number; v: Record<string, any> } | null;
+let productCache: ProductCache = null;
+let userCache: UserCache = null;
+
+let productLoading: Promise<void> | null = null;
+let userLoading: Promise<void> | null = null;
+
+function pullProducts(): Promise<void> {
+  productLoading ||= dbGet<Record<string, Product>>("products")
+    .then((v) => {
+      productCache = { at: Date.now(), v: v || {} };
+    })
+    .catch(() => undefined)
+    .finally(() => {
+      productLoading = null;
+    });
+  return productLoading;
+}
 
 export async function allProducts(): Promise<Record<string, Product>> {
-  if (productCache && Date.now() - productCache.at < LIST_CACHE_MS) return productCache.v;
-  const v = (await dbGet<Record<string, Product>>("products")) || {};
-  productCache = { at: Date.now(), v };
-  return v;
+  if (productCache) {
+    if (Date.now() - productCache.at >= LIST_CACHE_MS) void pullProducts();
+    return productCache.v;
+  }
+  await pullProducts();
+  const loaded = productCache as ProductCache;
+  return loaded?.v || {};
 }
 export function invalidateProducts() {
   productCache = null;
 }
 
+function pullUsers(): Promise<void> {
+  userLoading ||= dbGet<Record<string, any>>("users")
+    .then((v) => {
+      userCache = { at: Date.now(), v: v || {} };
+    })
+    .catch(() => undefined)
+    .finally(() => {
+      userLoading = null;
+    });
+  return userLoading;
+}
+
 export async function allUsers(): Promise<Record<string, any>> {
-  if (userCache && Date.now() - userCache.at < LIST_CACHE_MS) return userCache.v;
-  const v = (await dbGet<Record<string, any>>("users")) || {};
-  userCache = { at: Date.now(), v };
-  return v;
+  if (userCache) {
+    if (Date.now() - userCache.at >= LIST_CACHE_MS) void pullUsers();
+    return userCache.v;
+  }
+  await pullUsers();
+  const loaded = userCache as UserCache;
+  return loaded?.v || {};
 }
 export function invalidateUsers() {
   userCache = null;
@@ -113,14 +175,20 @@ export function invalidateUsers() {
 
 export type State = { k: string; a?: string; b?: string } | null;
 
+/** The bot's own memory of what each chat is doing — saves a database read per tap. */
+const stateCache = new Map<number, State>();
+
 export async function getState(chatId: number): Promise<State> {
+  if (stateCache.has(chatId)) return stateCache.get(chatId) ?? null;
   const raw = await dbGet<any>(`telegramState/${chatId}`);
-  if (!raw) return null;
-  if (typeof raw === "string") return { k: raw };
-  return raw as State;
+  const v: State = !raw ? null : typeof raw === "string" ? { k: raw } : (raw as State);
+  stateCache.set(chatId, v);
+  return v;
 }
 export async function setState(chatId: number, s: State) {
-  await dbPut(`telegramState/${chatId}`, s);
+  stateCache.set(chatId, s);
+  // Saved in the background: the reply goes out without waiting for the database.
+  void dbPut(`telegramState/${chatId}`, s).catch(() => undefined);
 }
 
 /** Remember who is an admin for a short while so every tap isn't a fresh lookup. */
@@ -201,15 +269,24 @@ export function channelHandle(raw: string): string {
   return `@${name}`;
 }
 
+/** Members are remembered for a few minutes so every tap isn't a channel check. */
+const joinedCache = new Map<number, number>();
+const JOIN_CACHE_MS = 10 * 60_000;
+
 export async function forceJoinBlocked(chatId: number): Promise<boolean> {
   const c = await cfg();
   const ch = (c.forceJoin || "").trim();
   const handle = ch ? channelHandle(ch) : "";
   if (!ch || !handle) return false;
+  const ok = joinedCache.get(chatId);
+  if (ok && Date.now() - ok < JOIN_CACHE_MS) return false;
   try {
     const res = await tg("getChatMember", { chat_id: handle, user_id: chatId });
     const status = res?.result?.status;
-    if (["creator", "administrator", "member"].includes(status)) return false;
+    if (["creator", "administrator", "member"].includes(status)) {
+      joinedCache.set(chatId, Date.now());
+      return false;
+    }
   } catch {
     return false;
   }

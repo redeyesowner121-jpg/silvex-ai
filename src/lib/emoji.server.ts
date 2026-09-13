@@ -53,6 +53,8 @@ const EMOJI_CACHE_MS = 60_000;
 export async function loadEmojis(force = false): Promise<void> {
   if (!force && loadedAt && Date.now() - loadedAt < EMOJI_CACHE_MS) return;
   if (loading) return loading;
+  // Already have emojis but they went stale: refresh in the background, don't wait.
+  const background = !force && loadedAt > 0;
   loading = Promise.all([
     dbGet<Record<string, EmojiRule>>(`${EMOJI_PATH}/map`),
     dbGet<Record<string, EmojiEntry>>(`${EMOJI_PATH}/products`),
@@ -62,9 +64,11 @@ export async function loadEmojis(force = false): Promise<void> {
       loadedAt = Date.now();
       version++;
     })
+    .catch(() => undefined)
     .finally(() => {
       loading = null;
     });
+  if (background) return;
   return loading;
 }
 
