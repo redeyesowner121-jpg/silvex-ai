@@ -11,6 +11,7 @@ import {
   providerKeepList,
   providerProducts,
   sellPrice,
+  type ApiProduct,
 } from "./providers.server";
 
 /**
