@@ -5,7 +5,14 @@ import { dbGet, dbPatch, dbPut } from "./telegram.server";
  * Every value here is only a fallback — the admin panel can change the name,
  * base URL, key, profit % and whether a provider is on, in site_settings/providers.
  */
-export type ProviderId = "qamify" | "elite" | "eklas" | "safwan" | "mmostore" | "custom";
+export type ProviderId =
+  | "qamify"
+  | "elite"
+  | "eklas"
+  | "safwan"
+  | "mmostore"
+  | "canboso"
+  | "custom";
 
 export type ProviderShape = {
   productsPath: string;
@@ -106,6 +113,21 @@ export const PROVIDERS: ProviderDef[] = [
       qtyField: "qty",
       refField: "",
       orderExtra: { currency: "USD" },
+    },
+  },
+  {
+    id: "canboso",
+    name: "Canboso",
+    url: "https://canboso.com/api/v2/telegram-buyer",
+    key: "tgb_a7706ca2b1e10b1bdefeaf76d067d635615c78ff9a2322ef",
+    docs: "https://canboso.com/api/swagger",
+    markup: 130,
+    shape: {
+      productsPath: "products?per_page=100",
+      balancePath: "balance",
+      orderPath: "purchase",
+      qtyField: "quantity",
+      refField: "idempotency_key",
     },
   },
 ];
