@@ -80,7 +80,24 @@ export async function handleBusinessMessage(msg: any) {
   const uid = await ensureUser(customerChatId);
   const at = Date.now();
 
+  const tagged = await taggedBot(msg);
+  const question = tagged
+    ? text.replace(new RegExp(`@${botUsername}`, "ig"), "").trim() || text
+    : text;
+
   if (fromId === ownerId) {
+    // The owner tagged the bot in their own chat — answer right away.
+    if (tagged) {
+      const ownerReply = await buildSupportReply(customerChatId, uid, question);
+      if (ownerReply)
+        await tg("sendMessage", {
+          business_connection_id: connId,
+          chat_id: chatId,
+          text: esc(ownerReply),
+          parse_mode: "HTML",
+        }).catch(() => undefined);
+      return;
+    }
     await Promise.all([
       dbPush(`support/${uid}/messages`, { from: "owner", text, date: new Date().toISOString() }),
       dbPut(`support/${uid}/lastOwnerAt`, at),
@@ -94,15 +111,19 @@ export async function handleBusinessMessage(msg: any) {
     dbPut(`support/${uid}/lastUserAt`, at),
   ]);
 
-  // The owner answered this person moments ago — they are online, stay quiet.
-  const lastOwnerAt = Number((await dbGet<number>(`support/${uid}/lastOwnerAt`)) || 0);
-  if (at - lastOwnerAt < OWNER_ONLINE_MS) return;
+  // Tagged directly → answer instantly, whether or not the owner is around.
+  if (!tagged) {
+    // The owner answered this person moments ago — they are online, stay quiet.
+    const lastOwnerAt = Number((await dbGet<number>(`support/${uid}/lastOwnerAt`)) || 0);
+    if (at - lastOwnerAt < OWNER_ONLINE_MS) return;
 
-  await new Promise((r) => setTimeout(r, WAIT_FOR_OWNER_MS));
-  if (Number((await dbGet<number>(`support/${uid}/lastOwnerAt`)) || 0) >= at) return;
+    await new Promise((r) => setTimeout(r, WAIT_FOR_OWNER_MS));
+    if (Number((await dbGet<number>(`support/${uid}/lastOwnerAt`)) || 0) >= at) return;
+  }
 
-  const reply = await buildSupportReply(customerChatId, uid, text);
+  const reply = await buildSupportReply(customerChatId, uid, question);
   if (!reply) return;
+
 
   await dbPush(`support/${uid}/messages`, {
     from: "bot",
