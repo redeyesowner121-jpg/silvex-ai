@@ -491,7 +491,7 @@ export function ProductsAdmin({ products }: { products: Product[] }) {
               </div>
 
               {p.delivery === "supplier" ? (
-                <div className="mt-2 flex items-center gap-2 rounded-lg bg-muted/50 p-2">
+                <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg bg-muted/50 p-2">
                   <span className="text-[11px] font-bold text-muted-foreground">Profit %</span>
                   <input
                     type="number"
