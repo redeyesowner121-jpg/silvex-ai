@@ -259,8 +259,9 @@ async function call(
   if (!cfg.url || !cfg.key) throw new Error(`${cfg.name}: API address or key is missing`);
   const headers: Record<string, string> = {
     Authorization: `Bearer ${cfg.key}`,
+    // Only once: sending x-api-key twice makes fetch join them with a comma,
+    // which shops read as an invalid key.
     "x-api-key": cfg.key,
-    "X-API-Key": cfg.key,
     "Content-Type": "application/json",
     Accept: "application/json",
   };
