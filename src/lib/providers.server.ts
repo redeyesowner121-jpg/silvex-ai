@@ -219,6 +219,8 @@ function num(v: unknown): number {
 }
 
 function pickPrice(p: any): number {
+  // Some shops send price as an object: { amount: 0.34, currency: "USD" }
+  if (p?.price && typeof p.price === "object" && num(p.price.amount) > 0) return num(p.price.amount);
   if (p?.price != null && num(p.price) > 0) return num(p.price);
   if (p?.price_usd != null && num(p.price_usd) > 0) return num(p.price_usd);
   if (p?.unit_price != null && num(p.unit_price) > 0) return num(p.unit_price);
@@ -228,6 +230,8 @@ function pickPrice(p: any): number {
 }
 
 function pickStock(p: any): { stock: number; unlimited: boolean } {
+  if (p?.availability?.available != null)
+    return { stock: Math.max(0, Math.floor(num(p.availability.available))), unlimited: false };
   for (const k of ["stock", "stock_available", "available_stock", "quantity", "stock_count"]) {
     if (p?.[k] != null && p[k] !== "") return { stock: Math.max(0, Math.floor(num(p[k]))), unlimited: false };
   }
@@ -290,9 +294,18 @@ export async function providerProducts(id: string): Promise<ApiProduct[]> {
   const cfg = await providerConfig(id);
   const body = await call(cfg, cfg.shape.productsPath);
   const list = body?.products || body?.data || body?.items || [];
+  const origin = (() => {
+    try {
+      return new URL(cfg.url).origin;
+    } catch {
+      return "";
+    }
+  })();
   return (Array.isArray(list) ? list : []).map((p: any) => {
     const s = pickStock(p);
-    const raw = String(p.id ?? "");
+    const raw = String(p.id ?? p.productId ?? p.product_id ?? "");
+    let img = String(p.image_url ?? p.image ?? p.photo ?? "");
+    if (img.startsWith("/")) img = origin + img;
     return {
       id: /^\d+$/.test(raw) ? Number(raw) : raw,
       name: String(p.name_en ?? p.name ?? p.title ?? `#${raw}`),
@@ -300,7 +313,7 @@ export async function providerProducts(id: string): Promise<ApiProduct[]> {
       stock: s.stock,
       unlimited: s.unlimited,
       description: cleanText(String(p.description_en ?? p.description ?? "")),
-      image: String(p.image_url ?? p.image ?? p.photo ?? ""),
+      image: img,
     };
   });
 }
@@ -365,8 +378,11 @@ export async function providerBuy(
   const cfg = await providerConfig(id);
   if (!cfg.enabled) throw new Error(`${cfg.name} is turned off`);
   const raw = String(productId);
+  const pid = /^\d+$/.test(raw) ? Number(raw) : raw;
   const body: Record<string, unknown> = {
-    product_id: /^\d+$/.test(raw) ? Number(raw) : raw,
+    product_id: pid,
+    // some shops name it productId — harmless extra field for the others
+    productId: pid,
     [cfg.shape.qtyField]: Math.max(1, Number(qty) || 1),
     ...(cfg.shape.orderExtra || {}),
   };
