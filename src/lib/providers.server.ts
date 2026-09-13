@@ -378,8 +378,11 @@ export async function providerBuy(
   const cfg = await providerConfig(id);
   if (!cfg.enabled) throw new Error(`${cfg.name} is turned off`);
   const raw = String(productId);
+  const pid = /^\d+$/.test(raw) ? Number(raw) : raw;
   const body: Record<string, unknown> = {
-    product_id: /^\d+$/.test(raw) ? Number(raw) : raw,
+    product_id: pid,
+    // some shops name it productId — harmless extra field for the others
+    productId: pid,
     [cfg.shape.qtyField]: Math.max(1, Number(qty) || 1),
     ...(cfg.shape.orderExtra || {}),
   };
