@@ -64,9 +64,11 @@ export async function loadEmojis(force = false): Promise<void> {
       loadedAt = Date.now();
       version++;
     })
+    .catch(() => undefined)
     .finally(() => {
       loading = null;
     });
+  if (background) return;
   return loading;
 }
 
