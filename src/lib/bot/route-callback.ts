@@ -184,6 +184,10 @@ export async function handleCallback(chatId: number, data: string) {
   }
   if (data === "refer") return sendRefer(chatId);
   if (data === "support") return sendSupport(chatId);
+  if (data === "sup") {
+    const { startSupportChat } = await import("@/lib/bot/support");
+    return startSupportChat(chatId);
+  }
   if (data === "link" || data === "setmail") return askEmail(chatId);
   if (data.startsWith("p:")) return sendProduct(chatId, data.slice(2));
   if (data.startsWith("bqc:")) {
