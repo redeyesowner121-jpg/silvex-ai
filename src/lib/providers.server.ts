@@ -354,13 +354,14 @@ export async function providerProducts(id: string): Promise<ApiProduct[]> {
   const list = body?.products || body?.data || body?.items || [];
   return (Array.isArray(list) ? list : []).map((p: any) => {
     const s = pickStock(p);
+    const raw = String(p.id ?? "");
     return {
-      id: Number(p.id),
-      name: String(p.name ?? p.title ?? `#${p.id}`),
+      id: /^\d+$/.test(raw) ? Number(raw) : raw,
+      name: String(p.name_en ?? p.name ?? p.title ?? `#${raw}`),
       price: pickPrice(p),
       stock: s.stock,
       unlimited: s.unlimited,
-      description: cleanText(String(p.description ?? "")),
+      description: cleanText(String(p.description_en ?? p.description ?? "")),
       image: String(p.image_url ?? p.image ?? p.photo ?? ""),
     };
   });
@@ -375,9 +376,11 @@ export async function providerBalance(
   const balance =
     w?.balance != null
       ? num(w.balance)
-      : w?.balance_cents != null
-        ? num(w.balance_cents) / 100
-        : 0;
+      : w?.balance_usd != null
+        ? num(w.balance_usd)
+        : w?.balance_cents != null
+          ? num(w.balance_cents) / 100
+          : 0;
   return { balance, currency: String(w?.currency || body?.currency || "USD") };
 }
 
