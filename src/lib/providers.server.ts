@@ -294,9 +294,18 @@ export async function providerProducts(id: string): Promise<ApiProduct[]> {
   const cfg = await providerConfig(id);
   const body = await call(cfg, cfg.shape.productsPath);
   const list = body?.products || body?.data || body?.items || [];
+  const origin = (() => {
+    try {
+      return new URL(cfg.url).origin;
+    } catch {
+      return "";
+    }
+  })();
   return (Array.isArray(list) ? list : []).map((p: any) => {
     const s = pickStock(p);
-    const raw = String(p.id ?? "");
+    const raw = String(p.id ?? p.productId ?? p.product_id ?? "");
+    let img = String(p.image_url ?? p.image ?? p.photo ?? "");
+    if (img.startsWith("/")) img = origin + img;
     return {
       id: /^\d+$/.test(raw) ? Number(raw) : raw,
       name: String(p.name_en ?? p.name ?? p.title ?? `#${raw}`),
@@ -304,7 +313,7 @@ export async function providerProducts(id: string): Promise<ApiProduct[]> {
       stock: s.stock,
       unlimited: s.unlimited,
       description: cleanText(String(p.description_en ?? p.description ?? "")),
-      image: String(p.image_url ?? p.image ?? p.photo ?? ""),
+      image: img,
     };
   });
 }
