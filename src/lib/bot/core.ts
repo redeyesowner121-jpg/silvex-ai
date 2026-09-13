@@ -113,8 +113,10 @@ export async function loadBotPresentation(): Promise<void> {
 
 /* ---------------- shared lists (short cache keeps taps fast) ---------------- */
 
-let productCache: { at: number; v: Record<string, Product> } | null = null;
-let userCache: { at: number; v: Record<string, any> } | null = null;
+type ProductCache = { at: number; v: Record<string, Product> } | null;
+type UserCache = { at: number; v: Record<string, any> } | null;
+let productCache: ProductCache = null;
+let userCache: UserCache = null;
 
 let productLoading: Promise<void> | null = null;
 let userLoading: Promise<void> | null = null;
@@ -137,7 +139,7 @@ export async function allProducts(): Promise<Record<string, Product>> {
     return productCache.v;
   }
   await pullProducts();
-  const loaded: typeof productCache = productCache;
+  const loaded = productCache as ProductCache;
   return loaded?.v || {};
 }
 export function invalidateProducts() {
@@ -162,7 +164,7 @@ export async function allUsers(): Promise<Record<string, any>> {
     return userCache.v;
   }
   await pullUsers();
-  const loaded: typeof userCache = userCache;
+  const loaded = userCache as UserCache;
   return loaded?.v || {};
 }
 export function invalidateUsers() {
