@@ -265,7 +265,9 @@ export async function notifyOwners(text: string): Promise<void> {
 }
 
 
+import { plainEmojiText } from "@/lib/bot/delivery-files.server";
 export {
+  plainEmojiText,
   buildDeliveryPdf,
   buildDeliverySvg,
   tgSendDocument,
