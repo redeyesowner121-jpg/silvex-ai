@@ -212,15 +212,30 @@ export async function dbGet<T = any>(path: string): Promise<T | null> {
 }
 
 let runtimeLoadedAt = 0;
+let runtimeLoading: Promise<void> | null = null;
 
-/** Pull the admin-managed settings (site link, owners, referral) into this worker. */
+function pullBotRuntime(): Promise<void> {
+  runtimeLoading ||= dbGet<any>("site_settings/config")
+    .catch(() => null)
+    .then(async (c) => {
+      runtimeLoadedAt = Date.now();
+      applyBotConfig(c);
+      const { applyReferralConfig } = await import("./referral");
+      applyReferralConfig(c);
+    })
+    .catch(() => undefined)
+    .finally(() => {
+      runtimeLoading = null;
+    });
+  return runtimeLoading;
+}
+
+/** Pull the admin-managed settings (site link, owners, referral) into this worker.
+ *  Once loaded, later refreshes happen in the background so no message waits. */
 export async function loadBotRuntime(force = false): Promise<void> {
-  if (!force && Date.now() - runtimeLoadedAt < 30_000) return;
-  const c = await dbGet<any>("site_settings/config").catch(() => null);
-  runtimeLoadedAt = Date.now();
-  applyBotConfig(c);
-  const { applyReferralConfig } = await import("./referral");
-  applyReferralConfig(c);
+  if (force) return pullBotRuntime();
+  if (!runtimeLoadedAt) return pullBotRuntime();
+  if (Date.now() - runtimeLoadedAt >= 30_000) void pullBotRuntime();
 }
 
 
