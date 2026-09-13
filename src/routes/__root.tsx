@@ -15,7 +15,9 @@ import { StoreProvider } from "@/context/StoreContext";
 import { AppShell } from "@/components/store/AppShell";
 import { Toaster } from "@/components/ui/sonner";
 import { getFirebaseConfig } from "@/lib/firebase.functions";
+import { getStoreSnapshot } from "@/lib/store-snapshot.functions";
 import { primeFirebaseConfig } from "@/lib/firebase";
+import { primeStoreSnapshot } from "@/context/store-prime";
 
 function NotFoundComponent() {
   return (
