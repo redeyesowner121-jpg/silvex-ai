@@ -32,6 +32,7 @@ export type Product = {
 export type Cfg = {
   siteName?: string;
   supportLink?: string;
+  supportTelegram?: string;
   depositAddress?: string;
   forceJoin?: string;
   reviewChannel?: string;

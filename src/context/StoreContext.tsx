@@ -79,6 +79,8 @@ export type SiteConfig = {
   siteTagline?: string;
   depositAddress?: string;
   supportLink?: string;
+  /** Telegram support username or link (e.g. @silvexai). */
+  supportTelegram?: string;
   minOrder?: number;
   lowStockAlert?: number;
   categories?: Category[];

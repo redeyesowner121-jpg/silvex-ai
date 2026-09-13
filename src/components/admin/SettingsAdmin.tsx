@@ -26,6 +26,7 @@ export function SettingsAdmin({
     siteTagline?: string;
     depositAddress?: string;
     supportLink?: string;
+    supportTelegram?: string;
     minOrder?: number;
     categories?: Category[];
     siteUrl?: string;
@@ -55,6 +56,7 @@ export function SettingsAdmin({
     siteTagline: config.siteTagline ?? "",
     depositAddress: config.depositAddress ?? "",
     supportLink: config.supportLink ?? "",
+    supportTelegram: config.supportTelegram ?? "",
     minOrder: String(config.minOrder ?? 0),
     lowStockAlert: String((config as { lowStockAlert?: number }).lowStockAlert ?? 5),
     siteUrl: config.siteUrl ?? "",
@@ -109,6 +111,7 @@ export function SettingsAdmin({
       siteTagline: cfg.siteTagline,
       depositAddress: cfg.depositAddress.trim(),
       supportLink: cfg.supportLink,
+      supportTelegram: cfg.supportTelegram.trim(),
       minOrder: Number(cfg.minOrder || 0),
       lowStockAlert: Number(cfg.lowStockAlert || 0),
       siteUrl: cfg.siteUrl.trim(),
@@ -238,6 +241,12 @@ export function SettingsAdmin({
           placeholder="Support / WhatsApp link"
           value={cfg.supportLink}
           onChange={(e) => setCfg({ ...cfg, supportLink: e.target.value })}
+        />
+        <input
+          className={input}
+          placeholder="Telegram support (@username)"
+          value={cfg.supportTelegram}
+          onChange={(e) => setCfg({ ...cfg, supportTelegram: e.target.value })}
         />
         <input
           className={input}
