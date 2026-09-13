@@ -117,6 +117,33 @@ export function ProvidersAdmin({ products }: { products: Product[] }) {
     }
   }
 
+  /** Delete one imported API product — it never comes back on the next import. */
+  async function deleteItem(p: Product) {
+    if (!db) return;
+    if (!confirm(`Delete “${p.title}”? It will not come back on the next import.`)) return;
+    await update(ref(db, "site_settings/apiDeleted"), { [p.id]: true });
+    await remove(ref(db, `products/${p.id}`));
+    notify("Product deleted");
+  }
+
+  /** Hide or show every product of one shop at once. */
+  async function setAllHidden(items: Product[], hidden: boolean) {
+    if (!db || !items.length) return;
+    for (const p of items) await update(ref(db, `products/${p.id}`), { hidden });
+    notify(hidden ? "All hidden from customers" : "All shown to customers");
+  }
+
+  /** Delete every product of one shop at once. */
+  async function deleteAll(items: Product[]) {
+    if (!db || !items.length) return;
+    if (!confirm(`Delete all ${items.length} products of this shop?`)) return;
+    for (const p of items) {
+      await update(ref(db, "site_settings/apiDeleted"), { [p.id]: true });
+      await remove(ref(db, `products/${p.id}`));
+    }
+    notify(`Deleted ${items.length} products`);
+  }
+
   async function saveDetails(p: Product) {
     if (!db) return;
     const title = String(nameRef.current[p.id] ?? p.title ?? "").trim();
