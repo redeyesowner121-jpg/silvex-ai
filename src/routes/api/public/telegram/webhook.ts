@@ -702,11 +702,8 @@ async function sendSupport(chatId: number) {
 
 /* ---------------- buying ---------------- */
 
-/** Asks how many copies the buyer wants before taking the money. */
-async function askQty(chatId: number, productId: string) {
-  const p = await dbGet<Product>(`products/${productId}`);
-  if (!p) return say(chatId, "Product not found.", backHome);
-  const price = Number(p.price || 0);
+/** How many copies of a product can be bought right now. */
+async function maxQty(p: Product) {
   const anyP = p as unknown as { delivery?: string; supplierStock?: number };
   const stock = Array.isArray(p.stock) ? p.stock.filter(Boolean).length : 0;
   const available =
@@ -715,27 +712,84 @@ async function askQty(chatId: number, productId: string) {
       : anyP.delivery === "supplier"
         ? Number(anyP.supplierStock || 0)
         : 20;
-  const max = Math.max(1, Math.min(20, available || 1));
+  return Math.max(1, Math.min(20, available || 1));
+}
+
+/** Asks how many copies the buyer wants. Buttons hold numbers only; the price is in the text. */
+async function askQty(chatId: number, productId: string, qty = 1) {
+  const p = await dbGet<Product>(`products/${productId}`);
+  if (!p) return say(chatId, "Product not found.", backHome);
+  const price = Number(p.price || 0);
+  const max = await maxQty(p);
+  const count = Math.max(1, Math.min(Math.floor(Number(qty) || 1), max));
   const choices = [1, 3, 5, 10, 20].filter((n) => n <= max);
   if (!choices.length) choices.push(1);
   const rows: { text: string; callback_data: string }[][] = [];
   for (let i = 0; i < choices.length; i += 3) {
     rows.push(
       choices.slice(i, i + 3).map((n) => ({
-        text: `${n} • ${money(price * n)}`,
+        text: n === count ? `✅ ${n}` : `${n}`,
         callback_data: `bq:${productId}:${n}`,
       })),
     );
   }
   rows.push([{ text: "✏️ Custom number", callback_data: `bqc:${productId}` }]);
+  rows.push([{ text: "➡️ Continue", callback_data: `bpm:${productId}:${count}` }]);
   await say(
     chatId,
-    `🛒 <b>${p.title}</b>\n\nPrice: <b>${money(price)}</b> each\nHow many do you want? (1–${max})`,
+    `🛒 <b>${p.title}</b>\n\n` +
+      `Price: <b>${money(price)}</b> each\n` +
+      `Selected quantity: <b>${count}</b>\n` +
+      `Total: <b>${money(Math.round(price * count * 100) / 100)}</b>\n\n` +
+      `Pick another quantity if you like (1–${max}), then press Continue.`,
     {
       inline_keyboard: [...rows, [{ text: "⬅️ Back", callback_data: `p:${productId}` }]],
     },
   );
+}
 
+/** Shows how the buyer can pay for the chosen quantity. */
+async function askPayMethod(chatId: number, productId: string, qty: number) {
+  const p = await dbGet<Product>(`products/${productId}`);
+  if (!p) return say(chatId, "Product not found.", backHome);
+  const uid = await ensureUser(chatId);
+  const user = (await dbGet<any>(`users/${uid}`)) || {};
+  const wallet = Number(user.wallet || 0);
+  const total = Math.round(Number(p.price || 0) * qty * 100) / 100;
+  const c = await cfg();
+  const rows: any[] = [
+    [{ text: `💰 Wallet (${money(wallet)})`, callback_data: `bcf:${productId}:${qty}` }],
+  ];
+  if (String(c.razorpayKeyId || "").trim())
+    rows.push([{ text: "💳 Card / UPI", callback_data: "depcard" }]);
+  rows.push([{ text: "🪙 Crypto (USDT)", callback_data: "dep" }]);
+  rows.push([{ text: "⬅️ Back", callback_data: `bq:${productId}:${qty}` }]);
+  await say(
+    chatId,
+    `💳 <b>Payment method</b>\n\n${p.title}\nQuantity: <b>${qty}</b>\nTotal: <b>${money(total)}</b>\n` +
+      `Wallet balance: ${money(wallet)}\n\n` +
+      (wallet < total
+        ? "Your wallet is short for this order — top it up with card or crypto first."
+        : "Choose how you want to pay."),
+    { inline_keyboard: rows },
+  );
+}
+
+/** Final confirmation, only needed when paying from the wallet. */
+async function confirmWalletPay(chatId: number, productId: string, qty: number) {
+  const p = await dbGet<Product>(`products/${productId}`);
+  if (!p) return say(chatId, "Product not found.", backHome);
+  const total = Math.round(Number(p.price || 0) * qty * 100) / 100;
+  await say(
+    chatId,
+    `🧾 <b>Confirm your order</b>\n\n${p.title}\nQuantity: <b>${qty}</b>\nTotal: <b>${money(total)}</b>\n\nThis amount will be taken from your wallet.`,
+    {
+      inline_keyboard: [
+        [{ text: "✅ Confirm & pay", callback_data: `bgo:${productId}:${qty}` }],
+        [{ text: "⬅️ Back", callback_data: `bpm:${productId}:${qty}` }],
+      ],
+    },
+  );
 }
 
 async function buy(chatId: number, productId: string, qty = 1) {
