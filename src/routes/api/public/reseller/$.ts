@@ -125,7 +125,7 @@ async function handle(request: Request, splat: string): Promise<Response> {
       try {
         const { supplierBuy } = await import("@/lib/supplier.server");
         const items = await supplierBuy(
-          Number(p.supplierId || 0),
+          p.supplierId ?? "",
           qty,
           `api-${uid}-${Date.now()}`,
           String(p.provider || "custom"),

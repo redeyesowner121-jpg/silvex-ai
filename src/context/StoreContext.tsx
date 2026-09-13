@@ -31,7 +31,7 @@ export type Product = {
   stock?: string[];
   usedStock?: Record<string, { content: string; orderId?: string; email?: string; date?: string }>;
   /** Linked supplier shop product (price and stock follow the supplier automatically) */
-  supplierId?: number;
+  supplierId?: string | number;
   /** Selling price = supplier price × this percent (e.g. 130 = +30%) */
   markup?: number;
   supplierPrice?: number;
