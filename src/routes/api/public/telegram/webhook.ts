@@ -1868,16 +1868,20 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        await loadBotRuntime().catch(() => undefined);
+        // Settings, styling and the update body load together instead of one by one.
+        const [, , update] = await Promise.all([
+          loadBotRuntime().catch(() => undefined),
+          loadBotPresentation().catch(() => undefined),
+          request.json().catch(() => null),
+        ]);
         const actual = request.headers.get("X-Telegram-Bot-Api-Secret-Token") ?? "";
         if (!telegramWebhookOk(actual)) return new Response("Unauthorized", { status: 401 });
 
-        const update = await request.json();
         try {
-          await loadBotPresentation();
           if (update?.callback_query) {
             const cq = update.callback_query;
-            await tg("answerCallbackQuery", { callback_query_id: cq.id }).catch(() => undefined);
+            // Stop the button spinner right away; don't wait for Telegram.
+            void tg("answerCallbackQuery", { callback_query_id: cq.id }).catch(() => undefined);
             const chatId = cq.message?.chat?.id;
             const messageId = cq.message?.message_id;
             if (chatId && messageId) editTarget.set(Number(chatId), Number(messageId));
