@@ -234,15 +234,24 @@ export function channelHandle(raw: string): string {
   return `@${name}`;
 }
 
+/** Members are remembered for a few minutes so every tap isn't a channel check. */
+const joinedCache = new Map<number, number>();
+const JOIN_CACHE_MS = 10 * 60_000;
+
 export async function forceJoinBlocked(chatId: number): Promise<boolean> {
   const c = await cfg();
   const ch = (c.forceJoin || "").trim();
   const handle = ch ? channelHandle(ch) : "";
   if (!ch || !handle) return false;
+  const ok = joinedCache.get(chatId);
+  if (ok && Date.now() - ok < JOIN_CACHE_MS) return false;
   try {
     const res = await tg("getChatMember", { chat_id: handle, user_id: chatId });
     const status = res?.result?.status;
-    if (["creator", "administrator", "member"].includes(status)) return false;
+    if (["creator", "administrator", "member"].includes(status)) {
+      joinedCache.set(chatId, Date.now());
+      return false;
+    }
   } catch {
     return false;
   }
