@@ -1,89 +1,11 @@
 /** Handles every typed message and command in the bot. */
 import { defaultDepositAddress, verifyDepositAnyChain } from "@/lib/deposit.server";
-import {
-  dbGet,
-  dbPatch,
-  dbPush,
-  dbPut,
-  money,
-  notifyOwners,
-  telegramWebhookOk,
-  loadBotRuntime,
-  tg,
-} from "@/lib/telegram.server";
-import { resetAllEmojis, syncEmojiImages } from "@/lib/emoji.server";
-import {
-  adminBack,
-  askEmail,
-  backHome,
-  cfg,
-  editTarget,
-  ensureUser,
-  forceJoinBlocked,
-  getState,
-  invalidateProducts,
-  isBotAdmin,
-  loadBotPresentation,
-  say,
-  saveConfig,
-  saveEmail,
-  setState,
-  welcome,
-} from "@/lib/bot/core";
-import {
-  applyStartReferral,
-  askPayMethod,
-  askQty,
-  buy,
-  checkCardPayment,
-  confirmWalletPay,
-  createCardLink,
-  sendApiKey,
-  sendOrders,
-  sendProduct,
-  sendProducts,
-  sendProfile,
-  sendRefer,
-  sendReviews,
-  sendSupport,
-  sendWallet,
-  startCardDeposit,
-  startDeposit,
-  startWithdraw,
-  submitReview,
-  walletHistory,
-} from "@/lib/bot/shop";
-import {
-  adminAskDelivery,
-  adminCancelOrder,
-  adminDecideRequest,
-  adminDeliver,
-  adminFindUser,
-  adminHome,
-  adminOrder,
-  adminOrders,
-  adminProduct,
-  adminProducts,
-  adminRequests,
-  adminSettings,
-  adminStats,
-  adminUser,
-  adminUsers,
-  broadcast,
-} from "@/lib/bot/admin";
-import {
-  clearProductEmoji,
-  emojiAsk,
-  emojiFromMessage,
-  emojiGroup,
-  emojiHome,
-  emojiList,
-  emojiProductMessage,
-  emojiProducts,
-  emojiSlotPick,
-  emojiToMessage,
-  removeRule,
-} from "@/lib/bot/emoji-ui";
+import { dbGet, dbPatch, dbPush, dbPut, money, notifyOwners } from "@/lib/telegram.server";
+
+import { adminBack, askEmail, backHome, cfg, ensureUser, forceJoinBlocked, getState, invalidateProducts, isBotAdmin, say, saveConfig, saveEmail, setState, welcome } from "@/lib/bot/core";
+import { applyStartReferral, askQty, createCardLink, submitReview } from "@/lib/bot/shop";
+import { adminDeliver, adminFindUser, adminHome, adminProduct, adminUser, broadcast } from "@/lib/bot/admin";
+import { emojiFromMessage, emojiHome, emojiProductMessage, emojiToMessage } from "@/lib/bot/emoji-ui";
 
 export async function handleText(chatId: number, text: string, entities?: any[], sticker?: any) {
   const t = text.trim();

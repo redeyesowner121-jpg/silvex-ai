@@ -1,89 +1,11 @@
 /** Handles every button tap in the bot. */
-import { defaultDepositAddress, verifyDepositAnyChain } from "@/lib/deposit.server";
-import {
-  dbGet,
-  dbPatch,
-  dbPush,
-  dbPut,
-  money,
-  notifyOwners,
-  telegramWebhookOk,
-  loadBotRuntime,
-  tg,
-} from "@/lib/telegram.server";
+
+import { dbGet, dbPatch, dbPut } from "@/lib/telegram.server";
 import { resetAllEmojis, syncEmojiImages } from "@/lib/emoji.server";
-import {
-  adminBack,
-  askEmail,
-  backHome,
-  cfg,
-  editTarget,
-  ensureUser,
-  forceJoinBlocked,
-  getState,
-  invalidateProducts,
-  isBotAdmin,
-  loadBotPresentation,
-  say,
-  saveConfig,
-  saveEmail,
-  setState,
-  welcome,
-} from "@/lib/bot/core";
-import {
-  applyStartReferral,
-  askPayMethod,
-  askQty,
-  buy,
-  checkCardPayment,
-  confirmWalletPay,
-  createCardLink,
-  sendApiKey,
-  sendOrders,
-  sendProduct,
-  sendProducts,
-  sendProfile,
-  sendRefer,
-  sendReviews,
-  sendSupport,
-  sendWallet,
-  startCardDeposit,
-  startDeposit,
-  startWithdraw,
-  submitReview,
-  walletHistory,
-} from "@/lib/bot/shop";
-import {
-  adminAskDelivery,
-  adminCancelOrder,
-  adminDecideRequest,
-  adminDeliver,
-  adminFindUser,
-  adminHome,
-  adminOrder,
-  adminOrders,
-  adminProduct,
-  adminProducts,
-  adminRequests,
-  adminSettings,
-  adminStats,
-  adminUser,
-  adminUsers,
-  broadcast,
-} from "@/lib/bot/admin";
-import {
-  clearProductEmoji,
-  emojiAsk,
-  emojiFromMessage,
-  emojiGroup,
-  emojiHome,
-  emojiList,
-  emojiProductMessage,
-  emojiProducts,
-  emojiSlotPick,
-  emojiToMessage,
-  removeRule,
-} from "@/lib/bot/emoji-ui";
+import { adminBack, askEmail, cfg, forceJoinBlocked, invalidateProducts, isBotAdmin, say, saveConfig, setState, welcome } from "@/lib/bot/core";
+import { askPayMethod, askQty, buy, checkCardPayment, confirmWalletPay, sendApiKey, sendOrders, sendProduct, sendProducts, sendProfile, sendRefer, sendReviews, sendSupport, sendWallet, startCardDeposit, startDeposit, startWithdraw, walletHistory } from "@/lib/bot/shop";
+import { adminAskDelivery, adminCancelOrder, adminDecideRequest, adminHome, adminOrder, adminOrders, adminProduct, adminProducts, adminRequests, adminSettings, adminStats, adminUser, adminUsers, broadcast } from "@/lib/bot/admin";
+import { clearProductEmoji, emojiAsk, emojiGroup, emojiHome, emojiList, emojiProducts, emojiSlotPick, removeRule } from "@/lib/bot/emoji-ui";
 
 export async function handleCallback(chatId: number, data: string) {
   if (data === "noop") return;
