@@ -116,21 +116,52 @@ export async function loadBotPresentation(): Promise<void> {
 let productCache: { at: number; v: Record<string, Product> } | null = null;
 let userCache: { at: number; v: Record<string, any> } | null = null;
 
+let productLoading: Promise<void> | null = null;
+let userLoading: Promise<void> | null = null;
+
+function pullProducts(): Promise<void> {
+  productLoading ||= dbGet<Record<string, Product>>("products")
+    .then((v) => {
+      productCache = { at: Date.now(), v: v || {} };
+    })
+    .catch(() => undefined)
+    .finally(() => {
+      productLoading = null;
+    });
+  return productLoading;
+}
+
 export async function allProducts(): Promise<Record<string, Product>> {
-  if (productCache && Date.now() - productCache.at < LIST_CACHE_MS) return productCache.v;
-  const v = (await dbGet<Record<string, Product>>("products")) || {};
-  productCache = { at: Date.now(), v };
-  return v;
+  if (productCache) {
+    if (Date.now() - productCache.at >= LIST_CACHE_MS) void pullProducts();
+    return productCache.v;
+  }
+  await pullProducts();
+  return productCache?.v || {};
 }
 export function invalidateProducts() {
   productCache = null;
 }
 
+function pullUsers(): Promise<void> {
+  userLoading ||= dbGet<Record<string, any>>("users")
+    .then((v) => {
+      userCache = { at: Date.now(), v: v || {} };
+    })
+    .catch(() => undefined)
+    .finally(() => {
+      userLoading = null;
+    });
+  return userLoading;
+}
+
 export async function allUsers(): Promise<Record<string, any>> {
-  if (userCache && Date.now() - userCache.at < LIST_CACHE_MS) return userCache.v;
-  const v = (await dbGet<Record<string, any>>("users")) || {};
-  userCache = { at: Date.now(), v };
-  return v;
+  if (userCache) {
+    if (Date.now() - userCache.at >= LIST_CACHE_MS) void pullUsers();
+    return userCache.v;
+  }
+  await pullUsers();
+  return userCache?.v || {};
 }
 export function invalidateUsers() {
   userCache = null;
