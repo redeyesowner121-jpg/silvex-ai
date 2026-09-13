@@ -399,14 +399,14 @@ export function ProductsAdmin({ products }: { products: Product[] }) {
           const isLow = p.delivery === "auto" && available.length <= threshold;
           return (
             <div key={p.id} className="rounded-xl border border-border bg-card p-3">
-              <div className="flex items-center justify-between gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex min-w-0 items-center gap-3">
                   {p.logo ? (
-                    <img src={p.logo} alt="" className="h-10 w-10 rounded-lg object-cover" />
+                    <img src={p.logo} alt="" className="h-10 w-10 shrink-0 rounded-lg object-cover" />
                   ) : null}
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-bold">{p.title}</p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="break-words text-xs text-muted-foreground">
                       ${p.price} · {p.type} · {p.salesCount ?? 0} sold ·{" "}
                       {p.delivery === "auto" ? (
                         <span className={isLow ? "font-bold text-destructive" : ""}>
@@ -423,7 +423,7 @@ export function ProductsAdmin({ products }: { products: Product[] }) {
                     </p>
                   </div>
                 </div>
-                <div className="flex shrink-0 flex-wrap justify-end gap-2">
+                <div className="flex flex-wrap gap-2 sm:shrink-0 sm:justify-end">
                   <button
                     onClick={() => announce("new", p.id)}
                     className="rounded-lg bg-amber-500/10 px-3 py-1.5 text-xs font-bold text-amber-600"
