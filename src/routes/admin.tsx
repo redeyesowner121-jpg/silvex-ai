@@ -21,6 +21,7 @@ const CouponsAdmin = lazy(() => import("@/components/admin/CouponsAdmin").then((
 const ButtonsAdmin = lazy(() => import("@/components/admin/ButtonsAdmin").then((m) => ({ default: m.ButtonsAdmin })));
 const SettingsAdmin = lazy(() => import("@/components/admin/SettingsAdmin").then((m) => ({ default: m.SettingsAdmin })));
 const ProvidersAdmin = lazy(() => import("@/components/admin/ProvidersAdmin").then((m) => ({ default: m.ProvidersAdmin })));
+const RailwayAdmin = lazy(() => import("@/components/admin/RailwayAdmin").then((m) => ({ default: m.RailwayAdmin })));
 
 
 export const Route = createFileRoute("/admin")({
@@ -451,6 +452,8 @@ function Admin() {
       {tab === "Users" ? <UsersAdmin /> : null}
 
       {tab === "Bot buttons" ? <ButtonsAdmin /> : null}
+
+      {tab === "Hosting" ? <RailwayAdmin /> : null}
 
       {tab === "Settings" ? <SettingsAdmin config={config} banner={banner} /> : null}
 
