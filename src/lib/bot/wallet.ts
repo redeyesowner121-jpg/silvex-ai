@@ -321,10 +321,20 @@ export async function sendRefer(chatId: number) {
   );
 }
 
+/** Turns "@name", "t.me/name" or a full link into a usable Telegram link. */
+export function telegramSupportLink(value?: string) {
+  const v = String(value || "").trim();
+  if (!v) return "";
+  if (/^https?:\/\//i.test(v)) return v;
+  return `https://t.me/${v.replace(/^@/, "").replace(/^t\.me\//i, "")}`;
+}
+
 export async function sendSupport(chatId: number) {
   const c = await cfg();
   const rows: any[] = [];
-  if (c.supportLink) rows.push([{ text: "💬 Contact support", url: c.supportLink }]);
+  const tgLink = telegramSupportLink((c as any).supportTelegram);
+  if (tgLink) rows.push([{ text: "✈️ Telegram support", url: tgLink }]);
+  if (c.supportLink) rows.push([{ text: "💬 WhatsApp support", url: c.supportLink }]);
   rows.push([{ text: "⬅️ Menu", callback_data: "home" }]);
   await say(chatId, "🆘 <b>Support</b>\n\nWe reply 24/7. You can also message us on the website.", {
     inline_keyboard: rows,
