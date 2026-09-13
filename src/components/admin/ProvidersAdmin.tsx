@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ref, update } from "firebase/database";
+import { ref, remove, update } from "firebase/database";
 import { useStore, type Product } from "@/context/StoreContext";
 import { input, Empty } from "@/components/admin/shared";
 import {
