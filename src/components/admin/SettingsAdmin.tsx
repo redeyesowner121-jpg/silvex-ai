@@ -12,6 +12,7 @@ import { broadcastProductEvent } from "@/lib/broadcast.functions";
 
 
 import { input, Stat, Empty, ImageField, type OrderRow } from "@/components/admin/shared";
+import { SmtpAdmin } from "@/components/admin/SmtpAdmin";
 
 export function SettingsAdmin({
   config,
