@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ref, update } from "firebase/database";
+import { ref, remove, update } from "firebase/database";
 import { useStore, type Product } from "@/context/StoreContext";
 import { input, Empty } from "@/components/admin/shared";
 import {
@@ -115,6 +115,33 @@ export function ProvidersAdmin({ products }: { products: Product[] }) {
       const r = await broadcastProductEvent({ data: { kind: "new", productId: p.id } });
       if (r.ok) notify(`📣 Announced to ${r.sent} bot users`);
     }
+  }
+
+  /** Delete one imported API product — it never comes back on the next import. */
+  async function deleteItem(p: Product) {
+    if (!db) return;
+    if (!confirm(`Delete “${p.title}”? It will not come back on the next import.`)) return;
+    await update(ref(db, "site_settings/apiDeleted"), { [p.id]: true });
+    await remove(ref(db, `products/${p.id}`));
+    notify("Product deleted");
+  }
+
+  /** Hide or show every product of one shop at once. */
+  async function setAllHidden(items: Product[], hidden: boolean) {
+    if (!db || !items.length) return;
+    for (const p of items) await update(ref(db, `products/${p.id}`), { hidden });
+    notify(hidden ? "All hidden from customers" : "All shown to customers");
+  }
+
+  /** Delete every product of one shop at once. */
+  async function deleteAll(items: Product[]) {
+    if (!db || !items.length) return;
+    if (!confirm(`Delete all ${items.length} products of this shop?`)) return;
+    for (const p of items) {
+      await update(ref(db, "site_settings/apiDeleted"), { [p.id]: true });
+      await remove(ref(db, `products/${p.id}`));
+    }
+    notify(`Deleted ${items.length} products`);
   }
 
   async function saveDetails(p: Product) {
@@ -286,6 +313,29 @@ export function ProvidersAdmin({ products }: { products: Product[] }) {
                   ) : null}
                 </div>
 
+                {items.length ? (
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <button
+                      onClick={() => setAllHidden(items, true)}
+                      className="rounded-xl bg-muted px-4 py-2 text-xs font-bold"
+                    >
+                      Hide all
+                    </button>
+                    <button
+                      onClick={() => setAllHidden(items, false)}
+                      className="rounded-xl bg-emerald-500/10 px-4 py-2 text-xs font-bold text-emerald-600"
+                    >
+                      Show all
+                    </button>
+                    <button
+                      onClick={() => deleteAll(items)}
+                      className="rounded-xl bg-destructive/10 px-4 py-2 text-xs font-bold text-destructive"
+                    >
+                      Delete all
+                    </button>
+                  </div>
+                ) : null}
+
                 <div className="space-y-1 pt-2">
                   {items.length === 0 ? (
                     <p className="text-[11px] text-muted-foreground">
@@ -302,16 +352,24 @@ export function ProvidersAdmin({ products }: { products: Product[] }) {
                               {Number(p.price).toFixed(2)} · {p.supplierStock ?? 0} in stock
                             </p>
                           </div>
-                          <button
-                            onClick={() => toggleHidden(p)}
-                            className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-bold ${
-                              p.hidden
-                                ? "bg-muted text-muted-foreground"
-                                : "bg-emerald-500/10 text-emerald-600"
-                            }`}
-                          >
-                            {p.hidden ? "Hidden" : "Visible"}
-                          </button>
+                          <div className="flex shrink-0 gap-2">
+                            <button
+                              onClick={() => toggleHidden(p)}
+                              className={`rounded-lg px-3 py-1.5 text-xs font-bold ${
+                                p.hidden
+                                  ? "bg-muted text-muted-foreground"
+                                  : "bg-emerald-500/10 text-emerald-600"
+                              }`}
+                            >
+                              {p.hidden ? "Hidden" : "Visible"}
+                            </button>
+                            <button
+                              onClick={() => deleteItem(p)}
+                              className="rounded-lg bg-destructive/10 px-3 py-1.5 text-xs font-bold text-destructive"
+                            >
+                              Delete
+                            </button>
+                          </div>
                         </div>
                         <div className="mt-1 flex flex-wrap items-center gap-2">
                           <input
