@@ -43,6 +43,7 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
                 String(msg.text ?? msg.caption ?? ""),
                 msg.entities ?? msg.caption_entities,
                 msg.sticker,
+                msg.reply_to_message?.message_id,
               );
           }
         } catch (err) {

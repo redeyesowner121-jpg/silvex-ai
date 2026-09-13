@@ -331,7 +331,7 @@ export function telegramSupportLink(value?: string) {
 
 export async function sendSupport(chatId: number) {
   const c = await cfg();
-  const rows: any[] = [];
+  const rows: any[] = [[{ text: "💬 Chat with us", callback_data: "sup" }]];
   const tgLink = telegramSupportLink((c as any).supportTelegram);
   if (tgLink) rows.push([{ text: "✈️ Telegram support", url: tgLink }]);
   if (c.supportLink) rows.push([{ text: "💬 WhatsApp support", url: c.supportLink }]);

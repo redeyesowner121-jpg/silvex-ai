@@ -22,9 +22,22 @@ import { adminDeliver, adminFindUser, adminHome, adminProduct, adminUser, broadc
 import { emojiFromMessage, emojiHome, emojiProductMessage, emojiToMessage } from "@/lib/bot/emoji-ui";
 import { ADMIN_COMMANDS, USER_COMMANDS, registerAdminCommands, registerBotCommands, showQuickMenu } from "@/lib/bot/commands";
 
-export async function handleText(chatId: number, text: string, entities?: any[], sticker?: any) {
+export async function handleText(
+  chatId: number,
+  text: string,
+  entities?: any[],
+  sticker?: any,
+  replyToMessageId?: number,
+) {
   const t = text.trim();
   void dbPut(`telegramUsers/${chatId}`, true).catch(() => undefined);
+
+  /* An owner replying to a forwarded support message answers that customer. */
+  if (replyToMessageId && t && (await isBotAdmin(chatId))) {
+    const { handleOwnerReply } = await import("@/lib/bot/support");
+    if (await handleOwnerReply(chatId, replyToMessageId, t)) return;
+  }
+
 
   if (t === "/start" || t === "/menu" || t.startsWith("/start ")) {
     await setState(chatId, null);
@@ -241,6 +254,11 @@ export async function handleText(chatId: number, text: string, entities?: any[],
     );
   }
   if (k === "review") return submitReview(chatId, t);
+
+  if (k === "support") {
+    const { handleSupportMessage } = await import("@/lib/bot/support");
+    return handleSupportMessage(chatId, t);
+  }
 
   if (state && (await isBotAdmin(chatId))) {
     if (k === "em_from") return emojiFromMessage(chatId, text, entities, sticker);
