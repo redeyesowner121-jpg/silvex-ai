@@ -176,11 +176,15 @@ export async function syncAllProviders(force = true): Promise<{
     const price = sellPrice(sp.price, Number(p.markup) || 130);
     const stock = sp.unlimited ? 9999 : Math.max(0, sp.stock);
     const wasOut = Number(p.supplierStock ?? 0) <= 0;
+    const desc = String(sp.description || "").trim();
     await dbPatch(`products/${id}`, {
       price,
       supplierPrice: sp.price,
       supplierStock: stock,
       supplierSyncedAt: new Date().toISOString(),
+      // Keep the shop description in step with the supplier's own text,
+      // unless the admin wrote their own (descEdited).
+      ...(desc && !p.descEdited ? { desc } : {}),
     });
     // Back in stock at the provider: tell every bot user.
     if (wasOut && stock > 0 && !p.hidden) {
