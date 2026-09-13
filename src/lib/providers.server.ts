@@ -600,7 +600,7 @@ export async function syncAllProviders(force = true): Promise<{
   const updated: { id: string; title: string; price: number; stock: number }[] = [];
   for (const [id, p] of linked) {
     const cat = catalogues.get(String(p.provider || "custom"));
-    const sp = cat?.get(Number(p.supplierId));
+    const sp = cat?.get(String(p.supplierId));
     if (!sp) continue;
     const price = sellPrice(sp.price, Number(p.markup) || 130);
     const stock = sp.unlimited ? 9999 : Math.max(0, sp.stock);

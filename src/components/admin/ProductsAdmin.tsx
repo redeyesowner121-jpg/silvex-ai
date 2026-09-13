@@ -13,7 +13,7 @@ import { input, Stat, Empty, ImageField, emptyProduct, type OrderRow } from "@/c
 import { fetchSupplierCatalogue, fetchSupplierBalance, syncSupplier } from "@/lib/supplier.functions";
 import { broadcastProductEvent } from "@/lib/broadcast.functions";
 
-type SupItem = { id: number; name: string; price: number; stock: number; unlimited_stock?: boolean; description?: string };
+type SupItem = { id: string | number; name: string; price: number; stock: number; unlimited_stock?: boolean; description?: string };
 
 export function ProductsAdmin({ products }: { products: Product[] }) {
   const { db, notify, categories, config } = useStore();
@@ -77,7 +77,11 @@ export function ProductsAdmin({ products }: { products: Product[] }) {
     const data = {
       ...rest,
       price: Number(form.price),
-      supplierId: linked ? Number(supplierId) : null,
+      supplierId: linked
+        ? /^\d+$/.test(String(supplierId))
+          ? Number(supplierId)
+          : String(supplierId)
+        : null,
       markup: linked ? Number(markup) || 130 : null,
     };
     if (id) {
