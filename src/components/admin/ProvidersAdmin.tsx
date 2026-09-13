@@ -329,16 +329,24 @@ export function ProvidersAdmin({ products }: { products: Product[] }) {
                               {Number(p.price).toFixed(2)} · {p.supplierStock ?? 0} in stock
                             </p>
                           </div>
-                          <button
-                            onClick={() => toggleHidden(p)}
-                            className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-bold ${
-                              p.hidden
-                                ? "bg-muted text-muted-foreground"
-                                : "bg-emerald-500/10 text-emerald-600"
-                            }`}
-                          >
-                            {p.hidden ? "Hidden" : "Visible"}
-                          </button>
+                          <div className="flex shrink-0 gap-2">
+                            <button
+                              onClick={() => toggleHidden(p)}
+                              className={`rounded-lg px-3 py-1.5 text-xs font-bold ${
+                                p.hidden
+                                  ? "bg-muted text-muted-foreground"
+                                  : "bg-emerald-500/10 text-emerald-600"
+                              }`}
+                            >
+                              {p.hidden ? "Hidden" : "Visible"}
+                            </button>
+                            <button
+                              onClick={() => deleteItem(p)}
+                              className="rounded-lg bg-destructive/10 px-3 py-1.5 text-xs font-bold text-destructive"
+                            >
+                              Delete
+                            </button>
+                          </div>
                         </div>
                         <div className="mt-1 flex flex-wrap items-center gap-2">
                           <input
