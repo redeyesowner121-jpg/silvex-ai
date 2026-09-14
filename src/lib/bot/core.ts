@@ -233,12 +233,24 @@ export const EFFECTS: Record<string, string> = {
   poop: "5046589136895476101",
 };
 
-/** Which effect to play on new bot messages — admin choice, fire by default. */
+const EFFECT_IDS = Object.values(EFFECTS);
+let lastEffect = "";
+
+/** A different effect each time (unless the admin pinned one). */
+function randomEffect(): string {
+  const pool = EFFECT_IDS.filter((id) => id !== lastEffect);
+  const pick = pool[Math.floor(Math.random() * pool.length)] || EFFECT_IDS[0] || "";
+  lastEffect = pick;
+  return pick;
+}
+
+/** Which effect to play on new bot messages — random by default, admin can pin one. */
 export async function effectId(): Promise<string> {
   const c = await cfg();
-  const raw = String(c.messageEffect ?? "fire").trim();
+  const raw = String(c.messageEffect ?? "random").trim().toLowerCase();
   if (!raw || raw === "none" || raw === "off") return "";
-  return EFFECTS[raw.toLowerCase()] || (/^\d{6,}$/.test(raw) ? raw : EFFECTS["fire"] || "");
+  if (raw === "random" || raw === "mix" || raw === "auto") return randomEffect();
+  return EFFECTS[raw] || (/^\d{6,}$/.test(raw) ? raw : randomEffect());
 }
 
 export async function say(chatId: number, text: string, keyboard?: any) {
