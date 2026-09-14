@@ -58,7 +58,7 @@ export function SettingsAdmin({
     depositAddress: config.depositAddress ?? "",
     supportLink: config.supportLink ?? "",
     supportTelegram: config.supportTelegram ?? "",
-    messageEffect: config.messageEffect ?? "fire",
+    messageEffect: config.messageEffect ?? "random",
     minOrder: String(config.minOrder ?? 0),
     lowStockAlert: String((config as { lowStockAlert?: number }).lowStockAlert ?? 5),
     siteUrl: config.siteUrl ?? "",
