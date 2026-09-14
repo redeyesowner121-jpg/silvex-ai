@@ -256,6 +256,7 @@ export function SettingsAdmin({
           value={cfg.messageEffect}
           onChange={(e) => setCfg({ ...cfg, messageEffect: e.target.value })}
         >
+          <option value="random">Bot message effect: 🎲 Random (different each time)</option>
           <option value="fire">Bot message effect: 🔥 Fire</option>
           <option value="party">Bot message effect: 🎉 Party</option>
           <option value="heart">Bot message effect: ❤️ Heart</option>
