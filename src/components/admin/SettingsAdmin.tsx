@@ -58,7 +58,7 @@ export function SettingsAdmin({
     depositAddress: config.depositAddress ?? "",
     supportLink: config.supportLink ?? "",
     supportTelegram: config.supportTelegram ?? "",
-    messageEffect: config.messageEffect ?? "fire",
+    messageEffect: config.messageEffect ?? "random",
     minOrder: String(config.minOrder ?? 0),
     lowStockAlert: String((config as { lowStockAlert?: number }).lowStockAlert ?? 5),
     siteUrl: config.siteUrl ?? "",
@@ -256,6 +256,7 @@ export function SettingsAdmin({
           value={cfg.messageEffect}
           onChange={(e) => setCfg({ ...cfg, messageEffect: e.target.value })}
         >
+          <option value="random">Bot message effect: 🎲 Random (different each time)</option>
           <option value="fire">Bot message effect: 🔥 Fire</option>
           <option value="party">Bot message effect: 🎉 Party</option>
           <option value="heart">Bot message effect: ❤️ Heart</option>
