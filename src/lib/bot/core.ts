@@ -227,10 +227,8 @@ export const editTarget = new Map<number, number>();
 export const EFFECTS: Record<string, string> = {
   fire: "5104841245755180586",
   like: "5107584321108051014",
-  dislike: "5104858069142078462",
   heart: "5159385139981059251",
   party: "5046509860389126442",
-  poop: "5046589136895476101",
 };
 
 const EFFECT_IDS = Object.values(EFFECTS);
