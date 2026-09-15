@@ -48,6 +48,11 @@ export async function createPaymentLink(opts: {
   phone?: string;
   source: "web" | "telegram";
   siteUrl?: string;
+  /** When the payment is for one product, it is delivered right after it clears. */
+  productId?: string;
+  qty?: number;
+  /** Telegram chat that should receive the delivery. */
+  chatId?: number;
 }): Promise<LinkResult> {
   const conf = await razorpayConfig();
   if (!conf.keyId || !conf.keySecret) {
@@ -91,6 +96,9 @@ export async function createPaymentLink(opts: {
       source: opts.source,
       email,
       fee_inr: feeInr.toFixed(2),
+      pid: String(opts.productId || ""),
+      qty: String(Math.max(1, Math.floor(Number(opts.qty) || 1))),
+      chat: String(opts.chatId || ""),
     },
   };
 
@@ -126,6 +134,32 @@ export async function createPaymentLink(opts: {
     return { ok: false, error: desc || `Payment provider error (${res.status})` };
   }
   if (!json?.short_url) return { ok: false, error: "Payment provider did not return a link." };
+
+  // Show the payment straight away as "Pending" in the wallet history; it turns
+  // into "Paid" the moment the money is confirmed.
+  const linkId = String(json.id);
+  const { dbPut } = await import("./telegram.server");
+  await dbPut(`users/${opts.uid}/history/rzp_${linkId.replace(/[.#$/[\]]/g, "_")}`, {
+    type: "Deposit",
+    status: "Pending",
+    amount: usd,
+    desc: opts.productId
+      ? `Card/UPI payment for an order (₹${inr.toFixed(0)}) — waiting for confirmation`
+      : `Card/UPI payment (₹${inr.toFixed(0)}) — waiting for confirmation`,
+    linkId,
+    date: new Date().toISOString(),
+  }).catch(() => undefined);
+  await dbPut(`razorpayLinks/${linkId.replace(/[.#$/[\]]/g, "_")}`, {
+    uid: opts.uid,
+    usd,
+    inr,
+    productId: opts.productId || "",
+    qty: Math.max(1, Math.floor(Number(opts.qty) || 1)),
+    chatId: Number(opts.chatId || 0),
+    status: "Pending",
+    date: new Date().toISOString(),
+  }).catch(() => undefined);
+
   return {
     ok: true,
     url: String(json.short_url),
@@ -177,8 +211,12 @@ export async function creditDeposit(opts: {
   paymentId: string;
   linkId?: string;
   email?: string;
+  /** Product to hand over right after the money is confirmed. */
+  productId?: string;
+  qty?: number;
+  chatId?: number;
 }): Promise<{ credited: boolean; balance: number }> {
-  const { dbGet, dbPut, dbPush, notifyOwners, money, tg } = await import("./telegram.server");
+  const { dbGet, dbPut, dbPatch, dbPush, notifyOwners, money, tg } = await import("./telegram.server");
   const current = Number((await dbGet<number>(`users/${opts.uid}/wallet`)) || 0);
   if (!opts.uid || !opts.paymentId || !(opts.usd > 0)) return { credited: false, balance: current };
 
@@ -204,12 +242,22 @@ export async function creditDeposit(opts: {
   await Promise.all(keys.map((k) => dbPut(`razorpayPayments/${k}`, record)));
   const balance = Math.round((current + opts.usd) * 100) / 100;
   await dbPut(`users/${opts.uid}/wallet`, balance);
-  await dbPush(`users/${opts.uid}/history`, {
+
+  // Turn the earlier "Pending" line into a paid one, or add a fresh paid line.
+  const entry = {
     type: "Deposit",
+    status: "Paid",
     amount: opts.usd,
     desc: `Card/UPI payment (₹${opts.inr.toFixed(0)})`,
+    paymentId: opts.paymentId,
+    linkId: opts.linkId || "",
     date,
-  });
+  };
+  const safeLink = String(opts.linkId || "").replace(/[.#$/[\]]/g, "_");
+  if (safeLink) await dbPut(`users/${opts.uid}/history/rzp_${safeLink}`, entry);
+  else await dbPush(`users/${opts.uid}/history`, entry);
+  if (safeLink) await dbPatch(`razorpayLinks/${safeLink}`, { status: "Paid", paidAt: date });
+
 
   const tgId = Number(opts.uid.startsWith("tg_") ? opts.uid.slice(3) : 0);
   if (tgId > 0) {
@@ -222,6 +270,24 @@ export async function creditDeposit(opts: {
   await notifyOwners(
     `💳 Deposit credited\nUser: ${opts.uid}\nAmount: ${money(opts.usd)} (₹${opts.inr.toFixed(0)})\nPayment: ${opts.paymentId}`,
   ).catch(() => undefined);
+
+  // The payment was made for one product: hand it over straight away.
+  const deliverChat = Number(opts.chatId || tgId || 0);
+  if (opts.productId && deliverChat > 0) {
+    try {
+      const { buy } = await import("@/lib/bot/shop");
+      await buy(deliverChat, opts.productId, Math.max(1, Math.floor(Number(opts.qty) || 1)));
+      if (safeLink) await dbPatch(`razorpayLinks/${safeLink}`, { status: "Delivered" });
+      if (safeLink)
+        await dbPatch(`users/${opts.uid}/history/rzp_${safeLink}`, {
+          desc: `Card/UPI payment (₹${opts.inr.toFixed(0)}) — order delivered`,
+        });
+    } catch {
+      await notifyOwners(
+        `⚠️ Paid order needs manual delivery\nUser: ${opts.uid}\nProduct: ${opts.productId} x${opts.qty || 1}`,
+      ).catch(() => undefined);
+    }
+  }
   return { credited: true, balance };
 }
 
@@ -261,7 +327,17 @@ export async function settlePaymentLink(
     (p: any) => String(p?.status || "") === "captured" || Number(p?.amount || 0) > 0,
   );
   const paymentId = String(captured?.payment_id || captured?.id || link);
-  const out = await creditDeposit({ uid, usd, inr, paymentId, linkId: link, email: notes["email"] || "" });
+  const out = await creditDeposit({
+    uid,
+    usd,
+    inr,
+    paymentId,
+    linkId: link,
+    email: notes["email"] || "",
+    productId: String(notes["pid"] || ""),
+    qty: Number(notes["qty"] || 1),
+    chatId: Number(notes["chat"] || 0),
+  });
   return out.credited
     ? { status: "paid", message: "Payment received.", balance: out.balance }
     : { status: "paid", message: "This payment was already added to your wallet.", balance: out.balance };

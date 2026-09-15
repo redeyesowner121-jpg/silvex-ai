@@ -33,7 +33,12 @@ export async function walletHistory(chatId: number) {
   const h = (await dbGet<Record<string, any>>(`users/${uid}/history`)) || {};
   const list = Object.values(h).slice(-10).reverse();
   const text = list.length
-    ? list.map((x: any) => `• ${x.type} ${money(x.amount)} — ${x.desc || ""}`).join("\n")
+    ? list
+        .map(
+          (x: any) =>
+            `• ${x.type} ${money(x.amount)}${x.status ? ` [${x.status}]` : ""} — ${x.desc || ""}`,
+        )
+        .join("\n")
     : "No transactions yet.";
   await say(chatId, `📜 <b>Wallet history</b>\n\n${text}`, backHome);
 }
@@ -91,6 +96,53 @@ export async function createCardLink(chatId: number, text: string) {
   return say(
     chatId,
     `💳 <b>Payment link ready</b>\n\nFor: wallet top-up of ${money(usd)}\nAmount: ₹${res.baseInr.toFixed(2)}\nVerification fee (${res.feePercent}%): ₹${res.feeInr.toFixed(2)}\n<b>Total to pay: ₹${res.inr.toFixed(2)}</b>\n\nPay with any card, UPI or netbanking. Your balance is topped up on its own right after the payment.`,
+    {
+      inline_keyboard: [
+        [{ text: "💳 Pay now", url: res.url }],
+        [{ text: "✅ I have paid", callback_data: `pchk:${res.id}` }],
+        [{ text: "🏠 Home", callback_data: "home" }],
+      ],
+    },
+  );
+}
+
+/**
+ * Card / UPI payment for one product: the amount that is still missing is
+ * charged, and the product is delivered by itself once the payment clears.
+ */
+export async function payProductByCard(chatId: number, productId: string, qty: number) {
+  const uid = await ensureUser(chatId);
+  const [p, u] = await Promise.all([
+    dbGet<any>(`products/${productId}`),
+    dbGet<any>(`users/${uid}`),
+  ]);
+  if (!p) return say(chatId, "Product not found.", backHome);
+  const count = Math.max(1, Math.floor(Number(qty) || 1));
+  const total = Math.round(Number(p.price || 0) * count * 100) / 100;
+  const wallet = Number(u?.wallet || 0);
+  const need = Math.round(Math.max(total - wallet, 0) * 100) / 100;
+  if (need <= 0) {
+    const { buy } = await import("./shop");
+    return buy(chatId, productId, count);
+  }
+  const { createPaymentLink } = await import("@/lib/razorpay.server");
+  const res = await createPaymentLink({
+    usd: need,
+    uid,
+    name: u?.name || "",
+    email: u?.email || "",
+    phone: u?.phone || "",
+    source: "telegram",
+    siteUrl: siteUrl(),
+    productId,
+    qty: count,
+    chatId,
+  });
+  if (!res.ok) return say(chatId, `❌ ${res.error}`, backHome);
+  await setState(chatId, null);
+  return say(
+    chatId,
+    `💳 <b>Payment link ready</b>\n\nFor: ${p.title} × ${count}\nOrder total: ${money(total)}\nTo pay now: ${money(need)}\nAmount: ₹${res.baseInr.toFixed(2)}\nVerification fee (${res.feePercent}%): ₹${res.feeInr.toFixed(2)}\n<b>Total to pay: ₹${res.inr.toFixed(2)}</b>\n\nOnce the payment is confirmed, your order is delivered here automatically.`,
     {
       inline_keyboard: [
         [{ text: "💳 Pay now", url: res.url }],
