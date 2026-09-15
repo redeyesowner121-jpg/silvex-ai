@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ref, remove, update } from "firebase/database";
 import { useStore, type Product } from "@/context/StoreContext";
-import { input, Empty } from "@/components/admin/shared";
+import { input, Empty, ImageField } from "@/components/admin/shared";
 import {
   listProviders,
   saveProvider,
@@ -153,6 +153,13 @@ export function ProvidersAdmin({ products }: { products: Product[] }) {
     notify("Name and category saved");
   }
 
+
+  /** Set or remove the photo shown for one API product (kept on future imports). */
+  async function saveImage(p: Product, logo: string) {
+    if (!db) return;
+    await update(ref(db, `products/${p.id}`), { logo });
+    notify(logo ? "Photo saved" : "Photo removed");
+  }
 
   async function saveMarkup(p: Product) {
     if (!db) return;
@@ -398,6 +405,13 @@ export function ProvidersAdmin({ products }: { products: Product[] }) {
                           >
                             Save name
                           </button>
+                        </div>
+                        <div className="mt-1">
+                          <ImageField
+                            label="Product photo"
+                            value={String((p as { logo?: string }).logo || "")}
+                            onChange={(v) => saveImage(p, v)}
+                          />
                         </div>
                         <div className="mt-1 flex items-center gap-2">
                           <span className="text-[10px] font-bold text-muted-foreground">
