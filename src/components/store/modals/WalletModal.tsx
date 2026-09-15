@@ -261,14 +261,23 @@ export function WalletModal() {
                 {paying ? "Creating payment link…" : "Get payment link"}
               </button>
               {payLink ? (
-                <a
-                  href={payLink}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="mt-2 block break-all text-center text-[11px] font-bold text-primary underline"
-                >
-                  Open payment page
-                </a>
+                <>
+                  <a
+                    href={payLink}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-2 block break-all text-center text-[11px] font-bold text-primary underline"
+                  >
+                    Open payment page
+                  </a>
+                  <button
+                    onClick={() => void confirmPayment()}
+                    disabled={confirming}
+                    className="mt-2 w-full rounded-xl bg-emerald-500 py-3 font-bold text-white disabled:opacity-60"
+                  >
+                    {confirming ? "Checking payment…" : "✅ I have paid"}
+                  </button>
+                </>
               ) : null}
             </div>
           ) : null}
