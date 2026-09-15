@@ -211,6 +211,10 @@ export async function creditDeposit(opts: {
   paymentId: string;
   linkId?: string;
   email?: string;
+  /** Product to hand over right after the money is confirmed. */
+  productId?: string;
+  qty?: number;
+  chatId?: number;
 }): Promise<{ credited: boolean; balance: number }> {
   const { dbGet, dbPut, dbPush, notifyOwners, money, tg } = await import("./telegram.server");
   const current = Number((await dbGet<number>(`users/${opts.uid}/wallet`)) || 0);
