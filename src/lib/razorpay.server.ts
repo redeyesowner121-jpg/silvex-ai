@@ -90,7 +90,7 @@ export async function createPaymentLink(opts: {
     amount: totalPaise,
     currency: "INR",
     accept_partial: false,
-    description: `${conf.siteName}: $${usd.toFixed(2)} wallet top-up (incl ${conf.feePercent}% fee)`.slice(0, 60),
+    description: `${conf.siteName}: $${usd.toFixed(2)} wallet top-up (incl ${totalPct}% fee)`.slice(0, 60),
     // Keep it unique but short: long user ids used to get cut off, which made
     // Razorpay reject every link after the first one.
     reference_id: `dep_${String(opts.uid).slice(-12)}_${Date.now().toString(36)}${Math.random()
