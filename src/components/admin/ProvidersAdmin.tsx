@@ -399,6 +399,13 @@ export function ProvidersAdmin({ products }: { products: Product[] }) {
                             Save name
                           </button>
                         </div>
+                        <div className="mt-1">
+                          <ImageField
+                            label="Product photo"
+                            value={String((p as { logo?: string }).logo || "")}
+                            onChange={(v) => saveImage(p, v)}
+                          />
+                        </div>
                         <div className="mt-1 flex items-center gap-2">
                           <span className="text-[10px] font-bold text-muted-foreground">
                             Profit %
