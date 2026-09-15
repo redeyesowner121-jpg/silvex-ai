@@ -30,6 +30,21 @@ export const createDepositLink = createServerFn({ method: "POST" })
     return createPaymentLink({ ...data, source: "web" });
   });
 
+/**
+ * Asks the payment provider whether one link was really paid and, if so,
+ * adds the balance. Safe to call many times: the money is only added once.
+ */
+export const checkDepositLink = createServerFn({ method: "POST" })
+  .inputValidator((input: { linkId: string }) => {
+    const linkId = String(input.linkId || "").trim();
+    if (!linkId) throw new Error("Missing payment link.");
+    return { linkId };
+  })
+  .handler(async ({ data }) => {
+    const { settlePaymentLink } = await import("./razorpay.server");
+    return settlePaymentLink(data.linkId);
+  });
+
 /** Tells the website whether card/UPI deposits are switched on, and the rate. */
 export const razorpayStatus = createServerFn({ method: "GET" }).handler(async () => {
   const { razorpayConfig } = await import("./razorpay.server");
