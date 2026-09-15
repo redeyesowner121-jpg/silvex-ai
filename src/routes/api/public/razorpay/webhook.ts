@@ -59,6 +59,9 @@ export const Route = createFileRoute("/api/public/razorpay/webhook")({
           paymentId,
           linkId: String(link.id || ""),
           email: notes["email"] || "",
+          productId: String(notes["pid"] || ""),
+          qty: Number(notes["qty"] || 1),
+          chatId: Number(notes["chat"] || 0),
         });
 
         return new Response("ok");
