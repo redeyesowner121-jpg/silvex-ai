@@ -133,6 +133,7 @@ export function SettingsAdmin({
       razorpayWebhookSecret: cfg.razorpayWebhookSecret.trim(),
       inrPerDollar: Number(cfg.inrPerDollar || 100),
       razorpayFeePercent: Number(cfg.razorpayFeePercent || 0),
+      razorpayVerifyFeePercent: Number(cfg.razorpayVerifyFeePercent || 0),
       ...extra,
     });
     notify("Settings saved");
