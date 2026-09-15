@@ -40,6 +40,8 @@ export function WalletModal() {
   const [payAmount, setPayAmount] = useState("");
   const [paying, setPaying] = useState(false);
   const [payLink, setPayLink] = useState("");
+  const [payLinkId, setPayLinkId] = useState("");
+  const [confirming, setConfirming] = useState(false);
   const [history, setHistory] = useState<
     Array<{ id: string; type: string; amount: number; desc: string; date: string; status?: string }>
   >([]);
