@@ -134,6 +134,32 @@ export async function createPaymentLink(opts: {
     return { ok: false, error: desc || `Payment provider error (${res.status})` };
   }
   if (!json?.short_url) return { ok: false, error: "Payment provider did not return a link." };
+
+  // Show the payment straight away as "Pending" in the wallet history; it turns
+  // into "Paid" the moment the money is confirmed.
+  const linkId = String(json.id);
+  const { dbPut } = await import("./telegram.server");
+  await dbPut(`users/${opts.uid}/history/rzp_${linkId.replace(/[.#$/[\]]/g, "_")}`, {
+    type: "Deposit",
+    status: "Pending",
+    amount: usd,
+    desc: opts.productId
+      ? `Card/UPI payment for an order (₹${inr.toFixed(0)}) — waiting for confirmation`
+      : `Card/UPI payment (₹${inr.toFixed(0)}) — waiting for confirmation`,
+    linkId,
+    date: new Date().toISOString(),
+  }).catch(() => undefined);
+  await dbPut(`razorpayLinks/${linkId.replace(/[.#$/[\]]/g, "_")}`, {
+    uid: opts.uid,
+    usd,
+    inr,
+    productId: opts.productId || "",
+    qty: Math.max(1, Math.floor(Number(opts.qty) || 1)),
+    chatId: Number(opts.chatId || 0),
+    status: "Pending",
+    date: new Date().toISOString(),
+  }).catch(() => undefined);
+
   return {
     ok: true,
     url: String(json.short_url),
