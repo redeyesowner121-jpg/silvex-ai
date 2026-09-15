@@ -76,6 +76,7 @@ export function SettingsAdmin({
     razorpayWebhookSecret: config.razorpayWebhookSecret ?? "",
     inrPerDollar: String(config.inrPerDollar ?? 100),
     razorpayFeePercent: String(config.razorpayFeePercent ?? 3),
+    razorpayVerifyFeePercent: String(config.razorpayVerifyFeePercent ?? 1),
 
   });
   const [cats, setCats] = useState<Category[]>(liveCategories);
