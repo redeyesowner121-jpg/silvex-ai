@@ -3,7 +3,7 @@
 import { dbGet, dbPatch, dbPut } from "@/lib/telegram.server";
 import { resetAllEmojis, syncEmojiImages } from "@/lib/emoji.server";
 import { adminBack, askEmail, cfg, forceJoinBlocked, invalidateProducts, isBotAdmin, say, saveConfig, setState, welcome } from "@/lib/bot/core";
-import { askPayMethod, askQty, buy, checkCardPayment, confirmWalletPay, sendApiKey, sendOrders, sendProduct, sendProducts, sendProfile, sendRefer, sendReviews, sendSupport, sendWallet, startCardDeposit, startDeposit, startWithdraw, walletHistory } from "@/lib/bot/shop";
+import { askPayMethod, askQty, buy, checkCardPayment, payProductByCard, confirmWalletPay, sendApiKey, sendOrders, sendProduct, sendProducts, sendProfile, sendRefer, sendReviews, sendSupport, sendWallet, startCardDeposit, startDeposit, startWithdraw, walletHistory } from "@/lib/bot/shop";
 import { adminAskDelivery, adminCancelOrder, adminDecideRequest, adminHome, adminOrder, adminOrders, adminProduct, adminProducts, adminRequests, adminSettings, adminStats, adminUser, adminUsers, broadcast } from "@/lib/bot/admin";
 import { clearProductEmoji, emojiAsk, emojiGroup, emojiHome, emojiList, emojiProducts, emojiSlotPick, removeRule } from "@/lib/bot/emoji-ui";
 
@@ -212,6 +212,10 @@ export async function handleCallback(chatId: number, data: string) {
   if (data.startsWith("bgo:")) {
     const [, pid, n] = data.split(":");
     return buy(chatId, String(pid), Number(n) || 1);
+  }
+  if (data.startsWith("pbc:")) {
+    const [, pid, n] = data.split(":");
+    return payProductByCard(chatId, String(pid), Number(n) || 1);
   }
   if (data.startsWith("pchk:")) return checkCardPayment(chatId, data.slice(5));
   if (data.startsWith("b:")) return askQty(chatId, data.slice(2));

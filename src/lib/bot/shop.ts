@@ -13,6 +13,7 @@ export {
   startDeposit,
   startCardDeposit,
   createCardLink,
+  payProductByCard,
   checkCardPayment,
   startWithdraw,
   sendProfile,
@@ -148,7 +149,7 @@ export async function askPayMethod(chatId: number, productId: string, qty: numbe
     [{ text: `💰 Wallet (${money(wallet)})`, callback_data: `bcf:${productId}:${qty}` }],
   ];
   if (String(c.razorpayKeyId || "").trim())
-    rows.push([{ text: "💳 Card / UPI", callback_data: "depcard" }]);
+    rows.push([{ text: "💳 Card / UPI", callback_data: `pbc:${productId}:${qty}` }]);
   rows.push([{ text: "🪙 Crypto (USDT)", callback_data: "dep" }]);
   rows.push([{ text: "⬅️ Back", callback_data: `bq:${productId}:${qty}` }]);
   await say(
