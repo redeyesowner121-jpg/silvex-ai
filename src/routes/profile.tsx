@@ -167,6 +167,13 @@ function ProfilePage() {
           <span>›</span>
         </button>
         <Link
+          to="/history"
+          className="flex w-full justify-between rounded-xl border border-border p-3.5 text-sm font-bold"
+        >
+          <span><Emo k="web.wallet" /> Wallet history</span>
+          <span>›</span>
+        </Link>
+        <Link
           to="/api-key"
           className="flex w-full justify-between rounded-xl border border-border p-3.5 text-sm font-bold"
         >
