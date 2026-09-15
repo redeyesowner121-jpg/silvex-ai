@@ -154,6 +154,13 @@ export function ProvidersAdmin({ products }: { products: Product[] }) {
   }
 
 
+  /** Set or remove the photo shown for one API product (kept on future imports). */
+  async function saveImage(p: Product, logo: string) {
+    if (!db) return;
+    await update(ref(db, `products/${p.id}`), { logo });
+    notify(logo ? "Photo saved" : "Photo removed");
+  }
+
   async function saveMarkup(p: Product) {
     if (!db) return;
     const pct = Number(markupRef.current[p.id] ?? p.markup ?? 130);
