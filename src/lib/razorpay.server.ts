@@ -166,30 +166,42 @@ export async function verifyWebhook(rawBody: string, signature: string): Promise
 
 /**
  * Adds a paid amount to a wallet exactly once and tells the buyer.
- * Used by the Razorpay callback and by the "I have paid" check in the bot.
+ * Every id Razorpay gives us for the same payment (payment id and payment
+ * link id) is remembered, so the same rupee can never be counted twice even
+ * when Razorpay sends several notifications for one payment.
  */
 export async function creditDeposit(opts: {
   uid: string;
   usd: number;
   inr: number;
   paymentId: string;
+  linkId?: string;
   email?: string;
 }): Promise<{ credited: boolean; balance: number }> {
   const { dbGet, dbPut, dbPush, notifyOwners, money, tg } = await import("./telegram.server");
   const current = Number((await dbGet<number>(`users/${opts.uid}/wallet`)) || 0);
   if (!opts.uid || !opts.paymentId || !(opts.usd > 0)) return { credited: false, balance: current };
-  const seen = await dbGet<any>(`razorpayPayments/${opts.paymentId}`).catch(() => null);
-  if (seen) return { credited: false, balance: current };
+
+  const keys = [...new Set([opts.paymentId, opts.linkId || ""].filter(Boolean))];
+  const seen = await Promise.all(
+    keys.map((k) => dbGet<any>(`razorpayPayments/${k}`).catch(() => null)),
+  );
+  if (seen.some(Boolean)) return { credited: false, balance: current };
 
   const date = new Date().toISOString();
-  await dbPut(`razorpayPayments/${opts.paymentId}`, {
+  const record = {
     uid: opts.uid,
     usd: opts.usd,
     inr: opts.inr,
     status: "Credited",
     email: opts.email || "",
+    paymentId: opts.paymentId,
+    linkId: opts.linkId || "",
     date,
-  });
+  };
+  // Claim every id first, so a second notification arriving at the same time
+  // sees the marker and stops.
+  await Promise.all(keys.map((k) => dbPut(`razorpayPayments/${k}`, record)));
   const balance = Math.round((current + opts.usd) * 100) / 100;
   await dbPut(`users/${opts.uid}/wallet`, balance);
   await dbPush(`users/${opts.uid}/history`, {
