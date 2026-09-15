@@ -175,9 +175,15 @@ export function SettingsAdmin({
         />
         <input
           className={input}
-          placeholder="Verification fee % added to the payment (default 3)"
+          placeholder="Razorpay + GST fee % (default 3)"
           value={cfg.razorpayFeePercent}
           onChange={(e) => setCfg({ ...cfg, razorpayFeePercent: e.target.value })}
+        />
+        <input
+          className={input}
+          placeholder="Auto verification fee % (default 1, a random decimal is added)"
+          value={cfg.razorpayVerifyFeePercent}
+          onChange={(e) => setCfg({ ...cfg, razorpayVerifyFeePercent: e.target.value })}
         />
 
         <div className="rounded-xl border border-dashed border-border bg-muted/50 p-3">
