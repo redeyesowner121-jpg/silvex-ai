@@ -321,9 +321,12 @@ export function WalletModal() {
                 key={h.id}
                 className="flex items-center justify-between rounded-xl border border-border p-3"
               >
-                <div>
+                <div className="min-w-0">
                   <p className="text-xs font-bold">{h.type}</p>
-                  <p className="text-[11px] text-muted-foreground">{h.desc}</p>
+                  <p className="truncate text-[11px] text-muted-foreground">{h.desc}</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {h.date ? new Date(h.date).toLocaleString() : ""}
+                  </p>
                 </div>
                 <span className="text-sm font-black">${h.amount}</span>
               </div>
