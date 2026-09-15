@@ -33,7 +33,12 @@ export async function walletHistory(chatId: number) {
   const h = (await dbGet<Record<string, any>>(`users/${uid}/history`)) || {};
   const list = Object.values(h).slice(-10).reverse();
   const text = list.length
-    ? list.map((x: any) => `• ${x.type} ${money(x.amount)} — ${x.desc || ""}`).join("\n")
+    ? list
+        .map(
+          (x: any) =>
+            `• ${x.type} ${money(x.amount)}${x.status ? ` [${x.status}]` : ""} — ${x.desc || ""}`,
+        )
+        .join("\n")
     : "No transactions yet.";
   await say(chatId, `📜 <b>Wallet history</b>\n\n${text}`, backHome);
 }

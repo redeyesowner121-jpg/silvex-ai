@@ -23,7 +23,7 @@ export const Route = createFileRoute("/history")({
   component: HistoryPage,
 });
 
-type Entry = { id: string; type: string; amount: number; desc: string; date: string };
+type Entry = { id: string; type: string; amount: number; desc: string; date: string; status?: string };
 
 function HistoryPage() {
   const { db, user, wallet, openModal } = useStore();
@@ -73,7 +73,20 @@ function HistoryPage() {
               className="flex items-center justify-between gap-3 rounded-xl border border-border p-3"
             >
               <div className="min-w-0">
-                <p className="text-xs font-bold">{h.type}</p>
+                <p className="flex items-center gap-2 text-xs font-bold">
+                  {h.type}
+                  {h.status ? (
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                        h.status === "Paid"
+                          ? "bg-primary/10 text-primary"
+                          : "bg-muted text-muted-foreground"
+                      }`}
+                    >
+                      {h.status}
+                    </span>
+                  ) : null}
+                </p>
                 {h.desc ? (
                   <p className="truncate text-[11px] text-muted-foreground">{h.desc}</p>
                 ) : null}
