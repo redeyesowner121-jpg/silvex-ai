@@ -270,6 +270,24 @@ export async function creditDeposit(opts: {
   await notifyOwners(
     `💳 Deposit credited\nUser: ${opts.uid}\nAmount: ${money(opts.usd)} (₹${opts.inr.toFixed(0)})\nPayment: ${opts.paymentId}`,
   ).catch(() => undefined);
+
+  // The payment was made for one product: hand it over straight away.
+  const deliverChat = Number(opts.chatId || tgId || 0);
+  if (opts.productId && deliverChat > 0) {
+    try {
+      const { buy } = await import("@/lib/bot/shop");
+      await buy(deliverChat, opts.productId, Math.max(1, Math.floor(Number(opts.qty) || 1)));
+      if (safeLink) await dbPatch(`razorpayLinks/${safeLink}`, { status: "Delivered" });
+      if (safeLink)
+        await dbPatch(`users/${opts.uid}/history/rzp_${safeLink}`, {
+          desc: `Card/UPI payment (₹${opts.inr.toFixed(0)}) — order delivered`,
+        });
+    } catch {
+      await notifyOwners(
+        `⚠️ Paid order needs manual delivery\nUser: ${opts.uid}\nProduct: ${opts.productId} x${opts.qty || 1}`,
+      ).catch(() => undefined);
+    }
+  }
   return { credited: true, balance };
 }
 
