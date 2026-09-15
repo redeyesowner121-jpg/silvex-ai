@@ -44,6 +44,7 @@ export function SettingsAdmin({
     razorpayWebhookSecret?: string;
     inrPerDollar?: number;
     razorpayFeePercent?: number;
+    razorpayVerifyFeePercent?: number;
 
   };
   banner: { title?: string; desc?: string; link?: string };
