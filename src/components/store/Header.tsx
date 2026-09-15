@@ -10,8 +10,16 @@ export function Header() {
   return (
     <header className="glass sticky top-0 z-40">
       <div className="mx-auto flex h-16 w-full max-w-md items-center justify-between px-4 md:max-w-5xl md:px-8">
-        <Link to="/" className="text-lg font-black tracking-tight">
-          {first} <span className="text-primary">{rest.join(" ")}</span>
+        <Link to="/" className="flex items-center gap-2 text-lg font-black tracking-tight">
+          <img
+            src={logoAsset.url}
+            alt="Silvex Ai logo"
+            decoding="async"
+            className="h-10 w-10 rounded-xl border border-primary/40 object-cover shadow-sm"
+          />
+          <span>
+            {first} <span className="text-primary">{rest.join(" ")}</span>
+          </span>
         </Link>
 
         <div className="flex items-center gap-3">
@@ -57,12 +65,6 @@ export function Header() {
             </button>
           )}
 
-          <img
-            src={logoAsset.url}
-            alt="Silvex Ai logo"
-            decoding="async"
-            className="h-10 w-10 rounded-xl border border-primary/40 object-cover shadow-sm"
-          />
         </div>
       </div>
     </header>
