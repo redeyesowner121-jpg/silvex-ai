@@ -33,8 +33,15 @@ export const Route = createFileRoute("/api/public/razorpay/webhook")({
         const link = body?.payload?.payment_link?.entity ?? {};
         const notes = { ...(link.notes || {}), ...(payment.notes || {}) } as Record<string, string>;
         const uid = String(notes["uid"] || "").trim();
-        const paymentId = String(payment.id || link.id || "");
-        const inrPaid = Number(payment.amount ?? link.amount_paid ?? 0) / 100;
+
+        // Only real, captured money counts. Without a payment id we cannot tell
+        // one payment from another, so we never credit on a link id alone.
+        const paymentId = String(payment.id || "");
+        const status = String(payment.status || "");
+        const inrPaid = Number(payment.amount ?? 0) / 100;
+        if (!paymentId || (status && status !== "captured") || !(inrPaid > 0)) {
+          return new Response("ignored");
+        }
 
         const { razorpayConfig, creditDeposit } = await import("@/lib/razorpay.server");
         const conf = await razorpayConfig();
@@ -43,9 +50,16 @@ export const Route = createFileRoute("/api/public/razorpay/webhook")({
             ? Number(notes["usd"])
             : Math.round((inrPaid / conf.inrPerDollar) * 100) / 100;
 
-        if (!uid || !paymentId || !(usd > 0)) return new Response("ignored");
+        if (!uid || !(usd > 0)) return new Response("ignored");
 
-        await creditDeposit({ uid, usd, inr: inrPaid, paymentId, email: notes["email"] || "" });
+        await creditDeposit({
+          uid,
+          usd,
+          inr: inrPaid,
+          paymentId,
+          linkId: String(link.id || ""),
+          email: notes["email"] || "",
+        });
 
         return new Response("ok");
       },

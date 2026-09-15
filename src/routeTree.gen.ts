@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as ApiKeyRouteImport } from './routes/api-key'
 import { Route as CartRouteImport } from './routes/cart'
+import { Route as HistoryRouteImport } from './routes/history'
 import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as ProductsRouteImport } from './routes/products'
 import { Route as ProfileRouteImport } from './routes/profile'
@@ -38,6 +39,11 @@ const ApiKeyRoute = ApiKeyRouteImport.update({
 const CartRoute = CartRouteImport.update({
   id: '/cart',
   path: '/cart',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HistoryRoute = HistoryRouteImport.update({
+  id: '/history',
+  path: '/history',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OrdersRoute = OrdersRouteImport.update({
@@ -78,6 +84,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/api-key': typeof ApiKeyRoute
   '/cart': typeof CartRoute
+  '/history': typeof HistoryRoute
   '/orders': typeof OrdersRoute
   '/products': typeof ProductsRoute
   '/profile': typeof ProfileRoute
@@ -90,6 +97,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/api-key': typeof ApiKeyRoute
   '/cart': typeof CartRoute
+  '/history': typeof HistoryRoute
   '/orders': typeof OrdersRoute
   '/products': typeof ProductsRoute
   '/profile': typeof ProfileRoute
@@ -103,6 +111,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/api-key': typeof ApiKeyRoute
   '/cart': typeof CartRoute
+  '/history': typeof HistoryRoute
   '/orders': typeof OrdersRoute
   '/products': typeof ProductsRoute
   '/profile': typeof ProfileRoute
@@ -117,6 +126,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/api-key'
     | '/cart'
+    | '/history'
     | '/orders'
     | '/products'
     | '/profile'
@@ -129,6 +139,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/api-key'
     | '/cart'
+    | '/history'
     | '/orders'
     | '/products'
     | '/profile'
@@ -141,6 +152,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/api-key'
     | '/cart'
+    | '/history'
     | '/orders'
     | '/products'
     | '/profile'
@@ -154,6 +166,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   ApiKeyRoute: typeof ApiKeyRoute
   CartRoute: typeof CartRoute
+  HistoryRoute: typeof HistoryRoute
   OrdersRoute: typeof OrdersRoute
   ProductsRoute: typeof ProductsRoute
   ProfileRoute: typeof ProfileRoute
@@ -190,6 +203,13 @@ declare module '@tanstack/react-router' {
       path: '/cart'
       fullPath: '/cart'
       preLoaderRoute: typeof CartRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/history': {
+      id: '/history'
+      path: '/history'
+      fullPath: '/history'
+      preLoaderRoute: typeof HistoryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/orders': {
@@ -242,6 +262,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   ApiKeyRoute: ApiKeyRoute,
   CartRoute: CartRoute,
+  HistoryRoute: HistoryRoute,
   OrdersRoute: OrdersRoute,
   ProductsRoute: ProductsRoute,
   ProfileRoute: ProfileRoute,

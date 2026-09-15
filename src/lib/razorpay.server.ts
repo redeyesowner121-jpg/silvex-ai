@@ -166,30 +166,42 @@ export async function verifyWebhook(rawBody: string, signature: string): Promise
 
 /**
  * Adds a paid amount to a wallet exactly once and tells the buyer.
- * Used by the Razorpay callback and by the "I have paid" check in the bot.
+ * Every id Razorpay gives us for the same payment (payment id and payment
+ * link id) is remembered, so the same rupee can never be counted twice even
+ * when Razorpay sends several notifications for one payment.
  */
 export async function creditDeposit(opts: {
   uid: string;
   usd: number;
   inr: number;
   paymentId: string;
+  linkId?: string;
   email?: string;
 }): Promise<{ credited: boolean; balance: number }> {
   const { dbGet, dbPut, dbPush, notifyOwners, money, tg } = await import("./telegram.server");
   const current = Number((await dbGet<number>(`users/${opts.uid}/wallet`)) || 0);
   if (!opts.uid || !opts.paymentId || !(opts.usd > 0)) return { credited: false, balance: current };
-  const seen = await dbGet<any>(`razorpayPayments/${opts.paymentId}`).catch(() => null);
-  if (seen) return { credited: false, balance: current };
+
+  const keys = [...new Set([opts.paymentId, opts.linkId || ""].filter(Boolean))];
+  const seen = await Promise.all(
+    keys.map((k) => dbGet<any>(`razorpayPayments/${k}`).catch(() => null)),
+  );
+  if (seen.some(Boolean)) return { credited: false, balance: current };
 
   const date = new Date().toISOString();
-  await dbPut(`razorpayPayments/${opts.paymentId}`, {
+  const record = {
     uid: opts.uid,
     usd: opts.usd,
     inr: opts.inr,
     status: "Credited",
     email: opts.email || "",
+    paymentId: opts.paymentId,
+    linkId: opts.linkId || "",
     date,
-  });
+  };
+  // Claim every id first, so a second notification arriving at the same time
+  // sees the marker and stops.
+  await Promise.all(keys.map((k) => dbPut(`razorpayPayments/${k}`, record)));
   const balance = Math.round((current + opts.usd) * 100) / 100;
   await dbPut(`users/${opts.uid}/wallet`, balance);
   await dbPush(`users/${opts.uid}/history`, {
@@ -234,16 +246,22 @@ export async function settlePaymentLink(
   const json = (await res.json().catch(() => ({}))) as any;
   if (!res.ok) return { status: "error", message: String(json?.error?.description || `Provider error (${res.status})`) };
 
-  const paid = String(json?.status || "") === "paid" || Number(json?.amount_paid || 0) > 0;
+  // Only a link Razorpay itself marks as paid, with money really received.
+  const amountPaid = Number(json?.amount_paid || 0);
+  const paid = String(json?.status || "") === "paid" && amountPaid > 0;
   if (!paid) return { status: "pending", message: "We have not received this payment yet." };
 
   const notes = (json?.notes || {}) as Record<string, string>;
-  const inr = Number(json?.amount_paid || json?.amount || 0) / 100;
+  const inr = amountPaid / 100;
   const usd =
     Number(notes["usd"]) > 0 ? Number(notes["usd"]) : Math.round((inr / conf.inrPerDollar) * 100) / 100;
   const uid = String(notes["uid"] || "");
-  const paymentId = String(json?.id || linkId);
-  const out = await creditDeposit({ uid, usd, inr, paymentId, email: notes["email"] || "" });
+  const link = String(json?.id || linkId);
+  const captured = (Array.isArray(json?.payments) ? json.payments : []).find(
+    (p: any) => String(p?.status || "") === "captured" || Number(p?.amount || 0) > 0,
+  );
+  const paymentId = String(captured?.payment_id || captured?.id || link);
+  const out = await creditDeposit({ uid, usd, inr, paymentId, linkId: link, email: notes["email"] || "" });
   return out.credited
     ? { status: "paid", message: "Payment received.", balance: out.balance }
     : { status: "paid", message: "This payment was already added to your wallet.", balance: out.balance };
