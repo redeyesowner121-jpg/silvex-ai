@@ -23,7 +23,7 @@ import {
 } from "firebase/database";
 import { useStore } from "@/context/StoreContext";
 import { checkDeposit, fallbackDepositAddress } from "@/lib/deposit.functions";
-import { createDepositLink } from "@/lib/razorpay.functions";
+import { checkDepositLink, createDepositLink } from "@/lib/razorpay.functions";
 import { Emo } from "@/components/store/Emo";
 import { Sheet, inputCls } from "./ui";
 
