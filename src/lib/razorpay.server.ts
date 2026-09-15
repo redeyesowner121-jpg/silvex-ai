@@ -96,6 +96,9 @@ export async function createPaymentLink(opts: {
       source: opts.source,
       email,
       fee_inr: feeInr.toFixed(2),
+      pid: String(opts.productId || ""),
+      qty: String(Math.max(1, Math.floor(Number(opts.qty) || 1))),
+      chat: String(opts.chatId || ""),
     },
   };
 
