@@ -74,7 +74,7 @@ export async function startCardDeposit(chatId: number) {
   await setState(chatId, { k: "dep_card" });
   await say(
     chatId,
-    `💳 <b>Card / UPI deposit</b>\n\n₹${rate} = $1, plus a ${fee}% verification fee.\nSend how many dollars you want to add (for example <code>5</code>).`,
+    `💳 <b>Card / UPI deposit</b>\n\n₹${rate} = $1, plus ${fee} fees (Razorpay + GST and auto verification).\nSend how many dollars you want to add (for example <code>5</code>).`,
     { inline_keyboard: [[{ text: "❌ Cancel", callback_data: "home" }]] },
   );
 }
