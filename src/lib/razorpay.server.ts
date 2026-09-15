@@ -216,7 +216,7 @@ export async function creditDeposit(opts: {
   qty?: number;
   chatId?: number;
 }): Promise<{ credited: boolean; balance: number }> {
-  const { dbGet, dbPut, dbPush, notifyOwners, money, tg } = await import("./telegram.server");
+  const { dbGet, dbPut, dbPatch, dbPush, notifyOwners, money, tg } = await import("./telegram.server");
   const current = Number((await dbGet<number>(`users/${opts.uid}/wallet`)) || 0);
   if (!opts.uid || !opts.paymentId || !(opts.usd > 0)) return { credited: false, balance: current };
 
