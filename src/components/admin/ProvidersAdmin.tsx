@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ref, remove, update } from "firebase/database";
 import { useStore, type Product } from "@/context/StoreContext";
-import { input, Empty } from "@/components/admin/shared";
+import { input, Empty, ImageField } from "@/components/admin/shared";
 import {
   listProviders,
   saveProvider,
