@@ -81,6 +81,7 @@ export function WalletModal() {
       });
       if (!res.ok) return notify(res.error);
       setPayLink(res.url);
+      setPayLinkId(res.id);
       window.open(res.url, "_blank");
     } catch (e) {
       notify(e instanceof Error ? e.message : "Could not start the payment");
@@ -88,6 +89,40 @@ export function WalletModal() {
       setPaying(false);
     }
   }
+
+  async function confirmPayment(quiet = false) {
+    if (!payLinkId) return;
+    if (!quiet) setConfirming(true);
+    try {
+      const out = await checkDepositLink({ data: { linkId: payLinkId } });
+      if (out.status === "paid") {
+        setPayLink("");
+        setPayLinkId("");
+        setPayAmount("");
+        closeModal();
+        showSuccess("Payment received", out.message);
+      } else if (!quiet) {
+        notify(
+          out.status === "pending"
+            ? "We have not received this payment yet. If you just paid, wait a few seconds and tap again."
+            : out.message,
+        );
+      }
+    } catch (e) {
+      if (!quiet) notify(e instanceof Error ? e.message : "Could not check the payment");
+    } finally {
+      if (!quiet) setConfirming(false);
+    }
+  }
+
+  // While the payment page is open, keep checking quietly so the balance
+  // appears on its own as soon as the money clears.
+  useEffect(() => {
+    if (!payLinkId) return;
+    const id = setInterval(() => void confirmPayment(true), 6000);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [payLinkId]);
 
 
 
