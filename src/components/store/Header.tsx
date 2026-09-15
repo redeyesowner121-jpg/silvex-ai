@@ -56,6 +56,13 @@ export function Header() {
               Login
             </button>
           )}
+
+          <img
+            src={logoAsset.url}
+            alt="Silvex Ai logo"
+            decoding="async"
+            className="h-10 w-10 rounded-xl border border-primary/40 object-cover shadow-sm"
+          />
         </div>
       </div>
     </header>
