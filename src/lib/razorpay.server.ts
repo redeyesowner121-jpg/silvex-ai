@@ -7,8 +7,10 @@ export type RazorpayConf = {
   webhookSecret: string;
   /** How many rupees equal one dollar (default 100). */
   inrPerDollar: number;
-  /** Extra verification fee added on top of the payment, in percent (default 3). */
+  /** Razorpay + GST charge added on top of the payment, in percent (default 3). */
   feePercent: number;
+  /** Auto verification fee, in percent (default 1); a random decimal is added to it per payment. */
+  verifyFeePercent: number;
   /** Shop name shown on the payment page so buyers know what they are paying for. */
   siteName: string;
 };
