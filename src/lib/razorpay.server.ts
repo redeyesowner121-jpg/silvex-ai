@@ -225,7 +225,7 @@ export async function creditDeposit(opts: {
   qty?: number;
   chatId?: number;
 }): Promise<{ credited: boolean; balance: number }> {
-  const { dbGet, dbPut, dbPatch, dbPush, notifyOwners, money, tg } = await import("./telegram.server");
+  const { dbCreateIfAbsent, dbGet, dbPut, dbPatch, dbPush, notifyOwners, money, tg } = await import("./telegram.server");
   const current = Number((await dbGet<number>(`users/${opts.uid}/wallet`)) || 0);
   if (!opts.uid || !opts.paymentId || !(opts.usd > 0)) return { credited: false, balance: current };
 
@@ -246,8 +246,18 @@ export async function creditDeposit(opts: {
     linkId: opts.linkId || "",
     date,
   };
-  // Claim every id first, so a second notification arriving at the same time
-  // sees the marker and stops.
+
+  // One payment link is one irreversible claim. A button tap and Razorpay's
+  // webhook can arrive together on separate servers; an ordinary read/write
+  // pair lets both continue. The ETag claim allows exactly one of them through.
+  const claimId = String(opts.linkId || opts.paymentId).replace(/[.#$/[\]]/g, "_");
+  const claimed = await dbCreateIfAbsent(`razorpayPaymentClaims/${claimId}`, record);
+  if (!claimed) {
+    const latest = Number((await dbGet<number>(`users/${opts.uid}/wallet`)) || 0);
+    return { credited: false, balance: latest };
+  }
+
+  // Keep the old lookup records for compatibility and payment-id auditing.
   await Promise.all(keys.map((k) => dbPut(`razorpayPayments/${k}`, record)));
   const balance = Math.round((current + opts.usd) * 100) / 100;
   await dbPut(`users/${opts.uid}/wallet`, balance);
