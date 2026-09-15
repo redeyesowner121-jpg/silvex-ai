@@ -67,7 +67,10 @@ export async function startCardDeposit(chatId: number) {
   }
   const rate = Number(c.inrPerDollar) > 0 ? Number(c.inrPerDollar) : 100;
   const feePct = Number((c as any).razorpayFeePercent);
-  const fee = Number.isFinite(feePct) && feePct >= 0 ? feePct : 3;
+  const vPct = Number((c as any).razorpayVerifyFeePercent);
+  const base = Number.isFinite(feePct) && feePct >= 0 ? feePct : 3;
+  const verify = Number.isFinite(vPct) && vPct >= 0 ? vPct : 1;
+  const fee = `${base}% + ${verify}%`;
   await setState(chatId, { k: "dep_card" });
   await say(
     chatId,
