@@ -102,6 +102,7 @@ export async function createCardLink(chatId: number, text: string) {
     {
       inline_keyboard: [
         [{ text: "💳 Pay now", url: res.url }],
+        [{ text: "✅ I have paid", callback_data: `pchk:${res.id}` }],
         [{ text: "🏠 Home", callback_data: "home" }],
       ],
     },
@@ -148,19 +149,40 @@ export async function payProductByCard(chatId: number, productId: string, qty: n
     {
       inline_keyboard: [
         [{ text: "💳 Pay now", url: res.url }],
+        [{ text: "✅ I have paid", callback_data: `pchk:${res.id}` }],
         [{ text: "🏠 Home", callback_data: "home" }],
       ],
     },
   );
 }
 
-/** Legacy payment-check buttons are disabled; Razorpay's signed webhook settles automatically. */
-export async function checkCardPayment(chatId: number, _linkId: string) {
-  return say(
-    chatId,
-    "ℹ️ Payment verification is automatic. A paid transaction is credited and delivered once only.",
-    backHome,
-  );
+/**
+ * "I have paid" button. It only asks Razorpay whether the money really
+ * arrived. One payment can be credited and delivered a single time only,
+ * because the wallet credit is claimed atomically, so extra taps are safe.
+ */
+export async function checkCardPayment(chatId: number, linkId: string) {
+  const id = String(linkId || "").trim();
+  if (!id) return say(chatId, "This payment link is no longer available.", backHome);
+  const { settlePaymentLink } = await import("@/lib/razorpay.server");
+  const out = await settlePaymentLink(id);
+  if (out.status === "paid") {
+    return say(
+      chatId,
+      `✅ <b>Payment confirmed</b>\n${out.message}${
+        typeof out.balance === "number" ? `\nBalance: <b>${money(out.balance)}</b>` : ""
+      }`,
+      backHome,
+    );
+  }
+  if (out.status === "pending") {
+    return say(
+      chatId,
+      "⏳ We have not received this payment yet. If you just paid, wait a few seconds and tap again.",
+      { inline_keyboard: [[{ text: "🔄 I have paid", callback_data: `pchk:${id}` }], [{ text: "🏠 Home", callback_data: "home" }]] },
+    );
+  }
+  return say(chatId, `❌ ${out.message}`, backHome);
 }
 
 export async function startWithdraw(chatId: number) {
