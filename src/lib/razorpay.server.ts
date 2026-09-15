@@ -327,7 +327,17 @@ export async function settlePaymentLink(
     (p: any) => String(p?.status || "") === "captured" || Number(p?.amount || 0) > 0,
   );
   const paymentId = String(captured?.payment_id || captured?.id || link);
-  const out = await creditDeposit({ uid, usd, inr, paymentId, linkId: link, email: notes["email"] || "" });
+  const out = await creditDeposit({
+    uid,
+    usd,
+    inr,
+    paymentId,
+    linkId: link,
+    email: notes["email"] || "",
+    productId: String(notes["pid"] || ""),
+    qty: Number(notes["qty"] || 1),
+    chatId: Number(notes["chat"] || 0),
+  });
   return out.credited
     ? { status: "paid", message: "Payment received.", balance: out.balance }
     : { status: "paid", message: "This payment was already added to your wallet.", balance: out.balance };
