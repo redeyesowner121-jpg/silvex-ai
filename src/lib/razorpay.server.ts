@@ -246,16 +246,22 @@ export async function settlePaymentLink(
   const json = (await res.json().catch(() => ({}))) as any;
   if (!res.ok) return { status: "error", message: String(json?.error?.description || `Provider error (${res.status})`) };
 
-  const paid = String(json?.status || "") === "paid" || Number(json?.amount_paid || 0) > 0;
+  // Only a link Razorpay itself marks as paid, with money really received.
+  const amountPaid = Number(json?.amount_paid || 0);
+  const paid = String(json?.status || "") === "paid" && amountPaid > 0;
   if (!paid) return { status: "pending", message: "We have not received this payment yet." };
 
   const notes = (json?.notes || {}) as Record<string, string>;
-  const inr = Number(json?.amount_paid || json?.amount || 0) / 100;
+  const inr = amountPaid / 100;
   const usd =
     Number(notes["usd"]) > 0 ? Number(notes["usd"]) : Math.round((inr / conf.inrPerDollar) * 100) / 100;
   const uid = String(notes["uid"] || "");
-  const paymentId = String(json?.id || linkId);
-  const out = await creditDeposit({ uid, usd, inr, paymentId, email: notes["email"] || "" });
+  const link = String(json?.id || linkId);
+  const captured = (Array.isArray(json?.payments) ? json.payments : []).find(
+    (p: any) => String(p?.status || "") === "captured" || Number(p?.amount || 0) > 0,
+  );
+  const paymentId = String(captured?.payment_id || captured?.id || link);
+  const out = await creditDeposit({ uid, usd, inr, paymentId, linkId: link, email: notes["email"] || "" });
   return out.credited
     ? { status: "paid", message: "Payment received.", balance: out.balance }
     : { status: "paid", message: "This payment was already added to your wallet.", balance: out.balance };
