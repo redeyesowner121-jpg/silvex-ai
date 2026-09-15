@@ -66,7 +66,12 @@ export async function createPaymentLink(opts: {
   if (!usd || usd <= 0) return { ok: false, error: "Enter a valid amount." };
   // Work in paise so a 3% fee on ₹1 is really ₹0.03, not rounded away.
   const basePaise = Math.round(usd * conf.inrPerDollar * 100);
-  const feePaise = Math.round((basePaise * conf.feePercent) / 100);
+  // Razorpay + GST charge, plus an auto verification fee of 1% with a random
+  // decimal (e.g. 1.37%) so each payment amount is unique and easy to match.
+  const verifyPct =
+    Math.round((conf.verifyFeePercent + Math.random() * 0.99) * 100) / 100;
+  const totalPct = Math.round((conf.feePercent + verifyPct) * 100) / 100;
+  const feePaise = Math.round((basePaise * totalPct) / 100);
   const totalPaise = basePaise + feePaise;
   const baseInr = Math.round(basePaise) / 100;
   const feeInr = Math.round(feePaise) / 100;
