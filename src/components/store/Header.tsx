@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useStore } from "@/context/StoreContext";
 import { Emo } from "@/components/store/Emo";
+import logoAsset from "@/assets/silvex-logo.jpg.asset.json";
 
 export function Header() {
   const { user, profile, isAdmin, notices, openModal, siteName, emoji } = useStore();
