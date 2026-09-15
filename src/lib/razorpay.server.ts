@@ -7,8 +7,10 @@ export type RazorpayConf = {
   webhookSecret: string;
   /** How many rupees equal one dollar (default 100). */
   inrPerDollar: number;
-  /** Extra verification fee added on top of the payment, in percent (default 3). */
+  /** Razorpay + GST charge added on top of the payment, in percent (default 3). */
   feePercent: number;
+  /** Auto verification fee, in percent (default 1); a random decimal is added to it per payment. */
+  verifyFeePercent: number;
   /** Shop name shown on the payment page so buyers know what they are paying for. */
   siteName: string;
 };
@@ -17,6 +19,7 @@ export type RazorpayConf = {
 export async function razorpayConfig(): Promise<RazorpayConf> {
   const c = (await dbGet<any>("site_settings/config").catch(() => null)) || {};
   const feeRaw = Number(c.razorpayFeePercent);
+  const verifyRaw = Number(c.razorpayVerifyFeePercent);
   return {
     keyId: String(c.razorpayKeyId || process.env["RAZORPAY_KEY_ID"] || "").trim(),
     keySecret: String(c.razorpayKeySecret || process.env["RAZORPAY_KEY_SECRET"] || "").trim(),
@@ -25,6 +28,7 @@ export async function razorpayConfig(): Promise<RazorpayConf> {
     ).trim(),
     inrPerDollar: Number(c.inrPerDollar) > 0 ? Number(c.inrPerDollar) : 100,
     feePercent: Number.isFinite(feeRaw) && feeRaw >= 0 ? feeRaw : 3,
+    verifyFeePercent: Number.isFinite(verifyRaw) && verifyRaw >= 0 ? verifyRaw : 1,
     siteName: String(c.siteName || "").trim() || "Store",
   };
 }
@@ -62,7 +66,12 @@ export async function createPaymentLink(opts: {
   if (!usd || usd <= 0) return { ok: false, error: "Enter a valid amount." };
   // Work in paise so a 3% fee on ₹1 is really ₹0.03, not rounded away.
   const basePaise = Math.round(usd * conf.inrPerDollar * 100);
-  const feePaise = Math.round((basePaise * conf.feePercent) / 100);
+  // Razorpay + GST charge, plus an auto verification fee of 1% with a random
+  // decimal (e.g. 1.37%) so each payment amount is unique and easy to match.
+  const verifyPct =
+    Math.round((conf.verifyFeePercent + Math.random() * 0.99) * 100) / 100;
+  const totalPct = Math.round((conf.feePercent + verifyPct) * 100) / 100;
+  const feePaise = Math.round((basePaise * totalPct) / 100);
   const totalPaise = basePaise + feePaise;
   const baseInr = Math.round(basePaise) / 100;
   const feeInr = Math.round(feePaise) / 100;
@@ -81,7 +90,7 @@ export async function createPaymentLink(opts: {
     amount: totalPaise,
     currency: "INR",
     accept_partial: false,
-    description: `${conf.siteName}: $${usd.toFixed(2)} wallet top-up (incl ${conf.feePercent}% fee)`.slice(0, 60),
+    description: `${conf.siteName}: $${usd.toFixed(2)} wallet top-up (incl ${totalPct}% fee)`.slice(0, 60),
     // Keep it unique but short: long user ids used to get cut off, which made
     // Razorpay reject every link after the first one.
     reference_id: `dep_${String(opts.uid).slice(-12)}_${Date.now().toString(36)}${Math.random()
@@ -167,7 +176,7 @@ export async function createPaymentLink(opts: {
     inr,
     baseInr,
     feeInr,
-    feePercent: conf.feePercent,
+    feePercent: totalPct,
   };
 }
 

@@ -47,10 +47,16 @@ export function WalletModal() {
   const depositAddress = config.depositAddress || fallbackDepositAddress();
   const rate = Number(config.inrPerDollar) > 0 ? Number(config.inrPerDollar) : 100;
   const cardsOn = Boolean(config.razorpayKeyId);
-  const payFee =
+  const baseFeePct =
     Number.isFinite(Number(config.razorpayFeePercent)) && Number(config.razorpayFeePercent) >= 0
       ? Number(config.razorpayFeePercent)
       : 3;
+  const verifyFeePct =
+    Number.isFinite(Number(config.razorpayVerifyFeePercent)) &&
+    Number(config.razorpayVerifyFeePercent) >= 0
+      ? Number(config.razorpayVerifyFeePercent)
+      : 1;
+  const payFee = Math.round((baseFeePct + verifyFeePct) * 100) / 100;
   const payBase = Math.round((Number(payAmount) || 0) * rate * 100) / 100;
   const payFeeInr = Math.round(payBase * payFee) / 100;
 

@@ -44,6 +44,7 @@ export function SettingsAdmin({
     razorpayWebhookSecret?: string;
     inrPerDollar?: number;
     razorpayFeePercent?: number;
+    razorpayVerifyFeePercent?: number;
 
   };
   banner: { title?: string; desc?: string; link?: string };
@@ -75,6 +76,7 @@ export function SettingsAdmin({
     razorpayWebhookSecret: config.razorpayWebhookSecret ?? "",
     inrPerDollar: String(config.inrPerDollar ?? 100),
     razorpayFeePercent: String(config.razorpayFeePercent ?? 3),
+    razorpayVerifyFeePercent: String(config.razorpayVerifyFeePercent ?? 1),
 
   });
   const [cats, setCats] = useState<Category[]>(liveCategories);
@@ -131,6 +133,7 @@ export function SettingsAdmin({
       razorpayWebhookSecret: cfg.razorpayWebhookSecret.trim(),
       inrPerDollar: Number(cfg.inrPerDollar || 100),
       razorpayFeePercent: Number(cfg.razorpayFeePercent || 0),
+      razorpayVerifyFeePercent: Number(cfg.razorpayVerifyFeePercent || 0),
       ...extra,
     });
     notify("Settings saved");
@@ -172,9 +175,15 @@ export function SettingsAdmin({
         />
         <input
           className={input}
-          placeholder="Verification fee % added to the payment (default 3)"
+          placeholder="Razorpay + GST fee % (default 3)"
           value={cfg.razorpayFeePercent}
           onChange={(e) => setCfg({ ...cfg, razorpayFeePercent: e.target.value })}
+        />
+        <input
+          className={input}
+          placeholder="Auto verification fee % (default 1, a random decimal is added)"
+          value={cfg.razorpayVerifyFeePercent}
+          onChange={(e) => setCfg({ ...cfg, razorpayVerifyFeePercent: e.target.value })}
         />
 
         <div className="rounded-xl border border-dashed border-border bg-muted/50 p-3">

@@ -67,11 +67,14 @@ export async function startCardDeposit(chatId: number) {
   }
   const rate = Number(c.inrPerDollar) > 0 ? Number(c.inrPerDollar) : 100;
   const feePct = Number((c as any).razorpayFeePercent);
-  const fee = Number.isFinite(feePct) && feePct >= 0 ? feePct : 3;
+  const vPct = Number((c as any).razorpayVerifyFeePercent);
+  const base = Number.isFinite(feePct) && feePct >= 0 ? feePct : 3;
+  const verify = Number.isFinite(vPct) && vPct >= 0 ? vPct : 1;
+  const fee = `${base}% + ${verify}%`;
   await setState(chatId, { k: "dep_card" });
   await say(
     chatId,
-    `💳 <b>Card / UPI deposit</b>\n\n₹${rate} = $1, plus a ${fee}% verification fee.\nSend how many dollars you want to add (for example <code>5</code>).`,
+    `💳 <b>Card / UPI deposit</b>\n\n₹${rate} = $1, plus ${fee} fees (Razorpay + GST and auto verification).\nSend how many dollars you want to add (for example <code>5</code>).`,
     { inline_keyboard: [[{ text: "❌ Cancel", callback_data: "home" }]] },
   );
 }
