@@ -48,6 +48,11 @@ export async function createPaymentLink(opts: {
   phone?: string;
   source: "web" | "telegram";
   siteUrl?: string;
+  /** When the payment is for one product, it is delivered right after it clears. */
+  productId?: string;
+  qty?: number;
+  /** Telegram chat that should receive the delivery. */
+  chatId?: number;
 }): Promise<LinkResult> {
   const conf = await razorpayConfig();
   if (!conf.keyId || !conf.keySecret) {
