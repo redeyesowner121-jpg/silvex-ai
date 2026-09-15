@@ -242,12 +242,22 @@ export async function creditDeposit(opts: {
   await Promise.all(keys.map((k) => dbPut(`razorpayPayments/${k}`, record)));
   const balance = Math.round((current + opts.usd) * 100) / 100;
   await dbPut(`users/${opts.uid}/wallet`, balance);
-  await dbPush(`users/${opts.uid}/history`, {
+
+  // Turn the earlier "Pending" line into a paid one, or add a fresh paid line.
+  const entry = {
     type: "Deposit",
+    status: "Paid",
     amount: opts.usd,
     desc: `Card/UPI payment (₹${opts.inr.toFixed(0)})`,
+    paymentId: opts.paymentId,
+    linkId: opts.linkId || "",
     date,
-  });
+  };
+  const safeLink = String(opts.linkId || "").replace(/[.#$/[\]]/g, "_");
+  if (safeLink) await dbPut(`users/${opts.uid}/history/rzp_${safeLink}`, entry);
+  else await dbPush(`users/${opts.uid}/history`, entry);
+  if (safeLink) await dbPatch(`razorpayLinks/${safeLink}`, { status: "Paid", paidAt: date });
+
 
   const tgId = Number(opts.uid.startsWith("tg_") ? opts.uid.slice(3) : 0);
   if (tgId > 0) {
