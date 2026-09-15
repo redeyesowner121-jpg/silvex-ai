@@ -57,7 +57,9 @@ export const Route = createFileRoute("/api/public/razorpay/webhook")({
           usd,
           inr: inrPaid,
           paymentId,
-          linkId: String(link.id || ""),
+          // payment.captured events may omit payload.payment_link but retain
+          // the originating link on the payment itself.
+          linkId: String(link.id || payment.payment_link_id || ""),
           email: notes["email"] || "",
           productId: String(notes["pid"] || ""),
           qty: Number(notes["qty"] || 1),

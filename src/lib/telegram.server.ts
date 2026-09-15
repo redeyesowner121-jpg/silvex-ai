@@ -265,6 +265,33 @@ export async function dbPut(path: string, value: unknown): Promise<void> {
   await dbWrite("PUT", path, value);
 }
 
+/**
+ * Atomically creates a database value only when that path is still empty.
+ * Firebase's ETag precondition makes this safe when webhooks and button taps
+ * reach different server instances at exactly the same time.
+ */
+export async function dbCreateIfAbsent(path: string, value: unknown): Promise<boolean> {
+  const url = `${rtdbUrl()}/${path}.json`;
+  const current = await fetch(url, { headers: { "X-Firebase-ETag": "true" } });
+  if (!current.ok) throw new Error(`Database claim read failed (${current.status})`);
+  const existing = await current.json();
+  if (existing !== null) return false;
+  const etag = current.headers.get("etag");
+  if (!etag) throw new Error("Database claim did not return an ETag");
+
+  const claimed = await fetch(`${url}?print=silent`, {
+    method: "PUT",
+    headers: { "If-Match": etag, "Content-Type": "application/json" },
+    body: JSON.stringify(value),
+  });
+  if (claimed.status === 412) return false;
+  if (!claimed.ok) {
+    const detail = await claimed.text().catch(() => "");
+    throw new Error(`Database claim failed (${claimed.status}): ${detail.slice(0, 200)}`);
+  }
+  return true;
+}
+
 export async function dbPatch(path: string, value: Record<string, unknown>): Promise<void> {
   await dbWrite("PATCH", path, value);
 }
