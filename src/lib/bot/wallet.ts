@@ -154,24 +154,13 @@ export async function payProductByCard(chatId: number, productId: string, qty: n
   );
 }
 
-/** Checks one payment link with Razorpay and tops the wallet up when it is paid. */
-export async function checkCardPayment(chatId: number, linkId: string) {
-  const uid = await ensureUser(chatId);
-  const { settlePaymentLink } = await import("@/lib/razorpay.server");
-  const out = await settlePaymentLink(linkId);
-  if (out.status === "paid") {
-    const wallet = (await dbGet<number>(`users/${uid}/wallet`)) || 0;
-    return say(chatId, `✅ <b>Payment received</b>\n\nBalance: <b>${money(out.balance ?? wallet)}</b>`, backHome);
-  }
-  if (out.status === "pending") {
-    return say(chatId, "⏳ The payment has not arrived yet. Pay first, then press “I have paid” again.", {
-      inline_keyboard: [
-        [{ text: "✅ I have paid", callback_data: `pchk:${linkId}` }],
-        [{ text: "🏠 Home", callback_data: "home" }],
-      ],
-    });
-  }
-  return say(chatId, `❌ ${out.message}`, backHome);
+/** Legacy payment-check buttons are disabled; Razorpay's signed webhook settles automatically. */
+export async function checkCardPayment(chatId: number, _linkId: string) {
+  return say(
+    chatId,
+    "ℹ️ Payment verification is automatic. A paid transaction is credited and delivered once only.",
+    backHome,
+  );
 }
 
 export async function startWithdraw(chatId: number) {
