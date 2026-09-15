@@ -176,7 +176,7 @@ export async function createPaymentLink(opts: {
     inr,
     baseInr,
     feeInr,
-    feePercent: conf.feePercent,
+    feePercent: totalPct,
   };
 }
 
