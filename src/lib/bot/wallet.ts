@@ -102,7 +102,6 @@ export async function createCardLink(chatId: number, text: string) {
     {
       inline_keyboard: [
         [{ text: "💳 Pay now", url: res.url }],
-        [{ text: "✅ I have paid", callback_data: `pchk:${res.id}` }],
         [{ text: "🏠 Home", callback_data: "home" }],
       ],
     },
@@ -149,7 +148,6 @@ export async function payProductByCard(chatId: number, productId: string, qty: n
     {
       inline_keyboard: [
         [{ text: "💳 Pay now", url: res.url }],
-        [{ text: "✅ I have paid", callback_data: `pchk:${res.id}` }],
         [{ text: "🏠 Home", callback_data: "home" }],
       ],
     },
