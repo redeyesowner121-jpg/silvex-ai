@@ -19,6 +19,7 @@ export type RazorpayConf = {
 export async function razorpayConfig(): Promise<RazorpayConf> {
   const c = (await dbGet<any>("site_settings/config").catch(() => null)) || {};
   const feeRaw = Number(c.razorpayFeePercent);
+  const verifyRaw = Number(c.razorpayVerifyFeePercent);
   return {
     keyId: String(c.razorpayKeyId || process.env["RAZORPAY_KEY_ID"] || "").trim(),
     keySecret: String(c.razorpayKeySecret || process.env["RAZORPAY_KEY_SECRET"] || "").trim(),
