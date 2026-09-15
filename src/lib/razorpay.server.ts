@@ -28,6 +28,7 @@ export async function razorpayConfig(): Promise<RazorpayConf> {
     ).trim(),
     inrPerDollar: Number(c.inrPerDollar) > 0 ? Number(c.inrPerDollar) : 100,
     feePercent: Number.isFinite(feeRaw) && feeRaw >= 0 ? feeRaw : 3,
+    verifyFeePercent: Number.isFinite(verifyRaw) && verifyRaw >= 0 ? verifyRaw : 1,
     siteName: String(c.siteName || "").trim() || "Store",
   };
 }
