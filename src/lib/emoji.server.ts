@@ -155,12 +155,12 @@ export async function setRule(from: string, value: EmojiEntry): Promise<EmojiRul
   if (!key) throw new Error("No emoji to replace");
   const rule: EmojiRule = { from: normEmoji(from), char: value.char, ...(value.id ? { id: value.id } : {}) };
   await dbPut(`${EMOJI_PATH}/map/${key}`, rule);
-  const persisted = await dbGet<EmojiRule>(`${EMOJI_PATH}/map/${key}`);
-  if (!persisted?.char) throw new Error("The emoji was not saved");
-  store.rules = { ...store.rules, [key]: persisted };
+  // A successful database PUT is authoritative. A second immediate read can
+  // fail transiently and previously reported a false save failure to admins.
+  store.rules = { ...store.rules, [key]: rule };
   version++;
   if (value.img) await dbPut(`${EMOJI_PATH}/mapimg/${key}`, value.img).catch(() => undefined);
-  return persisted;
+  return rule;
 }
 
 export async function saveRuleImage(from: string, img: string): Promise<void> {
