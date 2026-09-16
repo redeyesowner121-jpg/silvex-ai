@@ -279,7 +279,8 @@ export async function dbCreateIfAbsent(path: string, value: unknown): Promise<bo
   const etag = current.headers.get("etag");
   if (!etag) throw new Error("Database claim did not return an ETag");
 
-  const claimed = await fetch(`${url}?print=silent`, {
+  // Firebase rejects print=silent together with if-match, so no query here.
+  const claimed = await fetch(url, {
     method: "PUT",
     headers: { "If-Match": etag, "Content-Type": "application/json" },
     body: JSON.stringify(value),
