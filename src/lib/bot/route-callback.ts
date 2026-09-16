@@ -142,10 +142,12 @@ export async function handleCallback(chatId: number, data: string) {
       return emojiList(chatId);
     }
     if (key === "emp") {
-      await setState(chatId, { k: "em_prod", a: arg! });
+      const id = data.slice("a:emp:".length);
+      if (!id) return emojiProducts(chatId);
+      await setState(chatId, { k: "em_prod", a: id });
       return say(chatId, "Send the emoji for this product (premium emoji supported).", {
         inline_keyboard: [
-          [{ text: "♻️ Use default 🛍", callback_data: `a:emx:${arg}` }],
+          [{ text: "♻️ Use default 🛍", callback_data: `a:emx:${id}` }],
           [{ text: "❌ Cancel", callback_data: "a:em:prod" }],
         ],
       });

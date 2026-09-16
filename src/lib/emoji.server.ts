@@ -155,12 +155,12 @@ export async function setRule(from: string, value: EmojiEntry): Promise<EmojiRul
   if (!key) throw new Error("No emoji to replace");
   const rule: EmojiRule = { from: normEmoji(from), char: value.char, ...(value.id ? { id: value.id } : {}) };
   await dbPut(`${EMOJI_PATH}/map/${key}`, rule);
-  const persisted = await dbGet<EmojiRule>(`${EMOJI_PATH}/map/${key}`);
-  if (!persisted?.char) throw new Error("The emoji was not saved");
-  store.rules = { ...store.rules, [key]: persisted };
+  // A successful database PUT is authoritative. A second immediate read can
+  // fail transiently and previously reported a false save failure to admins.
+  store.rules = { ...store.rules, [key]: rule };
   version++;
   if (value.img) await dbPut(`${EMOJI_PATH}/mapimg/${key}`, value.img).catch(() => undefined);
-  return persisted;
+  return rule;
 }
 
 export async function saveRuleImage(from: string, img: string): Promise<void> {
@@ -304,9 +304,16 @@ export async function fetchEmojiImage(id: string): Promise<string | undefined> {
     const res = await tg("getCustomEmojiStickers", { custom_emoji_ids: [id] });
     const st = res?.result?.[0];
     if (!st) return undefined;
-    const fileId = st.is_animated ? st.thumbnail?.file_id : st.file_id || st.thumbnail?.file_id;
-    if (!fileId) return undefined;
-    return (await tgFileDataUrl(String(fileId))) || undefined;
+    // Animated .tgs files cannot be displayed by browsers. Prefer their WebP
+    // thumbnail; video and static custom emojis can use the original artwork.
+    const candidates = st.is_animated
+      ? [st.thumbnail?.file_id]
+      : [st.file_id, st.thumbnail?.file_id];
+    for (const fileId of candidates.filter(Boolean)) {
+      const image = await tgFileDataUrl(String(fileId));
+      if (image && !image.startsWith("data:application/x-tgsticker")) return image;
+    }
+    return undefined;
   } catch {
     return undefined;
   }

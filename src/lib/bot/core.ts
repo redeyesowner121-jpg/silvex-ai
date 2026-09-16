@@ -188,8 +188,14 @@ export async function getState(chatId: number): Promise<State> {
 }
 export async function setState(chatId: number, s: State) {
   stateCache.set(chatId, s);
-  // Saved in the background: the reply goes out without waiting for the database.
-  void dbPut(`telegramState/${chatId}`, s).catch(() => undefined);
+  // Webhook requests can land on different server instances. Persist the step
+  // before replying so the next message never loses an emoji/setup selection.
+  try {
+    await dbPut(`telegramState/${chatId}`, s);
+  } catch (error) {
+    stateCache.delete(chatId);
+    throw error;
+  }
 }
 
 /** Remember who is an admin for a short while so every tap isn't a fresh lookup. */
