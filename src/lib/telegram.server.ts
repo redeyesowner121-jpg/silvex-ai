@@ -381,7 +381,7 @@ export async function tgSendPhoto(
 /* ---------------- file download ---------------- */
 
 /** Download a Telegram file (by file_id) and return it as a data: URL. */
-export async function tgFileDataUrl(fileId: string, maxBytes = 400_000): Promise<string | null> {
+export async function tgFileDataUrl(fileId: string, maxBytes = 1_500_000): Promise<string | null> {
   try {
     const info = await tg("getFile", { file_id: fileId });
     const path = info?.result?.file_path;
@@ -394,7 +394,15 @@ export async function tgFileDataUrl(fileId: string, maxBytes = 400_000): Promise
     if (!buf.length || buf.length > maxBytes) return null;
     const ext = String(path).split(".").pop()?.toLowerCase() || "webp";
     const mime =
-      ext === "png" ? "image/png" : ext === "jpg" || ext === "jpeg" ? "image/jpeg" : ext === "webm" ? "video/webm" : "image/webp";
+      ext === "png"
+        ? "image/png"
+        : ext === "jpg" || ext === "jpeg"
+          ? "image/jpeg"
+          : ext === "webm"
+            ? "video/webm"
+            : ext === "tgs"
+              ? "application/x-tgsticker"
+              : "image/webp";
     return `data:${mime};base64,${buf.toString("base64")}`;
   } catch {
     return null;

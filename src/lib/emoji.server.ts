@@ -304,9 +304,16 @@ export async function fetchEmojiImage(id: string): Promise<string | undefined> {
     const res = await tg("getCustomEmojiStickers", { custom_emoji_ids: [id] });
     const st = res?.result?.[0];
     if (!st) return undefined;
-    const fileId = st.is_animated ? st.thumbnail?.file_id : st.file_id || st.thumbnail?.file_id;
-    if (!fileId) return undefined;
-    return (await tgFileDataUrl(String(fileId))) || undefined;
+    // Animated .tgs files cannot be displayed by browsers. Prefer their WebP
+    // thumbnail; video and static custom emojis can use the original artwork.
+    const candidates = st.is_animated
+      ? [st.thumbnail?.file_id]
+      : [st.file_id, st.thumbnail?.file_id];
+    for (const fileId of candidates.filter(Boolean)) {
+      const image = await tgFileDataUrl(String(fileId));
+      if (image && !image.startsWith("data:application/x-tgsticker")) return image;
+    }
+    return undefined;
   } catch {
     return undefined;
   }
