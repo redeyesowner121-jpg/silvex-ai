@@ -1,5 +1,6 @@
 /** Everything a shopper does in the bot: products, wallet, orders, buying. */
 import { defaultDepositAddress } from "@/lib/deposit.server";
+import { formatDescription } from "@/lib/format-desc";
 
 import { dbGet, dbPush, dbPut, money, notifyOwners, sendDeliveryFiles, siteUrl, tg, tgSendPhoto } from "@/lib/telegram.server";
 import { be, e as em, productEmoji, productEmojiChar } from "@/lib/emoji.server";
