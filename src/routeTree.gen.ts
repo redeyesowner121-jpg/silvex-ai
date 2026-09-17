@@ -18,6 +18,14 @@ import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as ProductsRouteImport } from './routes/products'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as AdminApiShopsRouteImport } from './routes/admin.api-shops'
+import { Route as AdminBotButtonsRouteImport } from './routes/admin.bot-buttons'
+import { Route as AdminCouponsRouteImport } from './routes/admin.coupons'
+import { Route as AdminHostingRouteImport } from './routes/admin.hosting'
+import { Route as AdminProductsRouteImport } from './routes/admin.products'
+import { Route as AdminRequestsRouteImport } from './routes/admin.requests'
+import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
+import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminEditProductIdRouteImport } from './routes/admin.edit.$productId'
 import { Route as ApiPublicRazorpayWebhookRouteImport } from './routes/api/public/razorpay/webhook'
 import { Route as ApiPublicResellerSplatRouteImport } from './routes/api/public/reseller/$'
@@ -68,6 +76,46 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminApiShopsRoute = AdminApiShopsRouteImport.update({
+  id: '/api-shops',
+  path: '/api-shops',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminBotButtonsRoute = AdminBotButtonsRouteImport.update({
+  id: '/bot-buttons',
+  path: '/bot-buttons',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminCouponsRoute = AdminCouponsRouteImport.update({
+  id: '/coupons',
+  path: '/coupons',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminHostingRoute = AdminHostingRouteImport.update({
+  id: '/hosting',
+  path: '/hosting',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminProductsRoute = AdminProductsRouteImport.update({
+  id: '/products',
+  path: '/products',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminRequestsRoute = AdminRequestsRouteImport.update({
+  id: '/requests',
+  path: '/requests',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminSettingsRoute = AdminSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminUsersRoute = AdminUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminEditProductIdRoute = AdminEditProductIdRouteImport.update({
   id: '/edit/$productId',
   path: '/edit/$productId',
@@ -100,6 +148,14 @@ export interface FileRoutesByFullPath {
   '/orders': typeof OrdersRoute
   '/products': typeof ProductsRoute
   '/profile': typeof ProfileRoute
+  '/admin/api-shops': typeof AdminApiShopsRoute
+  '/admin/bot-buttons': typeof AdminBotButtonsRoute
+  '/admin/coupons': typeof AdminCouponsRoute
+  '/admin/hosting': typeof AdminHostingRoute
+  '/admin/products': typeof AdminProductsRoute
+  '/admin/requests': typeof AdminRequestsRoute
+  '/admin/settings': typeof AdminSettingsRoute
+  '/admin/users': typeof AdminUsersRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/edit/$productId': typeof AdminEditProductIdRoute
   '/api/public/razorpay/webhook': typeof ApiPublicRazorpayWebhookRoute
@@ -114,6 +170,14 @@ export interface FileRoutesByTo {
   '/orders': typeof OrdersRoute
   '/products': typeof ProductsRoute
   '/profile': typeof ProfileRoute
+  '/admin/api-shops': typeof AdminApiShopsRoute
+  '/admin/bot-buttons': typeof AdminBotButtonsRoute
+  '/admin/coupons': typeof AdminCouponsRoute
+  '/admin/hosting': typeof AdminHostingRoute
+  '/admin/products': typeof AdminProductsRoute
+  '/admin/requests': typeof AdminRequestsRoute
+  '/admin/settings': typeof AdminSettingsRoute
+  '/admin/users': typeof AdminUsersRoute
   '/admin': typeof AdminIndexRoute
   '/admin/edit/$productId': typeof AdminEditProductIdRoute
   '/api/public/razorpay/webhook': typeof ApiPublicRazorpayWebhookRoute
@@ -130,6 +194,14 @@ export interface FileRoutesById {
   '/orders': typeof OrdersRoute
   '/products': typeof ProductsRoute
   '/profile': typeof ProfileRoute
+  '/admin/api-shops': typeof AdminApiShopsRoute
+  '/admin/bot-buttons': typeof AdminBotButtonsRoute
+  '/admin/coupons': typeof AdminCouponsRoute
+  '/admin/hosting': typeof AdminHostingRoute
+  '/admin/products': typeof AdminProductsRoute
+  '/admin/requests': typeof AdminRequestsRoute
+  '/admin/settings': typeof AdminSettingsRoute
+  '/admin/users': typeof AdminUsersRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/edit/$productId': typeof AdminEditProductIdRoute
   '/api/public/razorpay/webhook': typeof ApiPublicRazorpayWebhookRoute
@@ -147,6 +219,14 @@ export interface FileRouteTypes {
     | '/orders'
     | '/products'
     | '/profile'
+    | '/admin/api-shops'
+    | '/admin/bot-buttons'
+    | '/admin/coupons'
+    | '/admin/hosting'
+    | '/admin/products'
+    | '/admin/requests'
+    | '/admin/settings'
+    | '/admin/users'
     | '/admin/'
     | '/admin/edit/$productId'
     | '/api/public/razorpay/webhook'
@@ -161,6 +241,14 @@ export interface FileRouteTypes {
     | '/orders'
     | '/products'
     | '/profile'
+    | '/admin/api-shops'
+    | '/admin/bot-buttons'
+    | '/admin/coupons'
+    | '/admin/hosting'
+    | '/admin/products'
+    | '/admin/requests'
+    | '/admin/settings'
+    | '/admin/users'
     | '/admin'
     | '/admin/edit/$productId'
     | '/api/public/razorpay/webhook'
@@ -176,6 +264,14 @@ export interface FileRouteTypes {
     | '/orders'
     | '/products'
     | '/profile'
+    | '/admin/api-shops'
+    | '/admin/bot-buttons'
+    | '/admin/coupons'
+    | '/admin/hosting'
+    | '/admin/products'
+    | '/admin/requests'
+    | '/admin/settings'
+    | '/admin/users'
     | '/admin/'
     | '/admin/edit/$productId'
     | '/api/public/razorpay/webhook'
@@ -262,6 +358,62 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/api-shops': {
+      id: '/admin/api-shops'
+      path: '/api-shops'
+      fullPath: '/admin/api-shops'
+      preLoaderRoute: typeof AdminApiShopsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/bot-buttons': {
+      id: '/admin/bot-buttons'
+      path: '/bot-buttons'
+      fullPath: '/admin/bot-buttons'
+      preLoaderRoute: typeof AdminBotButtonsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/coupons': {
+      id: '/admin/coupons'
+      path: '/coupons'
+      fullPath: '/admin/coupons'
+      preLoaderRoute: typeof AdminCouponsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/hosting': {
+      id: '/admin/hosting'
+      path: '/hosting'
+      fullPath: '/admin/hosting'
+      preLoaderRoute: typeof AdminHostingRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/products': {
+      id: '/admin/products'
+      path: '/products'
+      fullPath: '/admin/products'
+      preLoaderRoute: typeof AdminProductsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/requests': {
+      id: '/admin/requests'
+      path: '/requests'
+      fullPath: '/admin/requests'
+      preLoaderRoute: typeof AdminRequestsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/settings': {
+      id: '/admin/settings'
+      path: '/settings'
+      fullPath: '/admin/settings'
+      preLoaderRoute: typeof AdminSettingsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/users': {
+      id: '/admin/users'
+      path: '/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AdminUsersRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/edit/$productId': {
       id: '/admin/edit/$productId'
       path: '/edit/$productId'
@@ -294,11 +446,27 @@ declare module '@tanstack/react-router' {
 }
 
 interface AdminRouteChildren {
+  AdminApiShopsRoute: typeof AdminApiShopsRoute
+  AdminBotButtonsRoute: typeof AdminBotButtonsRoute
+  AdminCouponsRoute: typeof AdminCouponsRoute
+  AdminHostingRoute: typeof AdminHostingRoute
+  AdminProductsRoute: typeof AdminProductsRoute
+  AdminRequestsRoute: typeof AdminRequestsRoute
+  AdminSettingsRoute: typeof AdminSettingsRoute
+  AdminUsersRoute: typeof AdminUsersRoute
   AdminIndexRoute: typeof AdminIndexRoute
   AdminEditProductIdRoute: typeof AdminEditProductIdRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminApiShopsRoute: AdminApiShopsRoute,
+  AdminBotButtonsRoute: AdminBotButtonsRoute,
+  AdminCouponsRoute: AdminCouponsRoute,
+  AdminHostingRoute: AdminHostingRoute,
+  AdminProductsRoute: AdminProductsRoute,
+  AdminRequestsRoute: AdminRequestsRoute,
+  AdminSettingsRoute: AdminSettingsRoute,
+  AdminUsersRoute: AdminUsersRoute,
   AdminIndexRoute: AdminIndexRoute,
   AdminEditProductIdRoute: AdminEditProductIdRoute,
 }
