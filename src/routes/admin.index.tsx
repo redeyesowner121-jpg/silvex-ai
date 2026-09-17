@@ -36,9 +36,8 @@ export const Route = createFileRoute("/admin/")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  validateSearch: (search: Record<string, unknown>) => ({
-    tab: typeof search.tab === "string" ? search.tab : undefined,
-  }),
+  validateSearch: (search: Record<string, unknown>): { tab?: string } =>
+    typeof search["tab"] === "string" ? { tab: search["tab"] } : {},
   component: Admin,
 });
 
