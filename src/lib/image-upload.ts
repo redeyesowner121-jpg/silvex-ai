@@ -1,6 +1,14 @@
-/** Turn a picked image file into a small compressed 16:6 data URL we can store. */
-export async function fileToCompressedDataUrl(file: File, maxSize = 800): Promise<string> {
-  if (!file.type.startsWith("image/")) throw new Error("Please choose an image file.");
+/** Turn a picked image file into a small data URL we can store. */
+export async function fileToCompressedDataUrl(
+  file: File,
+  maxSize = 800,
+  options?: { productImage?: boolean },
+): Promise<string> {
+  const productImage = options?.productImage === true;
+  const allowedProductTypes = ["image/jpeg", "image/png", "image/gif"];
+  if (productImage ? !allowedProductTypes.includes(file.type) : !file.type.startsWith("image/")) {
+    throw new Error(productImage ? "Please choose a JPG, PNG or GIF image." : "Please choose an image file.");
+  }
   const dataUrl = await new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result));
@@ -15,9 +23,22 @@ export async function fileToCompressedDataUrl(file: File, maxSize = 800): Promis
     el.src = dataUrl;
   });
 
-  // Always output a 16:6 picture, cropping the middle of the original.
-  const outW = Math.min(maxSize, Math.max(320, img.width));
-  const outH = Math.round((outW * 6) / 16);
+  if (productImage && img.width < 640) {
+    throw new Error("Product image must be at least 640 px wide.");
+  }
+
+  // Keep animated GIFs intact. Their framing is handled by the 16:9 product viewer.
+  if (productImage && file.type === "image/gif") {
+    if (dataUrl.length > 900_000) throw new Error("That GIF is too large, try a smaller one.");
+    return dataUrl;
+  }
+
+  // Product pictures use 16:9 (up to the recommended 1280 × 720).
+  const outW = productImage
+    ? Math.min(1280, Math.max(640, img.width))
+    : Math.min(maxSize, Math.max(320, img.width));
+  const ratioHeight = productImage ? 9 : 6;
+  const outH = Math.round((outW * ratioHeight) / 16);
   const canvas = document.createElement("canvas");
   canvas.width = outW;
   canvas.height = outH;
@@ -27,7 +48,7 @@ export async function fileToCompressedDataUrl(file: File, maxSize = 800): Promis
   ctx.fillRect(0, 0, outW, outH);
 
   const srcRatio = img.width / img.height;
-  const dstRatio = 16 / 6;
+  const dstRatio = 16 / ratioHeight;
   let sx = 0;
   let sy = 0;
   let sw = img.width;

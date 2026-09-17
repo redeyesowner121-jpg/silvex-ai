@@ -411,6 +411,7 @@ export function ProvidersAdmin({ products }: { products: Product[] }) {
                             label="Product photo"
                             value={String((p as { logo?: string }).logo || "")}
                             onChange={(v) => saveImage(p, v)}
+                            productImage
                           />
                         </div>
                         <div className="mt-1 flex items-center gap-2">
