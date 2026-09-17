@@ -135,22 +135,7 @@ export async function saveProviderConfig(
  * Matching is a case-insensitive "name contains keyword" check.
  * Admin can override the list in site_settings/providers/{id}/keep (array of words).
  */
-export const PROVIDER_KEEP: Record<string, string[]> = {
-  qamify: ["gemini", "capcut", "duolingo", "perplexity", "leonardo", "linkedin"],
-  safwan: [
-    "gemini",
-    "google ai pro",
-    "google pro ai",
-    "grok",
-    "lovable",
-    "coursera",
-    "capcut",
-    "canva",
-    "figma",
-    "gamma",
-    "wispr",
-  ],
-};
+export const PROVIDER_KEEP: Record<string, string[]> = {};
 
 /** Admin-editable keep list for a provider (empty list = keep everything). */
 export async function providerKeepList(id: string): Promise<string[]> {
