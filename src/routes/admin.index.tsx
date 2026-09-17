@@ -36,13 +36,24 @@ export const Route = createFileRoute("/admin/")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
+  validateSearch: (search: Record<string, unknown>) => ({
+    tab: typeof search.tab === "string" ? search.tab : undefined,
+  }),
   component: Admin,
 });
 
 function Admin() {
+  const search = Route.useSearch();
   const { db, isAdmin, ready, user, products, config, banner, notify, showSuccess } = useStore();
-  const [section, setSection] = useState<Section>("Analysis");
-  const [tab, setTab] = useState<Tab>("Dashboard");
+  const requestedTab = search.tab as Tab | undefined;
+  const initialTab = requestedTab && Object.values(SECTIONS).flat().includes(requestedTab)
+    ? requestedTab
+    : "Dashboard";
+  const initialSection = (Object.keys(SECTIONS) as Section[]).find((key) =>
+    (SECTIONS[key] as readonly string[]).includes(initialTab),
+  ) ?? "Analysis";
+  const [section, setSection] = useState<Section>(initialSection);
+  const [tab, setTab] = useState<Tab>(initialTab);
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [requests, setRequests] = useState<RequestRow[]>([]);
   const [coupons, setCoupons] = useState<Array<{ code: string; type: string; value: number }>>([]);

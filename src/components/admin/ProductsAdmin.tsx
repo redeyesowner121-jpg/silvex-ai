@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { get, onValue, push, ref, remove, set, update } from "firebase/database";
 import { useStore, isOwnerEmail, type Product, type Category } from "@/context/StoreContext";
@@ -443,26 +443,13 @@ export function ProductsAdmin({ products }: { products: Product[] }) {
                   >
                     {p.hidden ? "Hidden" : "Visible"}
                   </button>
-                  <button
-                    onClick={() =>
-                      setForm({
-                        id: p.id,
-                        type: p.type ?? "Service",
-                        title: p.title,
-                        desc: p.desc ?? "",
-                        price: String(p.price),
-                        logo: p.logo ?? "",
-                        link: p.link ?? "",
-                        delivery: p.delivery ?? "manual",
-                        supplierId: p.supplierId ? String(p.supplierId) : "",
-                        markup: String(p.markup ?? 130),
-
-                      })
-                    }
+                  <Link
+                    to="/admin/edit/$productId"
+                    params={{ productId: p.id }}
                     className="rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary"
                   >
                     Edit
-                  </button>
+                  </Link>
                   {p.locked ? (
                     <span className="rounded-lg bg-muted px-3 py-1.5 text-xs font-bold text-muted-foreground">
                       API item
