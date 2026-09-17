@@ -253,6 +253,7 @@ export function ProductsAdmin({ products }: { products: Product[] }) {
           label="Product photo"
           value={form.logo}
           onChange={(logo) => setForm({ ...form, logo })}
+          productImage
         />
         <select
           className={input}

@@ -9,7 +9,7 @@ export function ProductCard({ product }: { product: Product }) {
 
   return (
     <div className="flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-      <button onClick={() => openProduct(product.id)} className="block aspect-[16/6] w-full bg-muted">
+      <button onClick={() => openProduct(product.id)} className="block aspect-video w-full bg-muted">
         {product.logo ? (
           <img
             src={product.logo}

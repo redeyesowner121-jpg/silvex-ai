@@ -69,10 +69,12 @@ export function ImageField({
   value,
   onChange,
   label,
+  productImage = false,
 }: {
   value: string;
   onChange: (v: string) => void;
   label: string;
+  productImage?: boolean;
 }) {
   const { notify } = useStore();
   const [busy, setBusy] = useState(false);
@@ -82,7 +84,11 @@ export function ImageField({
       <p className="text-xs font-bold text-muted-foreground">{label}</p>
       {value ? (
         <div className="flex items-center gap-3">
-          <img src={value} alt="" className="h-14 w-14 rounded-lg object-cover" />
+          <img
+            src={value}
+            alt=""
+            className={productImage ? "aspect-video w-28 rounded-lg object-cover" : "h-14 w-14 rounded-lg object-cover"}
+          />
           <button onClick={() => onChange("")} className="text-xs font-bold text-destructive">
             Remove
           </button>
@@ -94,11 +100,16 @@ export function ImageField({
         value={value.startsWith("data:") ? "" : value}
         onChange={(e) => onChange(e.target.value)}
       />
+      {productImage ? (
+        <p className="text-[10px] text-muted-foreground">
+          16:9 · Recommended 1280 × 720 · Minimum width 640 px · JPG, PNG or GIF
+        </p>
+      ) : null}
       <label className="block cursor-pointer rounded-xl bg-muted py-2 text-center text-xs font-bold">
         {busy ? "Uploading…" : "📷 Upload photo from device"}
         <input
           type="file"
-          accept="image/*"
+          accept={productImage ? "image/jpeg,image/png,image/gif" : "image/*"}
           className="hidden"
           onChange={async (e) => {
             const file = e.target.files?.[0];
@@ -106,7 +117,7 @@ export function ImageField({
             if (!file) return;
             setBusy(true);
             try {
-              onChange(await fileToCompressedDataUrl(file));
+              onChange(await fileToCompressedDataUrl(file, productImage ? 1280 : 800, { productImage }));
             } catch (err) {
               notify(err instanceof Error ? err.message : "Upload failed");
             } finally {
