@@ -1,5 +1,6 @@
 /** Everything a shopper does in the bot: products, wallet, orders, buying. */
 import { defaultDepositAddress } from "@/lib/deposit.server";
+import { formatDescription } from "@/lib/format-desc";
 
 import { dbGet, dbPush, dbPut, money, notifyOwners, sendDeliveryFiles, siteUrl, tg, tgSendPhoto } from "@/lib/telegram.server";
 import { be, e as em, productEmoji, productEmojiChar } from "@/lib/emoji.server";
@@ -66,10 +67,10 @@ export async function sendProduct(chatId: number, id: string) {
   const availability = p.delivery === "manual" ? "" : `\n${em("norm.fast")} Instant delivery`;
   const sold = Number((p as any).salesCount || 0);
 
-  const escDesc = String(p.desc || "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+  const escDesc = formatDescription(String(p.desc || ""))
+    .split("\n")
+    .map((line) => line.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"))
+    .join("\n");
   const text =
     `${productEmoji(id)} <b>${p.title || "Item"}</b>\n\n` +
     `${em("norm.money")} Price: <b>${money(p.price || 0)}</b>\n` +
