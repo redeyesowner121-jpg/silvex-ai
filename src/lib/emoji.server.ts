@@ -16,8 +16,14 @@ import {
 } from "./button-colors";
 
 export type EmojiEntry = { id?: string; char: string; img?: string };
-/** One replacement rule: `from` (original emoji) -> `char`/`id` (new emoji). */
-export type EmojiRule = { from: string; char: string; id?: string; img?: string };
+/**
+ * One replacement rule: `from` (original emoji) -> `char`/`id` (new emoji).
+ * When `slot` is set the rule only applies to that one named place (for
+ * example the Orders button), so emojis shared by several places — 🧾, ⚡,
+ * 📦, 💳 — no longer all change together and no longer steal each other's
+ * premium emoji id.
+ */
+export type EmojiRule = { from: string; char: string; id?: string; img?: string; slot?: string };
 
 export const EMOJI_PATH = "telegramEmoji";
 
