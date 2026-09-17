@@ -68,9 +68,10 @@ export async function loadEmojis(force = false): Promise<void> {
   loading = Promise.all([
     dbGet<Record<string, EmojiRule>>(`${EMOJI_PATH}/map`),
     dbGet<Record<string, EmojiEntry>>(`${EMOJI_PATH}/products`),
+    dbGet<Record<string, EmojiRule>>(`${EMOJI_PATH}/slots`),
   ])
-    .then(([rules, products]) => {
-      store = { rules: rules || {}, products: decodeMap(products) };
+    .then(([rules, products, slots]) => {
+      store = { rules: rules || {}, slots: decodeMap(slots), products: decodeMap(products) };
       loadedAt = Date.now();
       version++;
     })
