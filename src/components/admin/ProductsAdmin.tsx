@@ -19,6 +19,7 @@ export function ProductsAdmin({ products }: { products: Product[] }) {
   const { db, notify, categories, config } = useStore();
   const [form, setForm] = useState(emptyProduct);
   const [bulk, setBulk] = useState("");
+  const [search, setSearch] = useState("");
   const [viewing, setViewing] = useState<string | null>(null);
   const [supplier, setSupplier] = useState<SupItem[]>([]);
   const [supBusy, setSupBusy] = useState(false);
@@ -406,7 +407,14 @@ export function ProductsAdmin({ products }: { products: Product[] }) {
       </div>
 
       <div className="space-y-2">
-        {products.map((p) => {
+        <input
+          className={input}
+          type="search"
+          placeholder="Search products"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+        />
+        {products.filter((product) => `${product.title} ${product.type || ""}`.toLowerCase().includes(search.trim().toLowerCase())).map((p) => {
           const available = (p.stock || []).filter(Boolean);
           const used = [
             ...Object.values(p.usedStock || {}),

@@ -114,15 +114,6 @@ export function ProvidersAdmin({ products }: { products: Product[] }) {
     }
   }
 
-  /** Delete one imported API product — it never comes back on the next import. */
-  async function deleteItem(p: Product) {
-    if (!db) return;
-    if (!confirm(`Delete “${p.title}”? It will not come back on the next import.`)) return;
-    await update(ref(db, "site_settings/apiDeleted"), { [p.id]: true });
-    await remove(ref(db, `products/${p.id}`));
-    notify("Product deleted");
-  }
-
   /** Hide or show every product of one shop at once. */
   async function setAllHidden(items: Product[], hidden: boolean) {
     if (!db || !items.length) return;

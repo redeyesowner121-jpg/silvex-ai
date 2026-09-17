@@ -42,6 +42,8 @@ export function ProductEditor({ product }: { product: Product }) {
       if (form.delivery === "supplier") await syncSupplier().catch(() => undefined);
       notify("Product updated");
       await navigate({ to: "/admin", search: { tab: "Products" } });
+    } catch {
+      notify("Product could not be saved. Please try again.");
     } finally { setSaving(false); }
   }
 
