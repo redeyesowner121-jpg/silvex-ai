@@ -1,4 +1,5 @@
 /** Owner panel inside the bot: stats, orders, requests, products, users. */
+import { formatDescription } from "@/lib/format-desc";
 import {
   dbGet,
   dbPatch,
