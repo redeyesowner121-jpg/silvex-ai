@@ -41,39 +41,8 @@ export type ProviderDef = {
   shape: ProviderShape;
 };
 
-export const PROVIDERS: ProviderDef[] = [
-  {
-    id: "mmostore",
-    name: "MMO Store",
-    url: "https://api.mmostore.qzz.io/api/v1",
-    key: "mmostore_c716a85591c17abfd64c9fce3bb05010ee3ce53336d1da27",
-    docs: "https://api.mmostore.qzz.io/apidocumentation",
-    markup: 130,
-    shape: {
-      productsPath: "products",
-      balancePath: "balance",
-      orderPath: "orders",
-      qtyField: "qty",
-      refField: "",
-      orderExtra: { currency: "USD" },
-    },
-  },
-  {
-    id: "canboso",
-    name: "Canboso",
-    url: "https://canboso.com/api/v2/telegram-buyer",
-    key: "tgb_a7706ca2b1e10b1bdefeaf76d067d635615c78ff9a2322ef",
-    docs: "https://canboso.com/api/swagger",
-    markup: 130,
-    shape: {
-      productsPath: "products?per_page=100",
-      balancePath: "balance",
-      orderPath: "purchase",
-      qtyField: "quantity",
-      refField: "idempotency_key",
-    },
-  },
-];
+/** No supplier shops are connected. Add one here to bring them back. */
+export const PROVIDERS: ProviderDef[] = [];
 
 export function providerDef(id: string): ProviderDef | null {
   return PROVIDERS.find((p) => p.id === id) || null;
