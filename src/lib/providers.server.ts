@@ -5,10 +5,10 @@ import { dbGet, dbPatch, dbPut } from "./telegram.server";
  * Every value here is only a fallback — the admin panel can change the name,
  * base URL, key, profit % and whether a provider is on, in site_settings/providers.
  */
-export type ProviderId = "qamify" | "safwan" | "mmostore" | "canboso" | "custom";
+export type ProviderId = "mmostore" | "canboso" | "custom";
 
 /** Shops that were removed — their imported products get cleaned up. */
-export const RETIRED_PROVIDERS = ["elite", "eklas"];
+export const RETIRED_PROVIDERS = ["elite", "eklas", "qamify", "safwan"];
 
 export type ProviderShape = {
   productsPath: string;
@@ -34,37 +34,6 @@ export type ProviderDef = {
 };
 
 export const PROVIDERS: ProviderDef[] = [
-  {
-    id: "qamify",
-    name: "Qamify",
-    url: "https://api.qamify.site/v1",
-    key: "qamify_bddc9c7e13755ed083264ec1af7be2d6106f5e48e5033b18",
-    docs: "https://api.qamify.site/docs",
-    markup: 130,
-    shape: {
-      productsPath: "products",
-      balancePath: "balance",
-      orderPath: "orders",
-      qtyField: "qty",
-      refField: "",
-      idempotencyHeader: true,
-    },
-  },
-  {
-    id: "safwan",
-    name: "Safwan Tiger Shop",
-    url: "https://safwantigershopbot-production.up.railway.app/api",
-    key: "stapi_6aaad66227e3c5c8dc6edb3e98d10c684e56cd313b870196ef5d0a71704f14eb",
-    docs: "https://safwantigershopbot-production.up.railway.app/api/products",
-    markup: 130,
-    shape: {
-      productsPath: "products",
-      balancePath: "balance",
-      orderPath: "order",
-      qtyField: "quantity",
-      refField: "request_id",
-    },
-  },
   {
     id: "mmostore",
     name: "MMO Store",
@@ -166,22 +135,7 @@ export async function saveProviderConfig(
  * Matching is a case-insensitive "name contains keyword" check.
  * Admin can override the list in site_settings/providers/{id}/keep (array of words).
  */
-export const PROVIDER_KEEP: Record<string, string[]> = {
-  qamify: ["gemini", "capcut", "duolingo", "perplexity", "leonardo", "linkedin"],
-  safwan: [
-    "gemini",
-    "google ai pro",
-    "google pro ai",
-    "grok",
-    "lovable",
-    "coursera",
-    "capcut",
-    "canva",
-    "figma",
-    "gamma",
-    "wispr",
-  ],
-};
+export const PROVIDER_KEEP: Record<string, string[]> = {};
 
 /** Admin-editable keep list for a provider (empty list = keep everything). */
 export async function providerKeepList(id: string): Promise<string[]> {
