@@ -48,9 +48,13 @@ export const EMOJI_SLOTS: Record<string, { label: string; char: string; group: "
   ...BOT_EMOJI_SLOTS,
 };
 
-type Store = { rules: Record<string, EmojiRule>; products: Record<string, EmojiEntry> };
+type Store = {
+  rules: Record<string, EmojiRule>;
+  slots: Record<string, EmojiRule>;
+  products: Record<string, EmojiEntry>;
+};
 
-let store: Store = { rules: {}, products: {} };
+let store: Store = { rules: {}, slots: {}, products: {} };
 let loadedAt = 0;
 let version = 0;
 let loading: Promise<void> | null = null;
