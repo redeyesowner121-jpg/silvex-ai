@@ -1,14 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { ref, remove, update } from "firebase/database";
 import { useStore, type Product } from "@/context/StoreContext";
-import { input, Empty, ImageField } from "@/components/admin/shared";
+import { input, Empty } from "@/components/admin/shared";
 import {
   listProviders,
   saveProvider,
   importProviderProducts,
   pruneApiProducts,
 } from "@/lib/providers.functions";
-import { syncSupplier } from "@/lib/supplier.functions";
 import { broadcastProductEvent } from "@/lib/broadcast.functions";
 
 type Row = {
@@ -24,14 +24,11 @@ type Row = {
 };
 
 export function ProvidersAdmin({ products }: { products: Product[] }) {
-  const { db, notify, categories } = useStore();
+  const { db, notify } = useStore();
   const [rows, setRows] = useState<Row[]>([]);
   const [open, setOpen] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [draft, setDraft] = useState<Record<string, Partial<Row>>>({});
-  const markupRef = useRef<Record<string, string>>({});
-  const nameRef = useRef<Record<string, string>>({});
-  const typeRef = useRef<Record<string, string>>({});
 
 
   async function load() {
@@ -117,15 +114,6 @@ export function ProvidersAdmin({ products }: { products: Product[] }) {
     }
   }
 
-  /** Delete one imported API product — it never comes back on the next import. */
-  async function deleteItem(p: Product) {
-    if (!db) return;
-    if (!confirm(`Delete “${p.title}”? It will not come back on the next import.`)) return;
-    await update(ref(db, "site_settings/apiDeleted"), { [p.id]: true });
-    await remove(ref(db, `products/${p.id}`));
-    notify("Product deleted");
-  }
-
   /** Hide or show every product of one shop at once. */
   async function setAllHidden(items: Product[], hidden: boolean) {
     if (!db || !items.length) return;
@@ -142,32 +130,6 @@ export function ProvidersAdmin({ products }: { products: Product[] }) {
       await remove(ref(db, `products/${p.id}`));
     }
     notify(`Deleted ${items.length} products`);
-  }
-
-  async function saveDetails(p: Product) {
-    if (!db) return;
-    const title = String(nameRef.current[p.id] ?? p.title ?? "").trim();
-    const type = String(typeRef.current[p.id] ?? p.type ?? "").trim();
-    if (!title) return notify("Give the product a name");
-    await update(ref(db, `products/${p.id}`), { title, ...(type ? { type } : {}) });
-    notify("Name and category saved");
-  }
-
-
-  /** Set or remove the photo shown for one API product (kept on future imports). */
-  async function saveImage(p: Product, logo: string) {
-    if (!db) return;
-    await update(ref(db, `products/${p.id}`), { logo });
-    notify(logo ? "Photo saved" : "Photo removed");
-  }
-
-  async function saveMarkup(p: Product) {
-    if (!db) return;
-    const pct = Number(markupRef.current[p.id] ?? p.markup ?? 130);
-    if (!pct || pct < 100) return notify("Use 100 or more (130 = +30% profit)");
-    await update(ref(db, `products/${p.id}`), { markup: pct });
-    notify("Profit saved — refreshing price…");
-    await syncSupplier();
   }
 
   return (
@@ -370,66 +332,8 @@ export function ProvidersAdmin({ products }: { products: Product[] }) {
                             >
                               {p.hidden ? "Hidden" : "Visible"}
                             </button>
-                            <button
-                              onClick={() => deleteItem(p)}
-                              className="rounded-lg bg-destructive/10 px-3 py-1.5 text-xs font-bold text-destructive"
-                            >
-                              Delete
-                            </button>
+                            <Link to="/admin/edit/$productId" params={{ productId: p.id }} className="rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary">Edit</Link>
                           </div>
-                        </div>
-                        <div className="mt-1 flex flex-wrap items-center gap-2">
-                          <input
-                            defaultValue={p.title}
-                            placeholder="Product name"
-                            onChange={(e) => (nameRef.current[p.id] = e.target.value)}
-                            className="min-w-[140px] flex-1 rounded-lg border border-border bg-card px-2 py-1 text-xs font-bold"
-                          />
-                          <select
-                            defaultValue={p.type || categories[0]?.label || ""}
-                            onChange={(e) => (typeRef.current[p.id] = e.target.value)}
-                            className="rounded-lg border border-border bg-card px-2 py-1 text-xs font-bold"
-                          >
-                            {(categories.some((c) => c.label === p.type)
-                              ? categories
-                              : [{ label: p.type || "Reseller API" }, ...categories]
-                            ).map((c) => (
-                              <option key={c.label} value={c.label}>
-                                {c.label}
-                              </option>
-                            ))}
-                          </select>
-                          <button
-                            onClick={() => saveDetails(p)}
-                            className="rounded-lg bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-600"
-                          >
-                            Save name
-                          </button>
-                        </div>
-                        <div className="mt-1">
-                          <ImageField
-                            label="Product photo"
-                            value={String((p as { logo?: string }).logo || "")}
-                            onChange={(v) => saveImage(p, v)}
-                            productImage
-                          />
-                        </div>
-                        <div className="mt-1 flex items-center gap-2">
-                          <span className="text-[10px] font-bold text-muted-foreground">
-                            Profit %
-                          </span>
-                          <input
-                            type="number"
-                            defaultValue={String(p.markup ?? r.markup)}
-                            onChange={(e) => (markupRef.current[p.id] = e.target.value)}
-                            className="w-20 rounded-lg border border-border bg-card px-2 py-1 text-xs font-bold"
-                          />
-                          <button
-                            onClick={() => saveMarkup(p)}
-                            className="ml-auto rounded-lg bg-primary/10 px-3 py-1 text-xs font-bold text-primary"
-                          >
-                            Save
-                          </button>
                         </div>
                       </div>
                     ))

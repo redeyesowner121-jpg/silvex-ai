@@ -17,6 +17,8 @@ import { Route as HistoryRouteImport } from './routes/history'
 import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as ProductsRouteImport } from './routes/products'
 import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as AdminEditProductIdRouteImport } from './routes/admin.edit.$productId'
 import { Route as ApiPublicRazorpayWebhookRouteImport } from './routes/api/public/razorpay/webhook'
 import { Route as ApiPublicResellerSplatRouteImport } from './routes/api/public/reseller/$'
 import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/public/telegram/webhook'
@@ -61,6 +63,16 @@ const ProfileRoute = ProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminEditProductIdRoute = AdminEditProductIdRouteImport.update({
+  id: '/edit/$productId',
+  path: '/edit/$productId',
+  getParentRoute: () => AdminRoute,
+} as any)
 const ApiPublicRazorpayWebhookRoute =
   ApiPublicRazorpayWebhookRouteImport.update({
     id: '/api/public/razorpay/webhook',
@@ -81,26 +93,29 @@ const ApiPublicTelegramWebhookRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/api-key': typeof ApiKeyRoute
   '/cart': typeof CartRoute
   '/history': typeof HistoryRoute
   '/orders': typeof OrdersRoute
   '/products': typeof ProductsRoute
   '/profile': typeof ProfileRoute
+  '/admin/': typeof AdminIndexRoute
+  '/admin/edit/$productId': typeof AdminEditProductIdRoute
   '/api/public/razorpay/webhook': typeof ApiPublicRazorpayWebhookRoute
   '/api/public/reseller/$': typeof ApiPublicResellerSplatRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
   '/api-key': typeof ApiKeyRoute
   '/cart': typeof CartRoute
   '/history': typeof HistoryRoute
   '/orders': typeof OrdersRoute
   '/products': typeof ProductsRoute
   '/profile': typeof ProfileRoute
+  '/admin': typeof AdminIndexRoute
+  '/admin/edit/$productId': typeof AdminEditProductIdRoute
   '/api/public/razorpay/webhook': typeof ApiPublicRazorpayWebhookRoute
   '/api/public/reseller/$': typeof ApiPublicResellerSplatRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
@@ -108,13 +123,15 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/api-key': typeof ApiKeyRoute
   '/cart': typeof CartRoute
   '/history': typeof HistoryRoute
   '/orders': typeof OrdersRoute
   '/products': typeof ProductsRoute
   '/profile': typeof ProfileRoute
+  '/admin/': typeof AdminIndexRoute
+  '/admin/edit/$productId': typeof AdminEditProductIdRoute
   '/api/public/razorpay/webhook': typeof ApiPublicRazorpayWebhookRoute
   '/api/public/reseller/$': typeof ApiPublicResellerSplatRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
@@ -130,19 +147,22 @@ export interface FileRouteTypes {
     | '/orders'
     | '/products'
     | '/profile'
+    | '/admin/'
+    | '/admin/edit/$productId'
     | '/api/public/razorpay/webhook'
     | '/api/public/reseller/$'
     | '/api/public/telegram/webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/admin'
     | '/api-key'
     | '/cart'
     | '/history'
     | '/orders'
     | '/products'
     | '/profile'
+    | '/admin'
+    | '/admin/edit/$productId'
     | '/api/public/razorpay/webhook'
     | '/api/public/reseller/$'
     | '/api/public/telegram/webhook'
@@ -156,6 +176,8 @@ export interface FileRouteTypes {
     | '/orders'
     | '/products'
     | '/profile'
+    | '/admin/'
+    | '/admin/edit/$productId'
     | '/api/public/razorpay/webhook'
     | '/api/public/reseller/$'
     | '/api/public/telegram/webhook'
@@ -163,7 +185,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AdminRoute: typeof AdminRoute
+  AdminRoute: typeof AdminRouteWithChildren
   ApiKeyRoute: typeof ApiKeyRoute
   CartRoute: typeof CartRoute
   HistoryRoute: typeof HistoryRoute
@@ -233,6 +255,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProfileRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/edit/$productId': {
+      id: '/admin/edit/$productId'
+      path: '/edit/$productId'
+      fullPath: '/admin/edit/$productId'
+      preLoaderRoute: typeof AdminEditProductIdRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/api/public/razorpay/webhook': {
       id: '/api/public/razorpay/webhook'
       path: '/api/public/razorpay/webhook'
@@ -257,9 +293,21 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AdminRouteChildren {
+  AdminIndexRoute: typeof AdminIndexRoute
+  AdminEditProductIdRoute: typeof AdminEditProductIdRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminIndexRoute: AdminIndexRoute,
+  AdminEditProductIdRoute: AdminEditProductIdRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AdminRoute: AdminRoute,
+  AdminRoute: AdminRouteWithChildren,
   ApiKeyRoute: ApiKeyRoute,
   CartRoute: CartRoute,
   HistoryRoute: HistoryRoute,

@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { get, onValue, push, ref, remove, set, update } from "firebase/database";
 import { useStore, isOwnerEmail, type Product, type Category } from "@/context/StoreContext";
@@ -19,6 +19,7 @@ export function ProductsAdmin({ products }: { products: Product[] }) {
   const { db, notify, categories, config } = useStore();
   const [form, setForm] = useState(emptyProduct);
   const [bulk, setBulk] = useState("");
+  const [search, setSearch] = useState("");
   const [viewing, setViewing] = useState<string | null>(null);
   const [supplier, setSupplier] = useState<SupItem[]>([]);
   const [supBusy, setSupBusy] = useState(false);
@@ -47,8 +48,13 @@ export function ProductsAdmin({ products }: { products: Product[] }) {
   const balanceEmpty = supBal != null && linkedProducts.length > 0 && balance < cheapest;
 
   async function loadBalance() {
-    const r = await fetchSupplierBalance();
-    if (r.ok) setSupBal({ balance: Number(r.balance || 0), currency: r.currency || "USDT" });
+    try {
+      const r = await fetchSupplierBalance();
+      if (r.ok) setSupBal({ balance: Number(r.balance || 0), currency: r.currency || "USDT" });
+      else notify(r.error || "Supplier balance is unavailable");
+    } catch {
+      notify("Supplier balance is unavailable");
+    }
   }
 
   useEffect(() => {
@@ -99,19 +105,29 @@ export function ProductsAdmin({ products }: { products: Product[] }) {
 
   async function loadSupplier() {
     setSupBusy(true);
-    const r = await fetchSupplierCatalogue();
-    setSupBusy(false);
-    if (!r.ok) return notify(r.error || "Supplier not reachable");
-    setSupplier(r.products);
-    if (r.balance)
-      setSupBal({ balance: Number(r.balance.balance || 0), currency: r.balance.currency || "USDT" });
+    try {
+      const r = await fetchSupplierCatalogue();
+      if (!r.ok) return notify(r.error || "Supplier not reachable");
+      setSupplier(r.products);
+      if (r.balance)
+        setSupBal({ balance: Number(r.balance.balance || 0), currency: r.balance.currency || "USDT" });
+    } catch {
+      notify("Supplier not reachable");
+    } finally {
+      setSupBusy(false);
+    }
   }
 
   async function runSync() {
     setSupBusy(true);
-    const r = await syncSupplier();
-    setSupBusy(false);
-    notify(r.ok ? `Supplier synced (${r.updated.length} product(s))` : r.error || "Sync failed");
+    try {
+      const r = await syncSupplier();
+      notify(r.ok ? `Supplier synced (${r.updated.length} product(s))` : r.error || "Sync failed");
+    } catch {
+      notify("Sync failed");
+    } finally {
+      setSupBusy(false);
+    }
   }
 
 
@@ -391,7 +407,14 @@ export function ProductsAdmin({ products }: { products: Product[] }) {
       </div>
 
       <div className="space-y-2">
-        {products.map((p) => {
+        <input
+          className={input}
+          type="search"
+          placeholder="Search products"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+        />
+        {products.filter((product) => `${product.title} ${product.type || ""}`.toLowerCase().includes(search.trim().toLowerCase())).map((p) => {
           const available = (p.stock || []).filter(Boolean);
           const used = [
             ...Object.values(p.usedStock || {}),
@@ -443,26 +466,13 @@ export function ProductsAdmin({ products }: { products: Product[] }) {
                   >
                     {p.hidden ? "Hidden" : "Visible"}
                   </button>
-                  <button
-                    onClick={() =>
-                      setForm({
-                        id: p.id,
-                        type: p.type ?? "Service",
-                        title: p.title,
-                        desc: p.desc ?? "",
-                        price: String(p.price),
-                        logo: p.logo ?? "",
-                        link: p.link ?? "",
-                        delivery: p.delivery ?? "manual",
-                        supplierId: p.supplierId ? String(p.supplierId) : "",
-                        markup: String(p.markup ?? 130),
-
-                      })
-                    }
+                  <Link
+                    to="/admin/edit/$productId"
+                    params={{ productId: p.id }}
                     className="rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary"
                   >
                     Edit
-                  </button>
+                  </Link>
                   {p.locked ? (
                     <span className="rounded-lg bg-muted px-3 py-1.5 text-xs font-bold text-muted-foreground">
                       API item
