@@ -6,4 +6,4 @@
 - [x] Verify admin navigation, editing, and mobile layout
 - [x] Show all eight Management options as full-page buttons
 - [x] Give every Management option its own admin page
-- [ ] Verify all Management pages and mobile navigation
+- [x] Verify all Management pages and mobile navigation
