@@ -92,17 +92,22 @@ function ruleFor(char: string): EmojiRule | undefined {
   return store.rules[emojiKey(char)];
 }
 
+/** A rule saved for this exact place wins over a general "replace this emoji" rule. */
+function ruleForSlot(key: string): EmojiRule | undefined {
+  return store.slots[key] || ruleFor(EMOJI_SLOTS[key]?.char || "");
+}
+
 /** Emoji for message text — premium (custom) emoji when the admin set one. */
 export function e(key: string): string {
   const def = EMOJI_SLOTS[key]?.char || "•";
-  const r = ruleFor(def);
+  const r = ruleForSlot(key);
   return r ? render(r) : def;
 }
 
 /** Emoji for inline buttons — Telegram buttons only support plain characters. */
 export function be(key: string): string {
   const def = EMOJI_SLOTS[key]?.char || "•";
-  return ruleFor(def)?.char || def;
+  return ruleForSlot(key)?.char || def;
 }
 
 /* ---------------- product emojis ---------------- */
