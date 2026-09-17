@@ -122,7 +122,7 @@ export function ProductModal() {
 
       {product.desc ? (
         <blockquote className="mb-4 whitespace-pre-line break-words border-l-4 border-primary/60 bg-muted/50 py-2 pl-3 pr-2 text-sm italic leading-relaxed text-muted-foreground">
-          <EmoText text={product.desc} />
+          <EmoText text={formatDescription(product.desc)} />
         </blockquote>
       ) : null}
 

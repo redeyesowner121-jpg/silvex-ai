@@ -66,10 +66,10 @@ export async function sendProduct(chatId: number, id: string) {
   const availability = p.delivery === "manual" ? "" : `\n${em("norm.fast")} Instant delivery`;
   const sold = Number((p as any).salesCount || 0);
 
-  const escDesc = String(p.desc || "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+  const escDesc = formatDescription(String(p.desc || ""))
+    .split("\n")
+    .map((line) => line.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"))
+    .join("\n");
   const text =
     `${productEmoji(id)} <b>${p.title || "Item"}</b>\n\n` +
     `${em("norm.money")} Price: <b>${money(p.price || 0)}</b>\n` +
