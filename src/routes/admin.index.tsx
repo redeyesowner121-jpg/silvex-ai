@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { get, onValue, ref } from "firebase/database";
 import { Dashboard } from "@/components/admin/Dashboard";
 import { ManagementHub } from "@/components/admin/ManagementHub";
+import { OrdersAdmin } from "@/components/admin/OrdersAdmin";
 import { useStore } from "@/context/StoreContext";
 import type { OrderRow } from "@/components/admin/shared";
 
@@ -16,7 +17,7 @@ export const Route = createFileRoute("/admin/")({
     { name: "robots", content: "noindex" },
     { name: "twitter:card", content: "summary" },
   ] }),
-  validateSearch: (search: Record<string, unknown>): { view: "analysis" | "management" } => ({ view: search["view"] === "management" ? "management" : "analysis" }),
+  validateSearch: (search: Record<string, unknown>): { view: "analysis" | "orders" | "management" } => ({ view: search["view"] === "management" || search["view"] === "orders" ? search["view"] : "analysis" }),
   component: AdminHome,
 });
 
@@ -44,9 +45,11 @@ function AdminHome() {
     <div className="fade-in mx-auto max-w-4xl">
       <h1 className="mb-4 text-2xl font-black">Admin panel</h1>
       <div className="mb-5 grid grid-cols-2 gap-2 rounded-2xl bg-muted/60 p-1">
-        {(["analysis", "management"] as const).map((item) => <button key={item} onClick={() => navigate({ search: { view: item }, replace: true })} className={`rounded-xl py-2.5 text-sm font-black capitalize transition ${view === item ? "btn-grad" : "text-muted-foreground"}`}>{item}</button>)}
+        <button onClick={() => navigate({ search: { view: "analysis" }, replace: true })} className={`rounded-xl py-2.5 text-sm font-black transition ${view !== "management" ? "btn-grad" : "text-muted-foreground"}`}>Analysis</button>
+        <button onClick={() => navigate({ search: { view: "management" }, replace: true })} className={`rounded-xl py-2.5 text-sm font-black transition ${view === "management" ? "btn-grad" : "text-muted-foreground"}`}>Management</button>
       </div>
-      {view === "management" ? <ManagementHub /> : <Dashboard orders={orders} products={products} config={config} onRefresh={refresh} />}
+      {view !== "management" ? <div className="mb-5 grid grid-cols-2 gap-2"><button onClick={() => navigate({ search: { view: "analysis" }, replace: true })} className={`rounded-xl px-4 py-2 text-xs font-bold ${view === "analysis" ? "bg-foreground text-background" : "bg-card shadow-sm"}`}>Dashboard</button><button onClick={() => navigate({ search: { view: "orders" }, replace: true })} className={`rounded-xl px-4 py-2 text-xs font-bold ${view === "orders" ? "bg-foreground text-background" : "bg-card shadow-sm"}`}>Orders</button></div> : null}
+      {view === "management" ? <ManagementHub /> : view === "orders" ? <OrdersAdmin orders={orders} /> : <Dashboard orders={orders} products={products} config={config} onRefresh={refresh} />}
     </div>
   );
 }
