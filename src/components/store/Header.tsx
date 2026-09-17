@@ -1,10 +1,10 @@
 import { Link } from "@tanstack/react-router";
+import { Bell, ShieldCheck } from "lucide-react";
 import { useStore } from "@/context/StoreContext";
-import { Emo } from "@/components/store/Emo";
-import logoAsset from "@/assets/silvex-logo.jpg.asset.json";
+import logoUrl from "@/assets/silvex-logo.jpg";
 
 export function Header() {
-  const { user, profile, isAdmin, notices, openModal, siteName, emoji } = useStore();
+  const { user, profile, isAdmin, notices, openModal, siteName } = useStore();
   const [first, ...rest] = siteName.split(" ");
 
   return (
@@ -12,7 +12,7 @@ export function Header() {
       <div className="mx-auto flex h-16 w-full max-w-md items-center justify-between px-4 md:max-w-5xl md:px-8">
         <Link to="/" className="flex items-center gap-2 text-lg font-black tracking-tight">
           <img
-            src={logoAsset.url}
+            src={logoUrl}
             alt="Silvex Ai logo"
             decoding="async"
             className="h-10 w-10 rounded-xl border border-primary/40 object-cover shadow-sm"
@@ -26,9 +26,9 @@ export function Header() {
           <button
             aria-label="Notifications"
             onClick={() => openModal("notifications")}
-            className="relative text-xl"
+            className="relative text-muted-foreground transition hover:text-foreground"
           >
-            <Emo k="web.bell" />
+            <Bell className="h-5 w-5" />
             {notices.length > 0 ? (
               <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-destructive-foreground">
                 {notices.length}
@@ -36,8 +36,8 @@ export function Header() {
             ) : null}
           </button>
           {isAdmin ? (
-            <Link to="/admin" search={{ view: "analysis" }} aria-label="Admin panel" className="text-xl">
-              <Emo k="web.admin" />
+            <Link to="/admin" search={{ view: "analysis" }} aria-label="Admin panel" className="text-muted-foreground transition hover:text-foreground">
+              <ShieldCheck className="h-5 w-5" />
             </Link>
           ) : null}
           {user ? (
