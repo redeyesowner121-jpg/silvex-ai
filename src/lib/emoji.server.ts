@@ -247,16 +247,30 @@ function charMaps() {
   const plain = new Map<string, string>();
   const html = new Map<string, string>();
   const ids = new Map<string, string>();
+  // Several premium emojis can share the same plain character. Guessing an id
+  // from the character alone then showed the wrong premium emoji, so a
+  // character claimed by two different ids is left plain instead.
+  const clash = new Set<string>();
+  const claim = (char: string, id?: string) => {
+    if (!id || !char) return;
+    const k = normEmoji(char);
+    const seen = ids.get(k);
+    if (seen && seen !== id) {
+      clash.add(k);
+      return;
+    }
+    ids.set(k, id);
+  };
   for (const r of Object.values(store.rules)) {
     const from = normEmoji(r.from);
     if (!from || !r.char) continue;
     plain.set(from, r.char);
     html.set(from, render(r));
-    if (r.id) ids.set(normEmoji(r.char), r.id);
+    claim(r.char, r.id);
   }
-  for (const p of Object.values(store.products)) {
-    if (p?.id && p.char) ids.set(normEmoji(p.char), p.id);
-  }
+  for (const r of Object.values(store.slots)) claim(r.char, r.id);
+  for (const p of Object.values(store.products)) claim(p?.char || "", p?.id);
+  for (const k of clash) ids.delete(k);
   charCache = { at: version, plain, html, ids };
   return charCache;
 }
