@@ -191,6 +191,7 @@ function ProfilePage() {
         {isAdmin ? (
           <Link
             to="/admin"
+              search={{}}
             className="flex w-full justify-between rounded-xl border border-border p-3.5 text-sm font-bold"
           >
             <span><Emo k="web.admin" /> Admin panel</span>
