@@ -24,7 +24,7 @@ const ProvidersAdmin = lazy(() => import("@/components/admin/ProvidersAdmin").th
 const RailwayAdmin = lazy(() => import("@/components/admin/RailwayAdmin").then((m) => ({ default: m.RailwayAdmin })));
 
 
-export const Route = createFileRoute("/admin")({
+export const Route = createFileRoute("/admin/")({
   head: () => ({
     meta: [
       { title: "Admin Panel — SILENT SELLER" },
