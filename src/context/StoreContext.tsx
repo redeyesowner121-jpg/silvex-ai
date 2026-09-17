@@ -539,6 +539,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     config,
     emojis,
     emojiImgs,
+    slotEmojis,
+    slotEmojiImgs,
     prodEmojis,
     prodEmojiImgs,
     banner,
