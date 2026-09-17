@@ -26,9 +26,9 @@ export function Header() {
           <button
             aria-label="Notifications"
             onClick={() => openModal("notifications")}
-            className="relative text-xl"
+            className="relative text-muted-foreground transition hover:text-foreground"
           >
-            <Emo k="web.bell" />
+            <Bell className="h-5 w-5" />
             {notices.length > 0 ? (
               <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-destructive-foreground">
                 {notices.length}
@@ -36,8 +36,8 @@ export function Header() {
             ) : null}
           </button>
           {isAdmin ? (
-            <Link to="/admin" search={{ view: "analysis" }} aria-label="Admin panel" className="text-xl">
-              <Emo k="web.admin" />
+            <Link to="/admin" search={{ view: "analysis" }} aria-label="Admin panel" className="text-muted-foreground transition hover:text-foreground">
+              <ShieldCheck className="h-5 w-5" />
             </Link>
           ) : null}
           {user ? (
