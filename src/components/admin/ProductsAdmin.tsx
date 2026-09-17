@@ -47,8 +47,13 @@ export function ProductsAdmin({ products }: { products: Product[] }) {
   const balanceEmpty = supBal != null && linkedProducts.length > 0 && balance < cheapest;
 
   async function loadBalance() {
-    const r = await fetchSupplierBalance();
-    if (r.ok) setSupBal({ balance: Number(r.balance || 0), currency: r.currency || "USDT" });
+    try {
+      const r = await fetchSupplierBalance();
+      if (r.ok) setSupBal({ balance: Number(r.balance || 0), currency: r.currency || "USDT" });
+      else notify(r.error || "Supplier balance is unavailable");
+    } catch {
+      notify("Supplier balance is unavailable");
+    }
   }
 
   useEffect(() => {
@@ -99,19 +104,29 @@ export function ProductsAdmin({ products }: { products: Product[] }) {
 
   async function loadSupplier() {
     setSupBusy(true);
-    const r = await fetchSupplierCatalogue();
-    setSupBusy(false);
-    if (!r.ok) return notify(r.error || "Supplier not reachable");
-    setSupplier(r.products);
-    if (r.balance)
-      setSupBal({ balance: Number(r.balance.balance || 0), currency: r.balance.currency || "USDT" });
+    try {
+      const r = await fetchSupplierCatalogue();
+      if (!r.ok) return notify(r.error || "Supplier not reachable");
+      setSupplier(r.products);
+      if (r.balance)
+        setSupBal({ balance: Number(r.balance.balance || 0), currency: r.balance.currency || "USDT" });
+    } catch {
+      notify("Supplier not reachable");
+    } finally {
+      setSupBusy(false);
+    }
   }
 
   async function runSync() {
     setSupBusy(true);
-    const r = await syncSupplier();
-    setSupBusy(false);
-    notify(r.ok ? `Supplier synced (${r.updated.length} product(s))` : r.error || "Sync failed");
+    try {
+      const r = await syncSupplier();
+      notify(r.ok ? `Supplier synced (${r.updated.length} product(s))` : r.error || "Sync failed");
+    } catch {
+      notify("Sync failed");
+    } finally {
+      setSupBusy(false);
+    }
   }
 
 
