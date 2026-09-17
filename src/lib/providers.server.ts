@@ -8,7 +8,15 @@ import { dbGet, dbPatch, dbPut } from "./telegram.server";
 export type ProviderId = "mmostore" | "canboso" | "custom";
 
 /** Shops that were removed — their imported products get cleaned up. */
-export const RETIRED_PROVIDERS = ["elite", "eklas", "qamify", "safwan"];
+export const RETIRED_PROVIDERS = [
+  "elite",
+  "eklas",
+  "qamify",
+  "safwan",
+  "mmostore",
+  "canboso",
+  "custom",
+];
 
 export type ProviderShape = {
   productsPath: string;
