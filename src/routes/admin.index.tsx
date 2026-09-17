@@ -16,12 +16,13 @@ export const Route = createFileRoute("/admin/")({
     { name: "robots", content: "noindex" },
     { name: "twitter:card", content: "summary" },
   ] }),
-  validateSearch: (search: Record<string, unknown>) => ({ view: search["view"] === "management" ? "management" as const : "analysis" as const }),
+  validateSearch: (search: Record<string, unknown>): { view?: "management" } => search["view"] === "management" ? { view: "management" } : {},
   component: AdminHome,
 });
 
 function AdminHome() {
-  const { view } = Route.useSearch();
+  const { view: requestedView } = Route.useSearch();
+  const view = requestedView ?? "analysis";
   const navigate = Route.useNavigate();
   const { db, products, config, notify } = useStore();
   const [orders, setOrders] = useState<OrderRow[]>([]);
@@ -44,7 +45,7 @@ function AdminHome() {
     <div className="fade-in mx-auto max-w-4xl">
       <h1 className="mb-4 text-2xl font-black">Admin panel</h1>
       <div className="mb-5 grid grid-cols-2 gap-2 rounded-2xl bg-muted/60 p-1">
-        {(["analysis", "management"] as const).map((item) => <button key={item} onClick={() => navigate({ search: { view: item }, replace: true })} className={`rounded-xl py-2.5 text-sm font-black capitalize transition ${view === item ? "btn-grad" : "text-muted-foreground"}`}>{item}</button>)}
+        {(["analysis", "management"] as const).map((item) => <button key={item} onClick={() => navigate({ search: item === "management" ? { view: "management" } : {}, replace: true })} className={`rounded-xl py-2.5 text-sm font-black capitalize transition ${view === item ? "btn-grad" : "text-muted-foreground"}`}>{item}</button>)}
       </div>
       {view === "management" ? <ManagementHub /> : <Dashboard orders={orders} products={products} config={config} onRefresh={refresh} />}
     </div>
