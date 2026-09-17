@@ -246,7 +246,7 @@ export async function adminProduct(chatId: number, id: string) {
   const stock = Array.isArray(p.stock) ? p.stock.filter(Boolean).length : 0;
   await say(
     chatId,
-    `📦 <b>${p.title}</b>\n${p.desc ? `${p.desc}\n` : ""}Price: ${money(p.price || 0)}\nDelivery: ${p.delivery || "manual"}\nStock: ${stock}\nSales: ${p.salesCount || 0}`,
+    `📦 <b>${p.title}</b>\n${p.desc ? `${formatDescription(p.desc)}\n` : ""}Price: ${money(p.price || 0)}\nDelivery: ${p.delivery || "manual"}\nStock: ${stock}\nSales: ${p.salesCount || 0}`,
     {
       inline_keyboard: [
         [
