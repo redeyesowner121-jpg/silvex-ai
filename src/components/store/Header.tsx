@@ -36,7 +36,7 @@ export function Header() {
             ) : null}
           </button>
           {isAdmin ? (
-            <Link to="/admin" search={{}} aria-label="Admin panel" className="text-xl">
+            <Link to="/admin" search={{ view: "analysis" }} aria-label="Admin panel" className="text-xl">
               <Emo k="web.admin" />
             </Link>
           ) : null}
