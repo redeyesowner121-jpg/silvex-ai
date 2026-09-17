@@ -232,6 +232,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [config, setConfig] = useState<SiteConfig>((snap?.config || {}) as SiteConfig);
   const [emojis, setEmojis] = useState<EmojiRuleMap>((snap?.emojis || {}) as EmojiRuleMap);
   const [emojiImgs, setEmojiImgs] = useState<Record<string, string>>({});
+  // Choices the admin made for one named place only (e.g. just the Orders tab).
+  const [slotEmojis, setSlotEmojis] = useState<EmojiRuleMap>({});
+  const [slotEmojiImgs, setSlotEmojiImgs] = useState<Record<string, string>>({});
   const [prodEmojis, setProdEmojis] = useState<Record<string, { char?: string; id?: string; img?: string }>>(
     decodeDots(snap?.prodEmojis),
   );
@@ -316,11 +319,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         Object.fromEntries(Object.entries(v || {}).map(([k, val]) => [k.split("~").join("."), val]));
       // "Replace this emoji with that one" rules set by the bot admin.
       unsubs.push(onValue(ref(d, "telegramEmoji/map"), (s) => setEmojis(s.val() || {})));
+      unsubs.push(onValue(ref(d, "telegramEmoji/slots"), (s) => setSlotEmojis(decodeKeys(s.val()))));
       // Emojis the bot admin picked for single products.
       unsubs.push(onValue(ref(d, "telegramEmoji/products"), (s) => setProdEmojis(decodeKeys(s.val()))));
       // Premium emoji artwork can be heavy, so it loads after the first paint.
       const loadArt = () => {
         unsubs.push(onValue(ref(d, "telegramEmoji/mapimg"), (s) => setEmojiImgs(s.val() || {})));
+        unsubs.push(
+          onValue(ref(d, "telegramEmoji/slotimg"), (s) => setSlotEmojiImgs(decodeKeys(s.val()))),
+        );
         unsubs.push(
           onValue(ref(d, "telegramEmoji/prodimg"), (s) => setProdEmojiImgs(decodeKeys(s.val()))),
         );
@@ -483,8 +490,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           ? config.categories
           : DEFAULT_CATEGORIES,
       siteName: config.siteName || (isOriginProject() ? "SILENT SELLER" : "My Store"),
-      emoji: (key: string) => emojiCharMap[normEmoji(slotChar(key))]?.char || slotChar(key),
-      emojiImg: (key: string) => emojiCharMap[normEmoji(slotChar(key))]?.img || "",
+      // A choice made for this exact place wins over a general emoji swap.
+      emoji: (key: string) =>
+        slotEmojis[key]?.char || emojiCharMap[normEmoji(slotChar(key))]?.char || slotChar(key),
+      emojiImg: (key: string) =>
+        (slotEmojis[key] ? slotEmojiImgs[key] || "" : "") ||
+        emojiCharMap[normEmoji(slotChar(key))]?.img ||
+        "",
       emojiFor: (char: string) => emojiCharMap[normEmoji(char)] || { char },
       productEmoji: (productId: string) => {
         const saved = prodEmojis[productId];
@@ -527,6 +539,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     config,
     emojis,
     emojiImgs,
+    slotEmojis,
+    slotEmojiImgs,
     prodEmojis,
     prodEmojiImgs,
     banner,

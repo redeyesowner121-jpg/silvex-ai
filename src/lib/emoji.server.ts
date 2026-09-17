@@ -16,8 +16,14 @@ import {
 } from "./button-colors";
 
 export type EmojiEntry = { id?: string; char: string; img?: string };
-/** One replacement rule: `from` (original emoji) -> `char`/`id` (new emoji). */
-export type EmojiRule = { from: string; char: string; id?: string; img?: string };
+/**
+ * One replacement rule: `from` (original emoji) -> `char`/`id` (new emoji).
+ * When `slot` is set the rule only applies to that one named place (for
+ * example the Orders button), so emojis shared by several places — 🧾, ⚡,
+ * 📦, 💳 — no longer all change together and no longer steal each other's
+ * premium emoji id.
+ */
+export type EmojiRule = { from: string; char: string; id?: string; img?: string; slot?: string };
 
 export const EMOJI_PATH = "telegramEmoji";
 
@@ -42,9 +48,13 @@ export const EMOJI_SLOTS: Record<string, { label: string; char: string; group: "
   ...BOT_EMOJI_SLOTS,
 };
 
-type Store = { rules: Record<string, EmojiRule>; products: Record<string, EmojiEntry> };
+type Store = {
+  rules: Record<string, EmojiRule>;
+  slots: Record<string, EmojiRule>;
+  products: Record<string, EmojiEntry>;
+};
 
-let store: Store = { rules: {}, products: {} };
+let store: Store = { rules: {}, slots: {}, products: {} };
 let loadedAt = 0;
 let version = 0;
 let loading: Promise<void> | null = null;
@@ -58,9 +68,10 @@ export async function loadEmojis(force = false): Promise<void> {
   loading = Promise.all([
     dbGet<Record<string, EmojiRule>>(`${EMOJI_PATH}/map`),
     dbGet<Record<string, EmojiEntry>>(`${EMOJI_PATH}/products`),
+    dbGet<Record<string, EmojiRule>>(`${EMOJI_PATH}/slots`),
   ])
-    .then(([rules, products]) => {
-      store = { rules: rules || {}, products: decodeMap(products) };
+    .then(([rules, products, slots]) => {
+      store = { rules: rules || {}, slots: decodeMap(slots), products: decodeMap(products) };
       loadedAt = Date.now();
       version++;
     })
@@ -81,17 +92,22 @@ function ruleFor(char: string): EmojiRule | undefined {
   return store.rules[emojiKey(char)];
 }
 
+/** A rule saved for this exact place wins over a general "replace this emoji" rule. */
+function ruleForSlot(key: string): EmojiRule | undefined {
+  return store.slots[key] || ruleFor(EMOJI_SLOTS[key]?.char || "");
+}
+
 /** Emoji for message text — premium (custom) emoji when the admin set one. */
 export function e(key: string): string {
   const def = EMOJI_SLOTS[key]?.char || "•";
-  const r = ruleFor(def);
+  const r = ruleForSlot(key);
   return r ? render(r) : def;
 }
 
 /** Emoji for inline buttons — Telegram buttons only support plain characters. */
 export function be(key: string): string {
   const def = EMOJI_SLOTS[key]?.char || "•";
-  return ruleFor(def)?.char || def;
+  return ruleForSlot(key)?.char || def;
 }
 
 /* ---------------- product emojis ---------------- */
@@ -141,7 +157,10 @@ export function productEmojiStats(ids: string[]): { total: number; set: number; 
 /* ---------------- replacement rules ---------------- */
 
 export function listRules(): EmojiRule[] {
-  return Object.values(store.rules).sort((a, b) => a.from.localeCompare(b.from));
+  const slotted = Object.entries(store.slots).map(([slot, r]) => ({ ...r, slot }));
+  return [...Object.values(store.rules), ...slotted].sort((a, b) =>
+    (a.slot || a.from).localeCompare(b.slot || b.from),
+  );
 }
 
 export function ruleStats(): { total: number; premium: number } {
@@ -149,25 +168,52 @@ export function ruleStats(): { total: number; premium: number } {
   return { total: list.length, premium: list.filter((r) => r.id).length };
 }
 
-/** Save "replace `from` with this emoji everywhere" and apply it immediately. */
-export async function setRule(from: string, value: EmojiEntry): Promise<EmojiRule> {
-  const key = emojiKey(from);
+/** Key used in saved-list buttons; slot rules get an "s:" prefix. */
+export function ruleKey(r: EmojiRule): string {
+  return r.slot ? `s:${encKey(r.slot)}` : emojiKey(r.from);
+}
+
+/**
+ * Save the admin's choice and apply it immediately. With `slot` the change is
+ * limited to that one place; without it every copy of `from` changes.
+ */
+export async function setRule(from: string, value: EmojiEntry, slot?: string): Promise<EmojiRule> {
+  const key = slot ? encKey(slot) : emojiKey(from);
   if (!key) throw new Error("No emoji to replace");
-  const rule: EmojiRule = { from: normEmoji(from), char: value.char, ...(value.id ? { id: value.id } : {}) };
-  await dbPut(`${EMOJI_PATH}/map/${key}`, rule);
+  const rule: EmojiRule = {
+    from: normEmoji(from),
+    char: value.char,
+    ...(value.id ? { id: value.id } : {}),
+    ...(slot ? { slot } : {}),
+  };
+  await dbPut(`${EMOJI_PATH}/${slot ? "slots" : "map"}/${key}`, rule);
   // A successful database PUT is authoritative. A second immediate read can
   // fail transiently and previously reported a false save failure to admins.
-  store.rules = { ...store.rules, [key]: rule };
+  if (slot) store.slots = { ...store.slots, [slot]: rule };
+  else store.rules = { ...store.rules, [key]: rule };
   version++;
-  if (value.img) await dbPut(`${EMOJI_PATH}/mapimg/${key}`, value.img).catch(() => undefined);
+  if (value.img)
+    await dbPut(`${EMOJI_PATH}/${slot ? "slotimg" : "mapimg"}/${key}`, value.img).catch(() => undefined);
   return rule;
 }
 
-export async function saveRuleImage(from: string, img: string): Promise<void> {
-  await dbPut(`${EMOJI_PATH}/mapimg/${emojiKey(from)}`, img).catch(() => undefined);
+export async function saveRuleImage(from: string, img: string, slot?: string): Promise<void> {
+  const key = slot ? encKey(slot) : emojiKey(from);
+  await dbPut(`${EMOJI_PATH}/${slot ? "slotimg" : "mapimg"}/${key}`, img).catch(() => undefined);
 }
 
 export async function removeRule(key: string): Promise<void> {
+  if (key.startsWith("s:")) {
+    const enc = key.slice(2);
+    const slot = decKey(enc);
+    await dbPut(`${EMOJI_PATH}/slots/${enc}`, null).catch(() => undefined);
+    await dbPut(`${EMOJI_PATH}/slotimg/${enc}`, null).catch(() => undefined);
+    const next = { ...store.slots };
+    delete next[slot];
+    store.slots = next;
+    version++;
+    return;
+  }
   await dbPut(`${EMOJI_PATH}/map/${key}`, null).catch(() => undefined);
   await dbPut(`${EMOJI_PATH}/mapimg/${key}`, null).catch(() => undefined);
   const next = { ...store.rules };
@@ -179,7 +225,7 @@ export async function removeRule(key: string): Promise<void> {
 /** Wipe every emoji setting (rules, artwork, product emojis, old records). */
 export async function resetAllEmojis(): Promise<void> {
   await dbPut(EMOJI_PATH, null);
-  store = { rules: {}, products: {} };
+  store = { rules: {}, slots: {}, products: {} };
   loadedAt = Date.now();
   version++;
 }
@@ -201,16 +247,30 @@ function charMaps() {
   const plain = new Map<string, string>();
   const html = new Map<string, string>();
   const ids = new Map<string, string>();
+  // Several premium emojis can share the same plain character. Guessing an id
+  // from the character alone then showed the wrong premium emoji, so a
+  // character claimed by two different ids is left plain instead.
+  const clash = new Set<string>();
+  const claim = (char: string, id?: string) => {
+    if (!id || !char) return;
+    const k = normEmoji(char);
+    const seen = ids.get(k);
+    if (seen && seen !== id) {
+      clash.add(k);
+      return;
+    }
+    ids.set(k, id);
+  };
   for (const r of Object.values(store.rules)) {
     const from = normEmoji(r.from);
     if (!from || !r.char) continue;
     plain.set(from, r.char);
     html.set(from, render(r));
-    if (r.id) ids.set(normEmoji(r.char), r.id);
+    claim(r.char, r.id);
   }
-  for (const p of Object.values(store.products)) {
-    if (p?.id && p.char) ids.set(normEmoji(p.char), p.id);
-  }
+  for (const r of Object.values(store.slots)) claim(r.char, r.id);
+  for (const p of Object.values(store.products)) claim(p?.char || "", p?.id);
+  for (const k of clash) ids.delete(k);
   charCache = { at: version, plain, html, ids };
   return charCache;
 }
@@ -322,9 +382,10 @@ export async function fetchEmojiImage(id: string): Promise<string | undefined> {
 /** Fill in artwork missing for saved premium emojis. Returns how many were fixed. */
 export async function syncEmojiImages(): Promise<number> {
   await loadEmojis(true);
-  const [imgs, prodImgs] = await Promise.all([
+  const [imgs, prodImgs, slotImgs] = await Promise.all([
     dbGet<Record<string, string>>(`${EMOJI_PATH}/mapimg`),
     dbGet<Record<string, string>>(`${EMOJI_PATH}/prodimg`),
+    dbGet<Record<string, string>>(`${EMOJI_PATH}/slotimg`),
   ]);
   let fixed = 0;
   for (const [key, r] of Object.entries(store.rules)) {
@@ -332,6 +393,13 @@ export async function syncEmojiImages(): Promise<number> {
     const img = await fetchEmojiImage(r.id);
     if (!img) continue;
     await dbPut(`${EMOJI_PATH}/mapimg/${key}`, img);
+    fixed++;
+  }
+  for (const [slot, r] of Object.entries(store.slots)) {
+    if (!r?.id || slotImgs?.[encKey(slot)]) continue;
+    const img = await fetchEmojiImage(r.id);
+    if (!img) continue;
+    await dbPut(`${EMOJI_PATH}/slotimg/${encKey(slot)}`, img);
     fixed++;
   }
   for (const [id, p] of Object.entries(store.products)) {

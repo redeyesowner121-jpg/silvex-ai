@@ -2,13 +2,13 @@
 import {
   be,
   clearProductEmoji,
-  emojiKey,
   fetchEmojiImage,
   listRules,
   productEmojiChar,
   productEmojiStats,
   readEmoji,
   removeRule,
+  ruleKey,
   ruleStats,
   saveRuleImage,
   setProductEmoji,
@@ -96,7 +96,7 @@ export async function emojiGroup(chatId: number, group: string, page = 0) {
 export async function emojiSlotPick(chatId: number, slotKey: string) {
   const slot = EMOJI_SLOTS[slotKey];
   if (!slot) return emojiHome(chatId);
-  await setState(chatId, { k: "em_to", a: slot.char });
+  await setState(chatId, { k: "em_to", a: slot.char, b: slotKey });
   return say(
     chatId,
     `Send the new emoji for <b>${slot.label}</b> (now ${be(slotKey)}).\nPremium (custom) emojis work too.`,
@@ -118,8 +118,8 @@ export async function emojiList(chatId: number, page = 0) {
     inline_keyboard: [
       ...slice.map((r) => [
         {
-          text: `${r.from} ➜ ${r.char}${r.id ? " ✨" : ""}`,
-          callback_data: `a:emd:${emojiKey(r.from)}`,
+          text: `${r.slot ? EMOJI_SLOTS[r.slot]?.label || r.slot : r.from} ➜ ${r.char}${r.id ? " ✨" : ""}`,
+          callback_data: `a:emd:${ruleKey(r)}`,
         },
       ]),
       ...emPager("a:emL:", page, rules.length),
@@ -166,11 +166,12 @@ export async function emojiToMessage(
   text: string,
   entities?: any[],
   sticker?: any,
+  slot?: string,
 ) {
   const value = readEmoji(text, entities, sticker);
   if (!value) return say(chatId, "Please send one emoji.");
   try {
-    await setRule(from, value);
+    await setRule(from, value, slot);
   } catch (error) {
     console.error("emoji save failed", error);
     return say(chatId, "❌ That emoji could not be saved. Please try again.");
@@ -179,10 +180,11 @@ export async function emojiToMessage(
   let note = "";
   if (value.id) {
     const img = await fetchEmojiImage(value.id);
-    if (img) await saveRuleImage(from, img);
+    if (img) await saveRuleImage(from, img, slot);
     else note = "\n⚠️ The website could not download this premium emoji's picture.";
   }
-  await say(chatId, `✅ Saved: ${from} ➜ ${value.char}${value.id ? " (premium ✨)" : ""}${note}`);
+  const where = slot ? EMOJI_SLOTS[slot]?.label || slot : from;
+  await say(chatId, `✅ Saved: ${where} ➜ ${value.char}${value.id ? " (premium ✨)" : ""}${note}`);
   return emojiHome(chatId);
 }
 
