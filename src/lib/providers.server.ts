@@ -35,37 +35,6 @@ export type ProviderDef = {
 
 export const PROVIDERS: ProviderDef[] = [
   {
-    id: "qamify",
-    name: "Qamify",
-    url: "https://api.qamify.site/v1",
-    key: "qamify_bddc9c7e13755ed083264ec1af7be2d6106f5e48e5033b18",
-    docs: "https://api.qamify.site/docs",
-    markup: 130,
-    shape: {
-      productsPath: "products",
-      balancePath: "balance",
-      orderPath: "orders",
-      qtyField: "qty",
-      refField: "",
-      idempotencyHeader: true,
-    },
-  },
-  {
-    id: "safwan",
-    name: "Safwan Tiger Shop",
-    url: "https://safwantigershopbot-production.up.railway.app/api",
-    key: "stapi_6aaad66227e3c5c8dc6edb3e98d10c684e56cd313b870196ef5d0a71704f14eb",
-    docs: "https://safwantigershopbot-production.up.railway.app/api/products",
-    markup: 130,
-    shape: {
-      productsPath: "products",
-      balancePath: "balance",
-      orderPath: "order",
-      qtyField: "quantity",
-      refField: "request_id",
-    },
-  },
-  {
     id: "mmostore",
     name: "MMO Store",
     url: "https://api.mmostore.qzz.io/api/v1",
