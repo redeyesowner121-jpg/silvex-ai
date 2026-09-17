@@ -157,7 +157,10 @@ export function productEmojiStats(ids: string[]): { total: number; set: number; 
 /* ---------------- replacement rules ---------------- */
 
 export function listRules(): EmojiRule[] {
-  return Object.values(store.rules).sort((a, b) => a.from.localeCompare(b.from));
+  const slotted = Object.entries(store.slots).map(([slot, r]) => ({ ...r, slot }));
+  return [...Object.values(store.rules), ...slotted].sort((a, b) =>
+    (a.slot || a.from).localeCompare(b.slot || b.from),
+  );
 }
 
 export function ruleStats(): { total: number; premium: number } {
@@ -165,25 +168,52 @@ export function ruleStats(): { total: number; premium: number } {
   return { total: list.length, premium: list.filter((r) => r.id).length };
 }
 
-/** Save "replace `from` with this emoji everywhere" and apply it immediately. */
-export async function setRule(from: string, value: EmojiEntry): Promise<EmojiRule> {
-  const key = emojiKey(from);
+/** Key used in saved-list buttons; slot rules get an "s:" prefix. */
+export function ruleKey(r: EmojiRule): string {
+  return r.slot ? `s:${encKey(r.slot)}` : emojiKey(r.from);
+}
+
+/**
+ * Save the admin's choice and apply it immediately. With `slot` the change is
+ * limited to that one place; without it every copy of `from` changes.
+ */
+export async function setRule(from: string, value: EmojiEntry, slot?: string): Promise<EmojiRule> {
+  const key = slot ? encKey(slot) : emojiKey(from);
   if (!key) throw new Error("No emoji to replace");
-  const rule: EmojiRule = { from: normEmoji(from), char: value.char, ...(value.id ? { id: value.id } : {}) };
-  await dbPut(`${EMOJI_PATH}/map/${key}`, rule);
+  const rule: EmojiRule = {
+    from: normEmoji(from),
+    char: value.char,
+    ...(value.id ? { id: value.id } : {}),
+    ...(slot ? { slot } : {}),
+  };
+  await dbPut(`${EMOJI_PATH}/${slot ? "slots" : "map"}/${key}`, rule);
   // A successful database PUT is authoritative. A second immediate read can
   // fail transiently and previously reported a false save failure to admins.
-  store.rules = { ...store.rules, [key]: rule };
+  if (slot) store.slots = { ...store.slots, [slot]: rule };
+  else store.rules = { ...store.rules, [key]: rule };
   version++;
-  if (value.img) await dbPut(`${EMOJI_PATH}/mapimg/${key}`, value.img).catch(() => undefined);
+  if (value.img)
+    await dbPut(`${EMOJI_PATH}/${slot ? "slotimg" : "mapimg"}/${key}`, value.img).catch(() => undefined);
   return rule;
 }
 
-export async function saveRuleImage(from: string, img: string): Promise<void> {
-  await dbPut(`${EMOJI_PATH}/mapimg/${emojiKey(from)}`, img).catch(() => undefined);
+export async function saveRuleImage(from: string, img: string, slot?: string): Promise<void> {
+  const key = slot ? encKey(slot) : emojiKey(from);
+  await dbPut(`${EMOJI_PATH}/${slot ? "slotimg" : "mapimg"}/${key}`, img).catch(() => undefined);
 }
 
 export async function removeRule(key: string): Promise<void> {
+  if (key.startsWith("s:")) {
+    const enc = key.slice(2);
+    const slot = decKey(enc);
+    await dbPut(`${EMOJI_PATH}/slots/${enc}`, null).catch(() => undefined);
+    await dbPut(`${EMOJI_PATH}/slotimg/${enc}`, null).catch(() => undefined);
+    const next = { ...store.slots };
+    delete next[slot];
+    store.slots = next;
+    version++;
+    return;
+  }
   await dbPut(`${EMOJI_PATH}/map/${key}`, null).catch(() => undefined);
   await dbPut(`${EMOJI_PATH}/mapimg/${key}`, null).catch(() => undefined);
   const next = { ...store.rules };
@@ -195,7 +225,7 @@ export async function removeRule(key: string): Promise<void> {
 /** Wipe every emoji setting (rules, artwork, product emojis, old records). */
 export async function resetAllEmojis(): Promise<void> {
   await dbPut(EMOJI_PATH, null);
-  store = { rules: {}, products: {} };
+  store = { rules: {}, slots: {}, products: {} };
   loadedAt = Date.now();
   version++;
 }
