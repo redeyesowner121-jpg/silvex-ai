@@ -382,9 +382,10 @@ export async function fetchEmojiImage(id: string): Promise<string | undefined> {
 /** Fill in artwork missing for saved premium emojis. Returns how many were fixed. */
 export async function syncEmojiImages(): Promise<number> {
   await loadEmojis(true);
-  const [imgs, prodImgs] = await Promise.all([
+  const [imgs, prodImgs, slotImgs] = await Promise.all([
     dbGet<Record<string, string>>(`${EMOJI_PATH}/mapimg`),
     dbGet<Record<string, string>>(`${EMOJI_PATH}/prodimg`),
+    dbGet<Record<string, string>>(`${EMOJI_PATH}/slotimg`),
   ]);
   let fixed = 0;
   for (const [key, r] of Object.entries(store.rules)) {
@@ -392,6 +393,13 @@ export async function syncEmojiImages(): Promise<number> {
     const img = await fetchEmojiImage(r.id);
     if (!img) continue;
     await dbPut(`${EMOJI_PATH}/mapimg/${key}`, img);
+    fixed++;
+  }
+  for (const [slot, r] of Object.entries(store.slots)) {
+    if (!r?.id || slotImgs?.[encKey(slot)]) continue;
+    const img = await fetchEmojiImage(r.id);
+    if (!img) continue;
+    await dbPut(`${EMOJI_PATH}/slotimg/${encKey(slot)}`, img);
     fixed++;
   }
   for (const [id, p] of Object.entries(store.products)) {
