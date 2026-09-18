@@ -89,7 +89,7 @@ export function OrdersAdmin({ orders }: { orders: OrderRow[] }) {
     </div>
     {filtered.map((order) => <div key={order.orderId} className="rounded-2xl border border-border bg-card p-4">
       <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 text-xs font-bold"><span className="truncate">#{order.orderId.slice(-6)}</span><span>{order.status}</span></div>
-      <p className="mt-1 break-words text-xs text-muted-foreground">{order.email} · {order.phone}</p>
+      <p className="mt-1 break-words text-xs text-muted-foreground">{userNames[order.uid]?.split(" ")[0] ? `${userNames[order.uid]} · ` : ""}{order.email} · {order.phone}</p>
       <ul className="my-2 text-sm">{(order.items || []).map((item, index) => <li key={index}>{item.title} × {item.qty}</li>)}</ul>
       <p className="text-lg font-black">${order.total}</p>
       {order.delivered?.length ? <div className="mt-2 space-y-1 rounded-xl bg-muted/60 p-2 text-[11px]">{order.delivered.map((item, index) => <p key={index} className="break-all"><b>{item.title}:</b> {item.content}</p>)}</div> : null}
@@ -104,6 +104,6 @@ export function OrdersAdmin({ orders }: { orders: OrderRow[] }) {
         <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2"><button disabled={delivering} onClick={completeDelivery} className="rounded-lg bg-emerald-500 py-2 text-xs font-bold text-white disabled:opacity-60">{delivering ? "Sending…" : "Mark delivered & notify buyer"}</button><button onClick={() => setDeliverFor(null)} className="rounded-lg bg-muted px-3 py-2 text-xs font-bold">Close</button></div>
       </div> : null}
     </div>)}
-    {!orders.length ? <Empty text="No orders yet." /> : null}
+    {!filtered.length ? <Empty text={orders.length ? "No orders match your search." : "No orders yet."} /> : null}
   </div>;
 }
