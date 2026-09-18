@@ -81,7 +81,7 @@ export async function importProvider(
         desc: sp.description || "",
         type: category,
         ...(sp.image ? { logo: sp.image } : {}),
-        hidden: true,
+        hidden: false,
         salesCount: 0,
       });
       added++;
