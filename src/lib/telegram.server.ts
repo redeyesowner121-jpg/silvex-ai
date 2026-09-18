@@ -184,11 +184,13 @@ export async function tg(method: string, body: Record<string, unknown>): Promise
     if (/custom_emoji|CUSTOM_EMOJI|icon|style|entit/i.test(msg)) {
       // Premium emoji in message text also needs a Fragment-linked bot — fall
       // back to the plain emoji characters rather than dropping the message.
-      const plainText = (v: unknown) =>
-        typeof v === "string" ? v.replace(/<tg-emoji[^>]*>([\s\S]*?)<\/tg-emoji>/g, "$1") : v;
+      const plainText = (v: unknown) => (typeof v === "string" ? stripPremiumEmojiTags(v) : v);
       const retry: Record<string, unknown> = { ...payload };
       if (retry["text"]) retry["text"] = plainText(retry["text"]);
       if (retry["caption"]) retry["caption"] = plainText(retry["caption"]);
+      // Custom-emoji entities are what the server refused — drop them as well.
+      delete retry["entities"];
+      delete retry["caption_entities"];
       if (retry["reply_markup"]) {
         const plain = stripIcons(retry["reply_markup"]);
         retry["reply_markup"] = {
