@@ -151,6 +151,7 @@ export function Dashboard({
       earning: Number(sum(list).toFixed(2)),
       sales: list.length,
       newUsers: users.joins.filter((t) => t >= b.from && t < b.to).length,
+      topup: Number(topups.filter((t) => t.date >= b.from && t.date < b.to).reduce((s, t) => s + t.amount, 0).toFixed(2)),
     };
   });
 
@@ -159,8 +160,9 @@ export function Dashboard({
       earning: a.earning + d.earning,
       sales: a.sales + d.sales,
       newUsers: a.newUsers + d.newUsers,
+      topup: a.topup + d.topup,
     }),
-    { earning: 0, sales: 0, newUsers: 0 },
+    { earning: 0, sales: 0, newUsers: 0, topup: 0 },
   );
 
   // Cumulative user growth for the small users graph.
