@@ -152,6 +152,45 @@ export function UsersAdmin() {
               </button>
             )}
           </div>
+          {historyFor === u.uid ? (
+            <div className="mt-3 space-y-2 border-t border-border pt-3">
+              <p className="text-xs font-black text-muted-foreground">Wallet history</p>
+              {history.length === 0 ? (
+                <p className="py-2 text-center text-[11px] text-muted-foreground">
+                  No transactions yet.
+                </p>
+              ) : (
+                history.map((h) => (
+                  <div
+                    key={h.id}
+                    className="flex items-center justify-between rounded-xl border border-border p-2.5"
+                  >
+                    <div className="min-w-0">
+                      <p className="flex items-center gap-2 text-xs font-bold">
+                        {h.type}
+                        {h.status ? (
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                              h.status === "Paid"
+                                ? "bg-primary/10 text-primary"
+                                : "bg-muted text-muted-foreground"
+                            }`}
+                          >
+                            {h.status}
+                          </span>
+                        ) : null}
+                      </p>
+                      <p className="truncate text-[11px] text-muted-foreground">{h.desc}</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {h.date ? new Date(h.date).toLocaleString() : ""}
+                      </p>
+                    </div>
+                    <span className="text-sm font-black">${h.amount ?? 0}</span>
+                  </div>
+                ))
+              )}
+            </div>
+          ) : null}
         </div>
       ))}
       {list.length === 0 ? <Empty text="No users found." /> : null}
