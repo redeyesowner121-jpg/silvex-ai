@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { ref, update } from "firebase/database";
+import { useEffect, useMemo, useState } from "react";
+import { onValue, ref, update } from "firebase/database";
 import { useStore } from "@/context/StoreContext";
 import { deliveryBlock, emailShell, sendMail } from "@/lib/mailer";
 import { notifyTelegramOrder } from "@/lib/telegram.functions";
@@ -13,6 +13,27 @@ export function OrdersAdmin({ orders }: { orders: OrderRow[] }) {
   const [deliverLines, setDeliverLines] = useState<string[]>([]);
   const [deliverNote, setDeliverNote] = useState("");
   const [delivering, setDelivering] = useState(false);
+  const [query, setQuery] = useState("");
+  const [userNames, setUserNames] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (!db) return;
+    return onValue(ref(db, "users"), (snapshot) => {
+      const names: Record<string, string> = {};
+      Object.entries(snapshot.val() || {}).forEach(([uid, value]) => {
+        const user = value as { name?: string; email?: string };
+        names[uid] = `${user.name || ""} ${user.email || ""}`.trim();
+      });
+      setUserNames(names);
+    });
+  }, [db]);
+
+  const filtered = useMemo(() => {
+    const term = query.trim().toLowerCase();
+    if (!term) return orders;
+    return orders.filter((order) => [order.orderId, order.uid, order.email, order.phone, userNames[order.uid]]
+      .filter(Boolean).some((value) => String(value).toLowerCase().includes(term)));
+  }, [orders, query, userNames]);
 
   function deliveryOf(item: { id?: string; title: string }) {
     const product = products.find((entry) => entry.id === item.id || entry.title === item.title);
