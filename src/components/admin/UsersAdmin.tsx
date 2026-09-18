@@ -11,6 +11,15 @@ import { input, Empty } from "@/components/admin/shared";
 
 
 
+type HistoryRow = {
+  id: string;
+  type?: string;
+  amount?: number;
+  desc?: string;
+  date?: string;
+  status?: string;
+};
+
 type UserRow = {
   uid: string;
   name?: string;
@@ -29,6 +38,24 @@ export function UsersAdmin() {
   const { db, user, notify } = useStore();
   const [users, setUsers] = useState<UserRow[]>([]);
   const [search, setSearch] = useState("");
+  const [historyFor, setHistoryFor] = useState<string | null>(null);
+  const [history, setHistory] = useState<HistoryRow[]>([]);
+
+  // Live wallet history for whichever user the admin opened.
+  useEffect(() => {
+    if (!db || !historyFor) {
+      setHistory([]);
+      return;
+    }
+    return onValue(ref(db, `users/${historyFor}/history`), (s) => {
+      const val = s.val() || {};
+      setHistory(
+        Object.entries(val)
+          .map(([id, h]) => ({ id, ...(h as Omit<HistoryRow, "id">) }))
+          .reverse(),
+      );
+    });
+  }, [db, historyFor]);
 
   useEffect(() => {
     if (!db) return;
@@ -92,6 +119,12 @@ export function UsersAdmin() {
             >
               Set balance
             </button>
+            <button
+              onClick={() => setHistoryFor(historyFor === u.uid ? null : u.uid)}
+              className="rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary"
+            >
+              {historyFor === u.uid ? "Hide history" : "Wallet history"}
+            </button>
             {u.uid === user?.uid ? (
               <span className="rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary">
                 You
@@ -119,6 +152,45 @@ export function UsersAdmin() {
               </button>
             )}
           </div>
+          {historyFor === u.uid ? (
+            <div className="mt-3 space-y-2 border-t border-border pt-3">
+              <p className="text-xs font-black text-muted-foreground">Wallet history</p>
+              {history.length === 0 ? (
+                <p className="py-2 text-center text-[11px] text-muted-foreground">
+                  No transactions yet.
+                </p>
+              ) : (
+                history.map((h) => (
+                  <div
+                    key={h.id}
+                    className="flex items-center justify-between rounded-xl border border-border p-2.5"
+                  >
+                    <div className="min-w-0">
+                      <p className="flex items-center gap-2 text-xs font-bold">
+                        {h.type}
+                        {h.status ? (
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                              h.status === "Paid"
+                                ? "bg-primary/10 text-primary"
+                                : "bg-muted text-muted-foreground"
+                            }`}
+                          >
+                            {h.status}
+                          </span>
+                        ) : null}
+                      </p>
+                      <p className="truncate text-[11px] text-muted-foreground">{h.desc}</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {h.date ? new Date(h.date).toLocaleString() : ""}
+                      </p>
+                    </div>
+                    <span className="text-sm font-black">${h.amount ?? 0}</span>
+                  </div>
+                ))
+              )}
+            </div>
+          ) : null}
         </div>
       ))}
       {list.length === 0 ? <Empty text="No users found." /> : null}
