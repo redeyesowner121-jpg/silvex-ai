@@ -51,7 +51,7 @@ export const getStoreSnapshot = createServerFn({ method: "GET" }).handler(async 
     read("site_settings/config"),
     read("site_settings/banner"),
     read("site_settings/flash_sale"),
-    read("telegramEmoji/map"),
+    read("telegramEmoji/slots"),
     read("telegramEmoji/products"),
   ]);
 
