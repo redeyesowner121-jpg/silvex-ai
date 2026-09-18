@@ -5,13 +5,12 @@ import { dbGet, dbPatch, dbPut } from "./telegram.server";
  * Every value here is only a fallback — the admin panel can change the name,
  * base URL, key, profit % and whether a provider is on, in site_settings/providers.
  */
-export type ProviderId = "qamify" | "mmostore" | "canboso" | "custom";
+export type ProviderId = "qamify" | "safwan" | "mmostore" | "canboso" | "custom";
 
 /** Shops that were removed — their imported products get cleaned up. */
 export const RETIRED_PROVIDERS = [
   "elite",
   "eklas",
-  "safwan",
   "mmostore",
   "canboso",
   "custom",
@@ -55,6 +54,21 @@ export const PROVIDERS: ProviderDef[] = [
       qtyField: "qty",
       refField: "",
       idempotencyHeader: true,
+    },
+  },
+  {
+    id: "safwan",
+    name: "Safwan Tiger",
+    url: "https://safwantigershopbot-production.up.railway.app/api",
+    key: "stapi_5419b4f3926ffc00701e8a03cc9036fbf5d221838ce5a3e9b609b2e155fb1579",
+    docs: "",
+    markup: 130,
+    shape: {
+      productsPath: "products",
+      balancePath: "balance",
+      orderPath: "order",
+      qtyField: "quantity",
+      refField: "request_id",
     },
   },
 ];
@@ -129,6 +143,7 @@ export async function saveProviderConfig(
  */
 export const PROVIDER_KEEP: Record<string, string[]> = {
   qamify: ["gemini", "capcut", "duolingo", "leonardo"],
+  safwan: ["gemini", "grok", "duolingo", "capcut"],
 };
 
 /** Admin-editable keep list for a provider (empty list = keep everything). */
