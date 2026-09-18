@@ -119,6 +119,12 @@ export function UsersAdmin() {
             >
               Set balance
             </button>
+            <button
+              onClick={() => setHistoryFor(historyFor === u.uid ? null : u.uid)}
+              className="rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary"
+            >
+              {historyFor === u.uid ? "Hide history" : "Wallet history"}
+            </button>
             {u.uid === user?.uid ? (
               <span className="rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary">
                 You
