@@ -61,7 +61,7 @@ export function Dashboard({
     });
     let creditedDeposits: { amount: number; date: number }[] = [];
     let depositHashes = new Set<string>();
-    let approvedRequests: { amount: number; date: number; utr?: string }[] = [];
+    let approvedRequests: { amount: number; date: number; utr?: string | undefined }[] = [];
     const publishTopups = () => {
       const fromRequests = approvedRequests.filter((r) => !r.utr || !depositHashes.has(r.utr));
       setTopups([...creditedDeposits, ...fromRequests.map(({ amount, date }) => ({ amount, date }))]);
@@ -106,7 +106,7 @@ export function Dashboard({
 
   // Chart buckets: daily for 7/30 days, monthly for all time.
   const firstEvent = Math.min(
-    ...[...valid.map((o) => new Date(o.date).getTime()), ...users.joins].filter((t) =>
+    ...[...valid.map((o) => new Date(o.date).getTime()), ...users.joins, ...topups.map((t) => t.date)].filter((t) =>
       Number.isFinite(t),
     ),
     now,
