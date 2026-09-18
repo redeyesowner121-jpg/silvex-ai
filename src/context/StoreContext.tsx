@@ -484,20 +484,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           ? config.categories
           : DEFAULT_CATEGORIES,
       siteName: config.siteName || (isOriginProject() ? "SILENT SELLER" : "My Store"),
-      // A choice made for this exact place wins over a general emoji swap.
-      emoji: (key: string) =>
-        slotEmojis[key]?.char || emojiCharMap[normEmoji(slotChar(key))]?.char || slotChar(key),
-      emojiImg: (key: string) =>
-        (slotEmojis[key] ? slotEmojiImgs[key] || "" : "") ||
-        emojiCharMap[normEmoji(slotChar(key))]?.img ||
-        "",
-      emojiFor: (char: string) => emojiCharMap[normEmoji(char)] || { char },
+      // Every place keeps its own emoji; nothing is guessed from the character.
+      emoji: (key: string) => slotEmojis[key]?.char || slotChar(key),
+      emojiImg: (key: string) => (slotEmojis[key] ? slotEmojiImgs[key] || "" : ""),
+      emojiFor: (char: string) => ({ char }),
       productEmoji: (productId: string) => {
         const saved = prodEmojis[productId];
         const char = saved?.char || "";
         if (!char) return { char: "" };
-        const img = prodEmojiImgs[productId] || saved?.img || emojiCharMap[normEmoji(char)]?.img || "";
-        return { char, img };
+        return { char, img: prodEmojiImgs[productId] || saved?.img || "" };
       },
 
 
