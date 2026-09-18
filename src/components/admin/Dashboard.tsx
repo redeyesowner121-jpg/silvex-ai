@@ -103,6 +103,14 @@ export function Dashboard({
         <Stat label="Low stock items" value={String(lowStock.length)} />
       </div>
 
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <Stat
+          label="Total users"
+          value={String(users.total)}
+          sub={`${users.web} website • ${users.telegram} telegram`}
+        />
+      </div>
+
       <div className="rounded-2xl border border-border bg-card p-4">
         <h3 className="mb-3 text-sm font-black">Last 7 days</h3>
         <div className="flex h-32 items-end gap-2">
