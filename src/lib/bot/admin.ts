@@ -53,8 +53,9 @@ export async function adminHome(chatId: number) {
         { text: "😍 Emojis", callback_data: "a:em" },
       ],
       [{ text: "🌐 Website admin", url: `${siteUrl()}/admin` }],
-    ],
-  });
+      ],
+    },
+  );
 }
 
 export async function adminStats(chatId: number) {
