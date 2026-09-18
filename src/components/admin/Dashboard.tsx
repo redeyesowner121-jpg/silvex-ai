@@ -27,6 +27,7 @@ export function Dashboard({
   const totalStock = autoProducts.reduce((s, p) => s + (p.stock || []).filter(Boolean).length, 0);
   const { db } = useStore();
   const [usedStock, setUsedStock] = useState(0);
+  const [users, setUsers] = useState({ total: 0, telegram: 0, web: 0 });
   useEffect(() => {
     if (!db) return;
     get(ref(db, "usedStock"))
@@ -35,6 +36,12 @@ export function Dashboard({
         setUsedStock(Object.values(val).reduce((n, m) => n + Object.keys(m || {}).length, 0));
       })
       .catch(() => undefined);
+    return onValue(ref(db, "users"), (snap) => {
+      const val = (snap.val() || {}) as Record<string, { telegramChatId?: number }>;
+      const rows = Object.entries(val);
+      const telegram = rows.filter(([id, u]) => id.startsWith("tg_") || !!u?.telegramChatId).length;
+      setUsers({ total: rows.length, telegram, web: rows.length - telegram });
+    });
   }, [db]);
   const lowStock = autoProducts.filter(
     (p) => (p.stock || []).filter(Boolean).length <= threshold,
