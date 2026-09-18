@@ -2,11 +2,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import {
   Area,
   AreaChart,
-  Bar,
   CartesianGrid,
-  ComposedChart,
   Legend,
   Line,
+  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -41,6 +40,7 @@ export function Dashboard({
   const { db } = useStore();
   const [usedStock, setUsedStock] = useState(0);
   const [users, setUsers] = useState({ total: 0, telegram: 0, web: 0, joins: [] as number[] });
+  const [topups, setTopups] = useState<{ amount: number; date: number }[]>([]);
   const [range, setRange] = useState<7 | 30 | 0>(7);
   useEffect(() => {
     if (!db) return;
@@ -50,7 +50,7 @@ export function Dashboard({
         setUsedStock(Object.values(val).reduce((n, m) => n + Object.keys(m || {}).length, 0));
       })
       .catch(() => undefined);
-    return onValue(ref(db, "users"), (snap) => {
+    const unsubUsers = onValue(ref(db, "users"), (snap) => {
       const val = (snap.val() || {}) as Record<string, { telegramChatId?: number; joined?: string }>;
       const rows = Object.entries(val);
       const telegram = rows.filter(([id, u]) => id.startsWith("tg_") || !!u?.telegramChatId).length;
@@ -59,6 +59,31 @@ export function Dashboard({
         .filter((t) => Number.isFinite(t) && t > 0);
       setUsers({ total: rows.length, telegram, web: rows.length - telegram, joins });
     });
+    let creditedDeposits: { amount: number; date: number }[] = [];
+    let depositHashes = new Set<string>();
+    let approvedRequests: { amount: number; date: number; utr?: string | undefined }[] = [];
+    const publishTopups = () => {
+      const fromRequests = approvedRequests.filter((r) => !r.utr || !depositHashes.has(r.utr));
+      setTopups([...creditedDeposits, ...fromRequests.map(({ amount, date }) => ({ amount, date }))]);
+    };
+    const unsubDeposits = onValue(ref(db, "deposits"), (snap) => {
+      const val = (snap.val() || {}) as Record<string, { amount?: number; date?: string; status?: string }>;
+      depositHashes = new Set(Object.keys(val));
+      creditedDeposits = Object.values(val)
+        .filter((d) => d.status === "Credited")
+        .map((d) => ({ amount: Number(d.amount) || 0, date: new Date(d.date || "").getTime() }))
+        .filter((d) => Number.isFinite(d.date));
+      publishTopups();
+    });
+    const unsubRequests = onValue(ref(db, "requests"), (snap) => {
+      const val = (snap.val() || {}) as Record<string, { type?: string; status?: string; amount?: number; date?: string; utr?: string }>;
+      approvedRequests = Object.values(val)
+        .filter((r) => r.type === "Deposit" && r.status === "Approved")
+        .map((r) => ({ amount: Number(r.amount) || 0, date: new Date(r.date || "").getTime(), utr: r.utr }))
+        .filter((r) => Number.isFinite(r.date));
+      publishTopups();
+    });
+    return () => { unsubUsers(); unsubDeposits(); unsubRequests(); };
   }, [db]);
   const lowStock = autoProducts.filter(
     (p) => (p.stock || []).filter(Boolean).length <= threshold,
@@ -81,7 +106,7 @@ export function Dashboard({
 
   // Chart buckets: daily for 7/30 days, monthly for all time.
   const firstEvent = Math.min(
-    ...[...valid.map((o) => new Date(o.date).getTime()), ...users.joins].filter((t) =>
+    ...[...valid.map((o) => new Date(o.date).getTime()), ...users.joins, ...topups.map((t) => t.date)].filter((t) =>
       Number.isFinite(t),
     ),
     now,
@@ -126,6 +151,7 @@ export function Dashboard({
       earning: Number(sum(list).toFixed(2)),
       sales: list.length,
       newUsers: users.joins.filter((t) => t >= b.from && t < b.to).length,
+      topup: Number(topups.filter((t) => t.date >= b.from && t.date < b.to).reduce((s, t) => s + t.amount, 0).toFixed(2)),
     };
   });
 
@@ -134,8 +160,9 @@ export function Dashboard({
       earning: a.earning + d.earning,
       sales: a.sales + d.sales,
       newUsers: a.newUsers + d.newUsers,
+      topup: a.topup + d.topup,
     }),
-    { earning: 0, sales: 0, newUsers: 0 },
+    { earning: 0, sales: 0, newUsers: 0, topup: 0 },
   );
 
   // Cumulative user growth for the small users graph.
@@ -181,7 +208,7 @@ export function Dashboard({
 
       <div className="rounded-2xl border border-border bg-card p-4">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-sm font-black">Earnings • Sales • New users</h3>
+          <h3 className="text-sm font-black">Earnings • Sales • New users • Top-ups</h3>
           <div className="flex gap-1 rounded-lg bg-muted p-1">
             {([7, 30, 0] as const).map((r) => (
               <button
@@ -197,7 +224,7 @@ export function Dashboard({
           </div>
         </div>
 
-        <div className="mb-3 grid grid-cols-3 gap-2 text-center">
+        <div className="mb-3 grid grid-cols-2 gap-2 text-center sm:grid-cols-4">
           <div className="rounded-xl bg-muted/50 px-2 py-2">
             <p className="text-[10px] font-bold text-muted-foreground">Earning</p>
             <p className="text-sm font-black">${rangeTotals.earning.toFixed(2)}</p>
@@ -210,11 +237,15 @@ export function Dashboard({
             <p className="text-[10px] font-bold text-muted-foreground">New users</p>
             <p className="text-sm font-black">{rangeTotals.newUsers}</p>
           </div>
+          <div className="rounded-xl bg-muted/50 px-2 py-2">
+            <p className="text-[10px] font-bold text-muted-foreground">Top-ups</p>
+            <p className="text-sm font-black">${rangeTotals.topup.toFixed(2)}</p>
+          </div>
         </div>
 
         <div className="h-56 w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={chartData} margin={{ top: 4, right: 4, left: -18, bottom: 0 }}>
+            <LineChart data={chartData} margin={{ top: 4, right: 4, left: -18, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
               <XAxis
                 dataKey="label"
@@ -233,32 +264,11 @@ export function Dashboard({
                 }}
               />
               <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Bar
-                yAxisId="left"
-                dataKey="earning"
-                name="Earning ($)"
-                fill="hsl(var(--primary))"
-                radius={[4, 4, 0, 0]}
-              />
-              <Line
-                yAxisId="right"
-                type="monotone"
-                dataKey="sales"
-                name="Sales"
-                stroke="hsl(var(--accent-foreground))"
-                strokeWidth={2}
-                dot={false}
-              />
-              <Line
-                yAxisId="right"
-                type="monotone"
-                dataKey="newUsers"
-                name="New users"
-                stroke="hsl(var(--destructive))"
-                strokeWidth={2}
-                dot={false}
-              />
-            </ComposedChart>
+              <Line yAxisId="left" type="monotone" dataKey="earning" name="Earning ($)" stroke="#10b981" strokeWidth={2} dot={false} />
+              <Line yAxisId="left" type="monotone" dataKey="topup" name="Wallet top-up ($)" stroke="#0ea5e9" strokeWidth={2} dot={false} />
+              <Line yAxisId="right" type="monotone" dataKey="sales" name="Sales" stroke="#8b5cf6" strokeWidth={2} dot={false} />
+              <Line yAxisId="right" type="monotone" dataKey="newUsers" name="New users" stroke="#f59e0b" strokeWidth={2} dot={false} />
+            </LineChart>
           </ResponsiveContainer>
         </div>
       </div>
