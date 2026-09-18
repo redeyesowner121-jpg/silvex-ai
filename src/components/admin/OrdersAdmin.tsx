@@ -79,12 +79,26 @@ export function OrdersAdmin({ orders }: { orders: OrderRow[] }) {
     } finally { setDelivering(false); }
   }
 
+  function exportFilteredRows(): ExportRow[] {
+    return filtered.flatMap((order) => {
+      const items = order.items || [];
+      if (!items.length) return [{ orderId: order.orderId, date: order.date, buyer: order.email || order.uid, product: "—", delivery: "—", amount: Number(order.total) || 0, status: order.status }];
+      return items.map((item, index) => ({
+        orderId: order.orderId, date: order.date, buyer: order.email || order.uid,
+        product: `${item.title} × ${item.qty}`, delivery: deliveryOf(item),
+        amount: item.price != null ? Number(item.price) * Number(item.qty || 1) : index === 0 ? Number(order.total) || 0 : 0,
+        status: order.status,
+      }));
+    });
+  }
+
   return <div className="space-y-3">
+    <input className={input} placeholder="Search by order ID, user name, user ID or email…" value={query} onChange={(event) => setQuery(event.target.value)} />
     <div className="grid grid-cols-2 gap-2">
-      <button onClick={() => exportOrdersCsv(exportRows(), `orders-${Date.now()}.csv`)} className="rounded-xl bg-card py-2.5 text-xs font-bold shadow-sm">Download CSV</button>
-      <button onClick={() => exportOrdersPdf(exportRows(), `${config.siteName || "Store"} — orders report`, `orders-${Date.now()}.pdf`)} className="rounded-xl bg-card py-2.5 text-xs font-bold shadow-sm">Download PDF</button>
+      <button onClick={() => exportOrdersCsv(exportFilteredRows(), `orders-${Date.now()}.csv`)} className="rounded-xl bg-card py-2.5 text-xs font-bold shadow-sm">Download CSV</button>
+      <button onClick={() => exportOrdersPdf(exportFilteredRows(), `${config.siteName || "Store"} — orders report`, `orders-${Date.now()}.pdf`)} className="rounded-xl bg-card py-2.5 text-xs font-bold shadow-sm">Download PDF</button>
     </div>
-    {orders.map((order) => <div key={order.orderId} className="rounded-2xl border border-border bg-card p-4">
+    {filtered.map((order) => <div key={order.orderId} className="rounded-2xl border border-border bg-card p-4">
       <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 text-xs font-bold"><span className="truncate">#{order.orderId.slice(-6)}</span><span>{order.status}</span></div>
       <p className="mt-1 break-words text-xs text-muted-foreground">{order.email} · {order.phone}</p>
       <ul className="my-2 text-sm">{(order.items || []).map((item, index) => <li key={index}>{item.title} × {item.qty}</li>)}</ul>
