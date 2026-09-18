@@ -230,10 +230,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [products, setProducts] = useState<Product[]>(snapProducts);
   const [config, setConfig] = useState<SiteConfig>((snap?.config || {}) as SiteConfig);
-  const [emojis, setEmojis] = useState<EmojiRuleMap>((snap?.emojis || {}) as EmojiRuleMap);
-  const [emojiImgs, setEmojiImgs] = useState<Record<string, string>>({});
-  // Choices the admin made for one named place only (e.g. just the Orders tab).
-  const [slotEmojis, setSlotEmojis] = useState<EmojiRuleMap>({});
+  // The emoji the admin picked for one named place (e.g. just the Orders tab).
+  const [slotEmojis, setSlotEmojis] = useState<Record<string, { char?: string; id?: string }>>(
+    decodeDots(snap?.emojis),
+  );
   const [slotEmojiImgs, setSlotEmojiImgs] = useState<Record<string, string>>({});
   const [prodEmojis, setProdEmojis] = useState<Record<string, { char?: string; id?: string; img?: string }>>(
     decodeDots(snap?.prodEmojis),
