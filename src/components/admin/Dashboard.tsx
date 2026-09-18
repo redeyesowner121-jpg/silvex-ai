@@ -66,20 +66,71 @@ export function Dashboard({
   const today = inRange(since(1));
   const pending = orders.filter((o) => o.status === "Pending").length;
 
-  const days = Array.from({ length: 7 }, (_, i) => {
-    const start = new Date();
+  // Chart buckets: daily for 7/30 days, monthly for all time.
+  const firstEvent = Math.min(
+    ...[...valid.map((o) => new Date(o.date).getTime()), ...users.joins].filter((t) =>
+      Number.isFinite(t),
+    ),
+    now,
+  );
+  const monthly = range === 0;
+  const buckets: { label: string; from: number; to: number }[] = [];
+  if (monthly) {
+    const start = new Date(firstEvent);
     start.setHours(0, 0, 0, 0);
-    start.setDate(start.getDate() - (6 - i));
-    const end = new Date(start);
-    end.setDate(end.getDate() + 1);
-    const list = inRange(start.getTime(), end.getTime());
+    start.setDate(1);
+    const cursor = new Date(start);
+    while (cursor.getTime() <= now) {
+      const from = cursor.getTime();
+      const next = new Date(cursor);
+      next.setMonth(next.getMonth() + 1);
+      buckets.push({
+        label: cursor.toLocaleDateString(undefined, { month: "short", year: "2-digit" }),
+        from,
+        to: next.getTime(),
+      });
+      cursor.setMonth(cursor.getMonth() + 1);
+    }
+  } else {
+    for (let i = range - 1; i >= 0; i--) {
+      const start = new Date();
+      start.setHours(0, 0, 0, 0);
+      start.setDate(start.getDate() - i);
+      const end = new Date(start);
+      end.setDate(end.getDate() + 1);
+      buckets.push({
+        label: start.toLocaleDateString(undefined, { day: "numeric", month: "short" }),
+        from: start.getTime(),
+        to: end.getTime(),
+      });
+    }
+  }
+
+  const chartData = buckets.map((b) => {
+    const list = inRange(b.from, b.to);
     return {
-      label: start.toLocaleDateString(undefined, { weekday: "short" }),
-      total: sum(list),
-      count: list.length,
+      label: b.label,
+      earning: Number(sum(list).toFixed(2)),
+      sales: list.length,
+      newUsers: users.joins.filter((t) => t >= b.from && t < b.to).length,
     };
   });
-  const peak = Math.max(1, ...days.map((d) => d.total));
+
+  const rangeTotals = chartData.reduce(
+    (a, d) => ({
+      earning: a.earning + d.earning,
+      sales: a.sales + d.sales,
+      newUsers: a.newUsers + d.newUsers,
+    }),
+    { earning: 0, sales: 0, newUsers: 0 },
+  );
+
+  // Cumulative user growth for the small users graph.
+  let running = users.total - users.joins.filter((t) => t >= buckets[0]!.from).length;
+  const userGrowth = chartData.map((d) => {
+    running += d.newUsers;
+    return { label: d.label, users: running };
+  });
 
   return (
     <div className="space-y-4">
