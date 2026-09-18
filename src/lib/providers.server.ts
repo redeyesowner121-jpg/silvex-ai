@@ -143,7 +143,8 @@ export async function saveProviderConfig(
  */
 export const PROVIDER_KEEP: Record<string, string[]> = {
   qamify: ["gemini", "capcut", "duolingo", "leonardo"],
-  safwan: ["gemini", "grok", "duolingo", "capcut"],
+  // Safwan Tiger: keep the whole catalogue (admin can hide or delete items).
+  safwan: [],
 };
 
 /** Admin-editable keep list for a provider (empty list = keep everything). */
