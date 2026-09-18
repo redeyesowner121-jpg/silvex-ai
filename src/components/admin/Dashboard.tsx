@@ -167,20 +167,123 @@ export function Dashboard({
       </div>
 
       <div className="rounded-2xl border border-border bg-card p-4">
-        <h3 className="mb-3 text-sm font-black">Last 7 days</h3>
-        <div className="flex h-32 items-end gap-2">
-          {days.map((d) => (
-            <div key={d.label} className="flex flex-1 flex-col items-center gap-1">
-              <span className="text-[10px] font-bold text-muted-foreground">
-                {d.total ? `$${d.total}` : ""}
-              </span>
-              <div
-                className="w-full rounded-t-md bg-primary/70"
-                style={{ height: `${Math.max(4, (d.total / peak) * 90)}px` }}
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-sm font-black">Earnings • Sales • New users</h3>
+          <div className="flex gap-1 rounded-lg bg-muted p-1">
+            {([7, 30, 0] as const).map((r) => (
+              <button
+                key={r}
+                onClick={() => setRange(r)}
+                className={`rounded-md px-2.5 py-1 text-[11px] font-bold ${
+                  range === r ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
+                }`}
+              >
+                {r === 0 ? "All time" : `${r} days`}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="mb-3 grid grid-cols-3 gap-2 text-center">
+          <div className="rounded-xl bg-muted/50 px-2 py-2">
+            <p className="text-[10px] font-bold text-muted-foreground">Earning</p>
+            <p className="text-sm font-black">${rangeTotals.earning.toFixed(2)}</p>
+          </div>
+          <div className="rounded-xl bg-muted/50 px-2 py-2">
+            <p className="text-[10px] font-bold text-muted-foreground">Sales</p>
+            <p className="text-sm font-black">{rangeTotals.sales}</p>
+          </div>
+          <div className="rounded-xl bg-muted/50 px-2 py-2">
+            <p className="text-[10px] font-bold text-muted-foreground">New users</p>
+            <p className="text-sm font-black">{rangeTotals.newUsers}</p>
+          </div>
+        </div>
+
+        <div className="h-56 w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <ComposedChart data={chartData} margin={{ top: 4, right: 4, left: -18, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+              <XAxis
+                dataKey="label"
+                tick={{ fontSize: 10 }}
+                interval="preserveStartEnd"
+                minTickGap={16}
               />
-              <span className="text-[10px] text-muted-foreground">{d.label}</span>
-            </div>
-          ))}
+              <YAxis yAxisId="left" tick={{ fontSize: 10 }} />
+              <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10 }} width={26} />
+              <Tooltip
+                contentStyle={{
+                  borderRadius: 12,
+                  fontSize: 12,
+                  background: "hsl(var(--card))",
+                  border: "1px solid hsl(var(--border))",
+                }}
+              />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Bar
+                yAxisId="left"
+                dataKey="earning"
+                name="Earning ($)"
+                fill="hsl(var(--primary))"
+                radius={[4, 4, 0, 0]}
+              />
+              <Line
+                yAxisId="right"
+                type="monotone"
+                dataKey="sales"
+                name="Sales"
+                stroke="hsl(var(--accent-foreground))"
+                strokeWidth={2}
+                dot={false}
+              />
+              <Line
+                yAxisId="right"
+                type="monotone"
+                dataKey="newUsers"
+                name="New users"
+                stroke="hsl(var(--destructive))"
+                strokeWidth={2}
+                dot={false}
+              />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-border bg-card p-4">
+        <div className="mb-2 flex items-center justify-between">
+          <h3 className="text-sm font-black">User growth</h3>
+          <span className="text-xs font-bold text-muted-foreground">{users.total} total</span>
+        </div>
+        <div className="h-32 w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={userGrowth} margin={{ top: 4, right: 4, left: -22, bottom: 0 }}>
+              <defs>
+                <linearGradient id="userFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.5} />
+                  <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.05} />
+                </linearGradient>
+              </defs>
+              <XAxis dataKey="label" tick={{ fontSize: 9 }} minTickGap={20} />
+              <YAxis tick={{ fontSize: 9 }} width={28} />
+              <Tooltip
+                contentStyle={{
+                  borderRadius: 12,
+                  fontSize: 12,
+                  background: "hsl(var(--card))",
+                  border: "1px solid hsl(var(--border))",
+                }}
+              />
+              <Area
+                type="monotone"
+                dataKey="users"
+                name="Users"
+                stroke="hsl(var(--primary))"
+                fill="url(#userFill)"
+                strokeWidth={2}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
         </div>
       </div>
 
