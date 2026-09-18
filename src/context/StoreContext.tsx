@@ -465,12 +465,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<StoreValue>(() => {
     const cartTotal = cart.reduce((sum, i) => sum + i.price * i.qty, 0);
-    const emojiCharMap = buildEmojiCharMap(emojis, emojiImgs);
-    // Artwork picked on a product also counts for that same emoji everywhere.
-    for (const [pid, saved] of Object.entries(prodEmojis)) {
-      const img = prodEmojiImgs[pid] || saved?.img || "";
-      if (saved?.char && img) emojiCharMap[normEmoji(saved.char)] = { char: saved.char, img };
-    }
     return {
       ready,
       auth,
