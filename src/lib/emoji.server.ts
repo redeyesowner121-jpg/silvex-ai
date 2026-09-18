@@ -201,9 +201,72 @@ export async function resetAllEmojis(): Promise<void> {
 
 /* ---------------- outgoing text ---------------- */
 
+/**
+ * A chosen premium emoji should also show up in the messages that still use the
+ * plain character. Only unambiguous characters are upgraded: if two places use
+ * the same character with different premium emojis, the plain one is kept so a
+ * wrong emoji can never appear.
+ */
+let charMap: Map<string, string> | null = null;
+let charMapAt = -1;
+
+function premiumCharMap(): Map<string, string> {
+  if (charMap && charMapAt === loadedAt) return charMap;
+  const map = new Map<string, string>();
+  const clash = new Set<string>();
+  for (const [slot, entry] of Object.entries(store.slots)) {
+    if (!entry?.id || !VALID_EMOJI_ID.test(entry.id)) continue;
+    for (const c of [entry.char, slotDefault(slot)]) {
+      const key = normEmoji(c);
+      if (!key) continue;
+      const seen = map.get(key);
+      if (seen && seen !== entry.id) {
+        clash.add(key);
+        continue;
+      }
+      map.set(key, entry.id);
+    }
+  }
+  for (const key of clash) map.delete(key);
+  charMap = map;
+  charMapAt = loadedAt;
+  return map;
+}
+
+const TEXT_EMOJI = /\p{Extended_Pictographic}(\uFE0F|\u200D\p{Extended_Pictographic})*/gu;
+
+function upgradePiece(piece: string, map: Map<string, string>): string {
+  return piece.replace(TEXT_EMOJI, (found) => {
+    const id = map.get(normEmoji(found));
+    return id ? `<tg-emoji emoji-id="${id}">${found}</tg-emoji>` : found;
+  });
+}
+
+/** Upgrade plain emojis in message text, never inside tags or existing markup. */
+function upgradeText(text: string): string {
+  const map = premiumCharMap();
+  if (!map.size) return text;
+  const tag = /<\/?[a-zA-Z][^>]*>/g;
+  let out = "";
+  let last = 0;
+  let inside = 0;
+  let m: RegExpExecArray | null;
+  while ((m = tag.exec(text))) {
+    const piece = text.slice(last, m.index);
+    out += inside ? piece : upgradePiece(piece, map);
+    const lower = m[0].toLowerCase();
+    if (lower.startsWith("<tg-emoji")) inside++;
+    else if (lower.startsWith("</tg-emoji")) inside = Math.max(0, inside - 1);
+    out += m[0];
+    last = tag.lastIndex;
+  }
+  const tail = text.slice(last);
+  return out + (inside ? tail : upgradePiece(tail, map));
+}
+
 /** Premium markup is dropped when the feature is switched off. */
 function sanitizeText(text: string): string {
-  return store.enabled ? text : stripPremiumEmojiTags(text);
+  return store.enabled ? upgradeText(text) : stripPremiumEmojiTags(text);
 }
 
 setTextDecorator(sanitizeText);
