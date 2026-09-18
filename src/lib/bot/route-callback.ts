@@ -5,7 +5,7 @@ import { resetAllEmojis, syncEmojiImages } from "@/lib/emoji.server";
 import { adminBack, askEmail, cfg, forceJoinBlocked, invalidateProducts, isBotAdmin, say, saveConfig, setState, welcome } from "@/lib/bot/core";
 import { askPayMethod, askQty, buy, checkCardPayment, payProductByCard, confirmWalletPay, sendApiKey, sendOrders, sendProduct, sendProducts, sendProfile, sendRefer, sendReviews, sendSupport, sendWallet, startCardDeposit, startDeposit, startWithdraw, walletHistory } from "@/lib/bot/shop";
 import { adminAskDelivery, adminCancelOrder, adminDecideRequest, adminHome, adminOrder, adminOrders, adminProduct, adminProducts, adminRequests, adminSettings, adminStats, adminUser, adminUsers, broadcast } from "@/lib/bot/admin";
-import { clearProductEmoji, emojiAsk, emojiGroup, emojiHome, emojiList, emojiProducts, emojiSlotPick, removeRule } from "@/lib/bot/emoji-ui";
+import { clearProductEmoji, emojiGroup, emojiHome, emojiList, emojiProducts, emojiSlotPick, emojiSlotReset, emojiToggle } from "@/lib/bot/emoji-ui";
 
 export async function handleCallback(chatId: number, data: string) {
   if (data === "noop") return;
@@ -112,8 +112,8 @@ export async function handleCallback(chatId: number, data: string) {
     }
     if (key === "set") return adminSettings(chatId);
     if (key === "em") {
-      if (arg === "add") return emojiAsk(chatId);
       if (arg === "list") return emojiList(chatId);
+      if (arg === "tog") return emojiToggle(chatId);
       if (arg === "prod") return emojiProducts(chatId);
       if (arg === "sync") {
         const fixed = await syncEmojiImages().catch(() => 0);
@@ -136,11 +136,7 @@ export async function handleCallback(chatId: number, data: string) {
     if (key === "emP") return emojiProducts(chatId, Number(arg) || 0);
     if (key === "emg") return emojiGroup(chatId, String(arg), Number(arg2) || 0);
     if (key === "emk") return emojiSlotPick(chatId, data.slice("a:emk:".length));
-    if (key === "emd") {
-      await removeRule(String(arg));
-      await say(chatId, "🗑 Removed.");
-      return emojiList(chatId);
-    }
+    if (key === "emd") return emojiSlotReset(chatId, data.slice("a:emd:".length));
     if (key === "emp") {
       const id = data.slice("a:emp:".length);
       if (!id) return emojiProducts(chatId);
