@@ -11,6 +11,15 @@ import { input, Empty } from "@/components/admin/shared";
 
 
 
+type HistoryRow = {
+  id: string;
+  type?: string;
+  amount?: number;
+  desc?: string;
+  date?: string;
+  status?: string;
+};
+
 type UserRow = {
   uid: string;
   name?: string;
