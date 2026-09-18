@@ -2,11 +2,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import {
   Area,
   AreaChart,
-  Bar,
   CartesianGrid,
-  ComposedChart,
   Legend,
   Line,
+  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -41,6 +40,7 @@ export function Dashboard({
   const { db } = useStore();
   const [usedStock, setUsedStock] = useState(0);
   const [users, setUsers] = useState({ total: 0, telegram: 0, web: 0, joins: [] as number[] });
+  const [topups, setTopups] = useState<{ amount: number; date: number }[]>([]);
   const [range, setRange] = useState<7 | 30 | 0>(7);
   useEffect(() => {
     if (!db) return;
