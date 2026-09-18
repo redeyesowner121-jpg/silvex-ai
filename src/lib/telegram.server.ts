@@ -129,6 +129,21 @@ export function decorateText(text: unknown): unknown {
   }
 }
 
+/** Prepare message text or a caption for both JSON and multipart Telegram calls. */
+export function prepareTelegramText(text: string): {
+  text: string;
+  entities?: ReturnType<typeof htmlToEntities> extends infer R
+    ? R extends { entities: infer E }
+      ? E
+      : never
+    : never;
+} {
+  const decorated = String(decorateText(text));
+  if (!hasPremiumEmoji(decorated)) return { text: decorated };
+  const parsed = htmlToEntities(decorated);
+  return parsed || { text: stripPremiumEmojiTags(decorated) };
+}
+
 
 /** Drop premium icons if Telegram refuses them for this bot. */
 function stripIcons(markup: any): any {
@@ -359,8 +374,10 @@ export async function tgSendPhoto(
       const form = new FormData();
       form.append("chat_id", String(chatId));
       if (caption) {
-        form.append("caption", String(decorateText(caption)));
-        form.append("parse_mode", "HTML");
+        const prepared = prepareTelegramText(caption);
+        form.append("caption", prepared.text);
+        if (prepared.entities) form.append("caption_entities", JSON.stringify(prepared.entities));
+        else form.append("parse_mode", "HTML");
       }
       if (keyboard) form.append("reply_markup", JSON.stringify(decorateMarkup(keyboard)));
       const ext = (m[1] || "image/jpeg").split("/")[1]?.split("+")[0] || "jpg";
@@ -372,6 +389,8 @@ export async function tgSendPhoto(
         // Retry without premium emoji markup so the photo still reaches the buyer.
         if (caption && /emoji|entit/i.test(detail)) {
           form.set("caption", plainEmojiText(String(decorateText(caption))));
+          form.delete("caption_entities");
+          form.set("parse_mode", "HTML");
           const retry = await fetch(api.url, { method: "POST", headers: api.headers, body: form });
           if (retry.ok) return true;
         }
