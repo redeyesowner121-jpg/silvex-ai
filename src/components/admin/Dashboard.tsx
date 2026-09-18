@@ -27,7 +27,8 @@ export function Dashboard({
   const totalStock = autoProducts.reduce((s, p) => s + (p.stock || []).filter(Boolean).length, 0);
   const { db } = useStore();
   const [usedStock, setUsedStock] = useState(0);
-  const [users, setUsers] = useState({ total: 0, telegram: 0, web: 0 });
+  const [users, setUsers] = useState({ total: 0, telegram: 0, web: 0, joins: [] as number[] });
+  const [range, setRange] = useState<7 | 30 | 0>(7);
   useEffect(() => {
     if (!db) return;
     get(ref(db, "usedStock"))
@@ -37,10 +38,13 @@ export function Dashboard({
       })
       .catch(() => undefined);
     return onValue(ref(db, "users"), (snap) => {
-      const val = (snap.val() || {}) as Record<string, { telegramChatId?: number }>;
+      const val = (snap.val() || {}) as Record<string, { telegramChatId?: number; joined?: string }>;
       const rows = Object.entries(val);
       const telegram = rows.filter(([id, u]) => id.startsWith("tg_") || !!u?.telegramChatId).length;
-      setUsers({ total: rows.length, telegram, web: rows.length - telegram });
+      const joins = rows
+        .map(([, u]) => new Date(u?.joined || "").getTime())
+        .filter((t) => Number.isFinite(t) && t > 0);
+      setUsers({ total: rows.length, telegram, web: rows.length - telegram, joins });
     });
   }, [db]);
   const lowStock = autoProducts.filter(
