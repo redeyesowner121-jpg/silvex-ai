@@ -74,7 +74,7 @@ export async function sendProduct(chatId: number, id: string) {
   const text =
     `${productEmoji(id)} <b>${p.title || "Item"}</b>\n\n` +
     `${em("norm.money")} Price: <b>${money(p.price || 0)}</b>\n` +
-    `${stockLine}\n${em("norm.cart") || "🛒"} Total sold: <b>${sold}</b>${availability}` +
+    `${stockLine}\n${em("norm.fire")} Total sold: <b>${sold}</b>${availability}` +
     (escDesc ? `\n\n<blockquote expandable>${escDesc}</blockquote>` : "");
 
   const keyboard = {
