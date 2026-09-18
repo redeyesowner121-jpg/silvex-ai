@@ -5,13 +5,12 @@ import { dbGet, dbPatch, dbPut } from "./telegram.server";
  * Every value here is only a fallback — the admin panel can change the name,
  * base URL, key, profit % and whether a provider is on, in site_settings/providers.
  */
-export type ProviderId = "mmostore" | "canboso" | "custom";
+export type ProviderId = "qamify" | "mmostore" | "canboso" | "custom";
 
 /** Shops that were removed — their imported products get cleaned up. */
 export const RETIRED_PROVIDERS = [
   "elite",
   "eklas",
-  "qamify",
   "safwan",
   "mmostore",
   "canboso",
@@ -41,8 +40,24 @@ export type ProviderDef = {
   shape: ProviderShape;
 };
 
-/** No supplier shops are connected. Add one here to bring them back. */
-export const PROVIDERS: ProviderDef[] = [];
+export const PROVIDERS: ProviderDef[] = [
+  {
+    id: "qamify",
+    name: "Qamify",
+    url: "https://api.qamify.site/v1",
+    key: "qamify_41bbf7d4d63d0fc75eb1a889e0bf96403c109673ea57a709",
+    docs: "https://api.qamify.site/docs",
+    markup: 130,
+    shape: {
+      productsPath: "products",
+      balancePath: "balance",
+      orderPath: "orders",
+      qtyField: "qty",
+      refField: "",
+      idempotencyHeader: true,
+    },
+  },
+];
 
 export function providerDef(id: string): ProviderDef | null {
   return PROVIDERS.find((p) => p.id === id) || null;
@@ -112,7 +127,9 @@ export async function saveProviderConfig(
  * Matching is a case-insensitive "name contains keyword" check.
  * Admin can override the list in site_settings/providers/{id}/keep (array of words).
  */
-export const PROVIDER_KEEP: Record<string, string[]> = {};
+export const PROVIDER_KEEP: Record<string, string[]> = {
+  qamify: ["gemini", "capcut", "duolingo", "leonardo"],
+};
 
 /** Admin-editable keep list for a provider (empty list = keep everything). */
 export async function providerKeepList(id: string): Promise<string[]> {
