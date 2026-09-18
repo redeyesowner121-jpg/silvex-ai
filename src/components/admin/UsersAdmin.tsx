@@ -38,6 +38,24 @@ export function UsersAdmin() {
   const { db, user, notify } = useStore();
   const [users, setUsers] = useState<UserRow[]>([]);
   const [search, setSearch] = useState("");
+  const [historyFor, setHistoryFor] = useState<string | null>(null);
+  const [history, setHistory] = useState<HistoryRow[]>([]);
+
+  // Live wallet history for whichever user the admin opened.
+  useEffect(() => {
+    if (!db || !historyFor) {
+      setHistory([]);
+      return;
+    }
+    return onValue(ref(db, `users/${historyFor}/history`), (s) => {
+      const val = s.val() || {};
+      setHistory(
+        Object.entries(val)
+          .map(([id, h]) => ({ id, ...(h as Omit<HistoryRow, "id">) }))
+          .reverse(),
+      );
+    });
+  }, [db, historyFor]);
 
   useEffect(() => {
     if (!db) return;
