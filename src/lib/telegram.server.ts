@@ -1,7 +1,7 @@
 /** Server-only helpers for the Telegram bot + Firebase Realtime Database REST access. */
 import { createHash, timingSafeEqual } from "crypto";
 import { isOriginProject } from "./origin";
-import { hasPremiumEmoji, htmlToEntities, stripPremiumEmojiTags } from "./telegram-entities";
+import { hasPremiumEmoji, htmlToEntities, stripPremiumEmojiTags, type TgEntity } from "./telegram-entities";
 
 /** Database URL: set FIREBASE_DATABASE_URL when remixing to another project. */
 const DEFAULT_RTDB_URL = "https://silvex-ai-default-rtdb.firebaseio.com";
@@ -132,11 +132,7 @@ export function decorateText(text: unknown): unknown {
 /** Prepare message text or a caption for both JSON and multipart Telegram calls. */
 export function prepareTelegramText(text: string): {
   text: string;
-  entities?: ReturnType<typeof htmlToEntities> extends infer R
-    ? R extends { entities: infer E }
-      ? E
-      : never
-    : never;
+  entities?: TgEntity[];
 } {
   const decorated = String(decorateText(text));
   if (!hasPremiumEmoji(decorated)) return { text: decorated };
