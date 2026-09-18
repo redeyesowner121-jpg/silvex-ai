@@ -40,18 +40,7 @@ export function OrdersAdmin({ orders }: { orders: OrderRow[] }) {
     return product?.delivery === "auto" ? "Auto stock" : product?.delivery === "repeat" ? "Repeated" : "Manual";
   }
 
-  function exportRows(): ExportRow[] {
-    return orders.flatMap((order) => {
-      const items = order.items || [];
-      if (!items.length) return [{ orderId: order.orderId, date: order.date, buyer: order.email || order.uid, product: "—", delivery: "—", amount: Number(order.total) || 0, status: order.status }];
-      return items.map((item, index) => ({
-        orderId: order.orderId, date: order.date, buyer: order.email || order.uid,
-        product: `${item.title} × ${item.qty}`, delivery: deliveryOf(item),
-        amount: item.price != null ? Number(item.price) * Number(item.qty || 1) : index === 0 ? Number(order.total) || 0 : 0,
-        status: order.status,
-      }));
-    });
-  }
+  function exportRows(): ExportRow[] { return exportFilteredRows(); }
 
   function openDelivery(order: OrderRow) {
     setDeliverFor(order);
