@@ -1,6 +1,7 @@
 /** Server-only helpers for the Telegram bot + Firebase Realtime Database REST access. */
 import { createHash, timingSafeEqual } from "crypto";
 import { isOriginProject } from "./origin";
+import { hasPremiumEmoji, htmlToEntities, stripPremiumEmojiTags } from "./telegram-entities";
 
 /** Database URL: set FIREBASE_DATABASE_URL when remixing to another project. */
 const DEFAULT_RTDB_URL = "https://silvex-ai-default-rtdb.firebaseio.com";
@@ -147,6 +148,18 @@ export async function tg(method: string, body: Record<string, unknown>): Promise
   if (payload["reply_markup"]) payload["reply_markup"] = decorateMarkup(payload["reply_markup"]);
   if (payload["text"]) payload["text"] = decorateText(payload["text"]);
   if (payload["caption"]) payload["caption"] = decorateText(payload["caption"]);
+
+  // Telegram's HTML mode does not render <tg-emoji> on every client, so any
+  // message holding a premium emoji is converted to text + entities instead.
+  for (const field of ["text", "caption"] as const) {
+    const value = payload[field];
+    if (!hasPremiumEmoji(value)) continue;
+    const parsed = htmlToEntities(String(value));
+    if (!parsed) continue;
+    payload[field] = parsed.text;
+    payload[field === "text" ? "entities" : "caption_entities"] = parsed.entities;
+    delete payload["parse_mode"];
+  }
 
 
   const call = async (data: Record<string, unknown>) => {
