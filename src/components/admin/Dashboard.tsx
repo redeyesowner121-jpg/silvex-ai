@@ -50,7 +50,7 @@ export function Dashboard({
         setUsedStock(Object.values(val).reduce((n, m) => n + Object.keys(m || {}).length, 0));
       })
       .catch(() => undefined);
-    return onValue(ref(db, "users"), (snap) => {
+    const unsubUsers = onValue(ref(db, "users"), (snap) => {
       const val = (snap.val() || {}) as Record<string, { telegramChatId?: number; joined?: string }>;
       const rows = Object.entries(val);
       const telegram = rows.filter(([id, u]) => id.startsWith("tg_") || !!u?.telegramChatId).length;
@@ -59,6 +59,31 @@ export function Dashboard({
         .filter((t) => Number.isFinite(t) && t > 0);
       setUsers({ total: rows.length, telegram, web: rows.length - telegram, joins });
     });
+    let creditedDeposits: { amount: number; date: number }[] = [];
+    let depositHashes = new Set<string>();
+    let approvedRequests: { amount: number; date: number; utr?: string }[] = [];
+    const publishTopups = () => {
+      const fromRequests = approvedRequests.filter((r) => !r.utr || !depositHashes.has(r.utr));
+      setTopups([...creditedDeposits, ...fromRequests.map(({ amount, date }) => ({ amount, date }))]);
+    };
+    const unsubDeposits = onValue(ref(db, "deposits"), (snap) => {
+      const val = (snap.val() || {}) as Record<string, { amount?: number; date?: string; status?: string }>;
+      depositHashes = new Set(Object.keys(val));
+      creditedDeposits = Object.values(val)
+        .filter((d) => d.status === "Credited")
+        .map((d) => ({ amount: Number(d.amount) || 0, date: new Date(d.date || "").getTime() }))
+        .filter((d) => Number.isFinite(d.date));
+      publishTopups();
+    });
+    const unsubRequests = onValue(ref(db, "requests"), (snap) => {
+      const val = (snap.val() || {}) as Record<string, { type?: string; status?: string; amount?: number; date?: string; utr?: string }>;
+      approvedRequests = Object.values(val)
+        .filter((r) => r.type === "Deposit" && r.status === "Approved")
+        .map((r) => ({ amount: Number(r.amount) || 0, date: new Date(r.date || "").getTime(), utr: r.utr }))
+        .filter((r) => Number.isFinite(r.date));
+      publishTopups();
+    });
+    return () => { unsubUsers(); unsubDeposits(); unsubRequests(); };
   }, [db]);
   const lowStock = autoProducts.filter(
     (p) => (p.stock || []).filter(Boolean).length <= threshold,
