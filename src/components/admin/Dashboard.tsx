@@ -208,7 +208,7 @@ export function Dashboard({
 
       <div className="rounded-2xl border border-border bg-card p-4">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-sm font-black">Earnings • Sales • New users</h3>
+          <h3 className="text-sm font-black">Earnings • Sales • New users • Top-ups</h3>
           <div className="flex gap-1 rounded-lg bg-muted p-1">
             {([7, 30, 0] as const).map((r) => (
               <button
@@ -224,7 +224,7 @@ export function Dashboard({
           </div>
         </div>
 
-        <div className="mb-3 grid grid-cols-3 gap-2 text-center">
+        <div className="mb-3 grid grid-cols-2 gap-2 text-center sm:grid-cols-4">
           <div className="rounded-xl bg-muted/50 px-2 py-2">
             <p className="text-[10px] font-bold text-muted-foreground">Earning</p>
             <p className="text-sm font-black">${rangeTotals.earning.toFixed(2)}</p>
@@ -237,11 +237,15 @@ export function Dashboard({
             <p className="text-[10px] font-bold text-muted-foreground">New users</p>
             <p className="text-sm font-black">{rangeTotals.newUsers}</p>
           </div>
+          <div className="rounded-xl bg-muted/50 px-2 py-2">
+            <p className="text-[10px] font-bold text-muted-foreground">Top-ups</p>
+            <p className="text-sm font-black">${rangeTotals.topup.toFixed(2)}</p>
+          </div>
         </div>
 
         <div className="h-56 w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={chartData} margin={{ top: 4, right: 4, left: -18, bottom: 0 }}>
+            <LineChart data={chartData} margin={{ top: 4, right: 4, left: -18, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
               <XAxis
                 dataKey="label"
@@ -260,32 +264,11 @@ export function Dashboard({
                 }}
               />
               <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Bar
-                yAxisId="left"
-                dataKey="earning"
-                name="Earning ($)"
-                fill="hsl(var(--primary))"
-                radius={[4, 4, 0, 0]}
-              />
-              <Line
-                yAxisId="right"
-                type="monotone"
-                dataKey="sales"
-                name="Sales"
-                stroke="hsl(var(--accent-foreground))"
-                strokeWidth={2}
-                dot={false}
-              />
-              <Line
-                yAxisId="right"
-                type="monotone"
-                dataKey="newUsers"
-                name="New users"
-                stroke="hsl(var(--destructive))"
-                strokeWidth={2}
-                dot={false}
-              />
-            </ComposedChart>
+              <Line yAxisId="left" type="monotone" dataKey="earning" name="Earning ($)" stroke="#10b981" strokeWidth={2} dot={false} />
+              <Line yAxisId="left" type="monotone" dataKey="topup" name="Wallet top-up ($)" stroke="#0ea5e9" strokeWidth={2} dot={false} />
+              <Line yAxisId="right" type="monotone" dataKey="sales" name="Sales" stroke="#8b5cf6" strokeWidth={2} dot={false} />
+              <Line yAxisId="right" type="monotone" dataKey="newUsers" name="New users" stroke="#f59e0b" strokeWidth={2} dot={false} />
+            </LineChart>
           </ResponsiveContainer>
         </div>
       </div>
