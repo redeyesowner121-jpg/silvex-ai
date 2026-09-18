@@ -1,4 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
+import {
+  Area,
+  AreaChart,
+  Bar,
+  CartesianGrid,
+  ComposedChart,
+  Legend,
+  Line,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { useEffect, useState } from "react";
 import { get, onValue, push, ref, remove, set, update } from "firebase/database";
 import { useStore, isOwnerEmail, type Product, type Category } from "@/context/StoreContext";
