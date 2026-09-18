@@ -19,7 +19,7 @@ import {
   submitReview,
 } from "@/lib/bot/shop";
 import { adminDeliver, adminFindUser, adminHome, adminProduct, adminUser, broadcast } from "@/lib/bot/admin";
-import { emojiFromMessage, emojiHome, emojiProductMessage, emojiToMessage } from "@/lib/bot/emoji-ui";
+import { emojiHome, emojiProductMessage, emojiToMessage } from "@/lib/bot/emoji-ui";
 import { ADMIN_COMMANDS, USER_COMMANDS, registerAdminCommands, registerBotCommands, showQuickMenu } from "@/lib/bot/commands";
 
 export async function handleText(
@@ -261,8 +261,7 @@ export async function handleText(
   }
 
   if (state && (await isBotAdmin(chatId))) {
-    if (k === "em_from") return emojiFromMessage(chatId, text, entities, sticker);
-    if (k === "em_to") return emojiToMessage(chatId, state.a!, text, entities, sticker, state.b);
+    if (k === "em_to") return emojiToMessage(chatId, state.a!, text, entities, sticker);
     if (k === "em_prod") return emojiProductMessage(chatId, state.a!, text, entities, sticker);
     if (k === "deliver") return adminDeliver(chatId, state.a!, t);
     if (k === "bc") return broadcast(chatId, t);

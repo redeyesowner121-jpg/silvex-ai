@@ -1,12 +1,15 @@
 /**
- * Server-only emoji registry for the Telegram bot and the website.
+ * Premium emoji registry for the Telegram bot and the website.
  *
- * New, simple logic: the admin replaces one emoji with another. We store a map
- * from the original emoji character to the emoji the admin picked (with its
- * premium id and artwork). Every message, button, caption and website label is
- * then rewritten through that single map, so one change applies everywhere.
+ * One rule only: every place in the bot/website is a named slot (plus one slot
+ * per product). The admin assigns a premium emoji to a slot; nothing is ever
+ * guessed from the emoji character itself, and no emoji id is hardcoded.
+ *
+ * Saving verifies the id with Telegram (getCustomEmojiStickers) and stores the
+ * canonical unicode fallback, so a stale id can never break a message.
  */
 import { dbGet, dbPut, setKeyboardDecorator, setTextDecorator, tg, tgFileDataUrl } from "./telegram.server";
+import { stripPremiumEmojiTags, VALID_EMOJI_ID } from "./telegram-entities";
 import { BOT_EMOJI_SLOTS, WEB_EMOJI_SLOTS } from "./web-emoji";
 import {
   BUTTON_CATALOG,
@@ -15,32 +18,21 @@ import {
   type ButtonColorMap,
 } from "./button-colors";
 
-export type EmojiEntry = { id?: string; char: string; img?: string };
-/**
- * One replacement rule: `from` (original emoji) -> `char`/`id` (new emoji).
- * When `slot` is set the rule only applies to that one named place (for
- * example the Orders button), so emojis shared by several places — 🧾, ⚡,
- * 📦, 💳 — no longer all change together and no longer steal each other's
- * premium emoji id.
- */
-export type EmojiRule = { from: string; char: string; id?: string; img?: string; slot?: string };
+/** One saved override: a verified premium emoji id plus its unicode fallback. */
+export type EmojiEntry = { id?: string; char: string; img?: string; label?: string };
 
 export const EMOJI_PATH = "telegramEmoji";
 
-/** Firebase keys cannot contain dots, so product ids are encoded. */
+/** Firebase keys cannot contain dots, so slot keys and product ids are encoded. */
 export const encKey = (key: string) => key.split(".").join("~");
 export const decKey = (key: string) => key.split("~").join(".");
-const decodeMap = (map: Record<string, any> | null) =>
+const decodeMap = <T>(map: Record<string, T> | null) =>
   Object.fromEntries(Object.entries(map || {}).map(([k, v]) => [decKey(k), v]));
 
 /** "🛍" and "🛍️" are the same emoji to a person but different text. */
 export const normEmoji = (c: string) => String(c || "").replace(/\uFE0F/g, "");
 
-/** Stable, Firebase-safe key for an emoji character. */
-export const emojiKey = (char: string) =>
-  [...normEmoji(char)].map((c) => c.codePointAt(0)!.toString(16)).join("-");
-
-/** Built-in emoji used by the bot and website, shown as pickable suggestions. */
+/** Every named place the bot and website can show an emoji in. */
 export const EMOJI_SLOTS: Record<string, { label: string; char: string; group: "button" | "normal" | "web" }> = {
   ...Object.fromEntries(
     Object.entries(WEB_EMOJI_SLOTS).map(([key, v]) => [key, { ...v, group: "web" as const }]),
@@ -49,31 +41,33 @@ export const EMOJI_SLOTS: Record<string, { label: string; char: string; group: "
 };
 
 type Store = {
-  rules: Record<string, EmojiRule>;
-  slots: Record<string, EmojiRule>;
+  slots: Record<string, EmojiEntry>;
   products: Record<string, EmojiEntry>;
+  enabled: boolean;
 };
 
-let store: Store = { rules: {}, slots: {}, products: {} };
+let store: Store = { slots: {}, products: {}, enabled: true };
 let loadedAt = 0;
-let version = 0;
 let loading: Promise<void> | null = null;
 const EMOJI_CACHE_MS = 60_000;
 
 export async function loadEmojis(force = false): Promise<void> {
   if (!force && loadedAt && Date.now() - loadedAt < EMOJI_CACHE_MS) return;
   if (loading) return loading;
-  // Already have emojis but they went stale: refresh in the background, don't wait.
+  // Already have emojis but they went stale: refresh in the background.
   const background = !force && loadedAt > 0;
   loading = Promise.all([
-    dbGet<Record<string, EmojiRule>>(`${EMOJI_PATH}/map`),
+    dbGet<Record<string, EmojiEntry>>(`${EMOJI_PATH}/slots`),
     dbGet<Record<string, EmojiEntry>>(`${EMOJI_PATH}/products`),
-    dbGet<Record<string, EmojiRule>>(`${EMOJI_PATH}/slots`),
+    dbGet<boolean>(`${EMOJI_PATH}/enabled`),
   ])
-    .then(([rules, products, slots]) => {
-      store = { rules: rules || {}, slots: decodeMap(slots), products: decodeMap(products) };
+    .then(([slots, products, enabled]) => {
+      store = {
+        slots: decodeMap(slots),
+        products: decodeMap(products),
+        enabled: enabled !== false,
+      };
       loadedAt = Date.now();
-      version++;
     })
     .catch(() => undefined)
     .finally(() => {
@@ -83,31 +77,77 @@ export async function loadEmojis(force = false): Promise<void> {
   return loading;
 }
 
-function render(e: { char: string; id?: string }): string {
-  const char = e.char || "•";
-  return e.id ? `<tg-emoji emoji-id="${e.id}">${char}</tg-emoji>` : char;
+export const premiumEnabled = () => store.enabled;
+
+export async function setPremiumEnabled(on: boolean): Promise<void> {
+  await dbPut(`${EMOJI_PATH}/enabled`, on);
+  store = { ...store, enabled: on };
 }
 
-function ruleFor(char: string): EmojiRule | undefined {
-  return store.rules[emojiKey(char)];
+function render(entry: EmojiEntry | undefined, fallback: string): string {
+  if (!entry) return fallback;
+  const char = entry.char || fallback || "•";
+  if (!store.enabled || !entry.id || !VALID_EMOJI_ID.test(entry.id)) return char;
+  return `<tg-emoji emoji-id="${entry.id}">${char}</tg-emoji>`;
 }
 
-/** A rule saved for this exact place wins over a general "replace this emoji" rule. */
-function ruleForSlot(key: string): EmojiRule | undefined {
-  return store.slots[key] || ruleFor(EMOJI_SLOTS[key]?.char || "");
+/* ---------------- slot emojis ---------------- */
+
+export const slotDefault = (key: string) => EMOJI_SLOTS[key]?.char || "•";
+
+export function slotEntry(key: string): EmojiEntry | undefined {
+  return store.slots[key];
 }
 
 /** Emoji for message text — premium (custom) emoji when the admin set one. */
 export function e(key: string): string {
-  const def = EMOJI_SLOTS[key]?.char || "•";
-  const r = ruleForSlot(key);
-  return r ? render(r) : def;
+  return render(store.slots[key], slotDefault(key));
 }
 
 /** Emoji for inline buttons — Telegram buttons only support plain characters. */
 export function be(key: string): string {
-  const def = EMOJI_SLOTS[key]?.char || "•";
-  return ruleForSlot(key)?.char || def;
+  return store.slots[key]?.char || slotDefault(key);
+}
+
+export function listSlotOverrides(): (EmojiEntry & { slot: string })[] {
+  return Object.entries(store.slots)
+    .map(([slot, v]) => ({ ...v, slot }))
+    .sort((a, b) => a.slot.localeCompare(b.slot));
+}
+
+export function slotStats(): { total: number; set: number; premium: number } {
+  const list = listSlotOverrides();
+  return {
+    total: Object.keys(EMOJI_SLOTS).length,
+    set: list.length,
+    premium: list.filter((r) => r.id).length,
+  };
+}
+
+export async function setSlotEmoji(slot: string, value: EmojiEntry): Promise<EmojiEntry> {
+  if (!slot) throw new Error("No emoji slot chosen");
+  const entry: EmojiEntry = {
+    char: value.char || slotDefault(slot),
+    ...(value.id ? { id: value.id } : {}),
+    label: EMOJI_SLOTS[slot]?.label || slot,
+  };
+  await dbPut(`${EMOJI_PATH}/slots/${encKey(slot)}`, entry);
+  store.slots = { ...store.slots, [slot]: entry };
+  if (value.img)
+    await dbPut(`${EMOJI_PATH}/slotimg/${encKey(slot)}`, value.img).catch(() => undefined);
+  return entry;
+}
+
+export async function saveSlotImage(slot: string, img: string): Promise<void> {
+  await dbPut(`${EMOJI_PATH}/slotimg/${encKey(slot)}`, img).catch(() => undefined);
+}
+
+export async function clearSlotEmoji(slot: string): Promise<void> {
+  await dbPut(`${EMOJI_PATH}/slots/${encKey(slot)}`, null).catch(() => undefined);
+  await dbPut(`${EMOJI_PATH}/slotimg/${encKey(slot)}`, null).catch(() => undefined);
+  const next = { ...store.slots };
+  delete next[slot];
+  store.slots = next;
 }
 
 /* ---------------- product emojis ---------------- */
@@ -117,7 +157,7 @@ export function productEmojiEntry(productId: string): EmojiEntry {
 }
 
 export function productEmoji(productId: string): string {
-  return render(productEmojiEntry(productId));
+  return render(store.products[productId], "🛍");
 }
 
 export function productEmojiChar(productId: string): string {
@@ -129,7 +169,6 @@ export async function setProductEmoji(productId: string, value: EmojiEntry): Pro
   const pathKey = encKey(productId);
   await dbPut(`${EMOJI_PATH}/products/${pathKey}`, meta);
   store.products = { ...store.products, [productId]: meta };
-  version++;
   if (img) await dbPut(`${EMOJI_PATH}/prodimg/${pathKey}`, img).catch(() => undefined);
 }
 
@@ -140,7 +179,6 @@ export async function clearProductEmoji(productId: string): Promise<void> {
   const next = { ...store.products };
   delete next[productId];
   store.products = next;
-  version++;
 }
 
 export function productEmojiStats(ids: string[]): { total: number; set: number; premium: number } {
@@ -154,146 +192,29 @@ export function productEmojiStats(ids: string[]): { total: number; set: number; 
   return { total: ids.length, set, premium };
 }
 
-/* ---------------- replacement rules ---------------- */
-
-export function listRules(): EmojiRule[] {
-  const slotted = Object.entries(store.slots).map(([slot, r]) => ({ ...r, slot }));
-  return [...Object.values(store.rules), ...slotted].sort((a, b) =>
-    (a.slot || a.from).localeCompare(b.slot || b.from),
-  );
-}
-
-export function ruleStats(): { total: number; premium: number } {
-  const list = listRules();
-  return { total: list.length, premium: list.filter((r) => r.id).length };
-}
-
-/** Key used in saved-list buttons; slot rules get an "s:" prefix. */
-export function ruleKey(r: EmojiRule): string {
-  return r.slot ? `s:${encKey(r.slot)}` : emojiKey(r.from);
-}
-
-/**
- * Save the admin's choice and apply it immediately. With `slot` the change is
- * limited to that one place; without it every copy of `from` changes.
- */
-export async function setRule(from: string, value: EmojiEntry, slot?: string): Promise<EmojiRule> {
-  const key = slot ? encKey(slot) : emojiKey(from);
-  if (!key) throw new Error("No emoji to replace");
-  const rule: EmojiRule = {
-    from: normEmoji(from),
-    char: value.char,
-    ...(value.id ? { id: value.id } : {}),
-    ...(slot ? { slot } : {}),
-  };
-  await dbPut(`${EMOJI_PATH}/${slot ? "slots" : "map"}/${key}`, rule);
-  // A successful database PUT is authoritative. A second immediate read can
-  // fail transiently and previously reported a false save failure to admins.
-  if (slot) store.slots = { ...store.slots, [slot]: rule };
-  else store.rules = { ...store.rules, [key]: rule };
-  version++;
-  if (value.img)
-    await dbPut(`${EMOJI_PATH}/${slot ? "slotimg" : "mapimg"}/${key}`, value.img).catch(() => undefined);
-  return rule;
-}
-
-export async function saveRuleImage(from: string, img: string, slot?: string): Promise<void> {
-  const key = slot ? encKey(slot) : emojiKey(from);
-  await dbPut(`${EMOJI_PATH}/${slot ? "slotimg" : "mapimg"}/${key}`, img).catch(() => undefined);
-}
-
-export async function removeRule(key: string): Promise<void> {
-  if (key.startsWith("s:")) {
-    const enc = key.slice(2);
-    const slot = decKey(enc);
-    await dbPut(`${EMOJI_PATH}/slots/${enc}`, null).catch(() => undefined);
-    await dbPut(`${EMOJI_PATH}/slotimg/${enc}`, null).catch(() => undefined);
-    const next = { ...store.slots };
-    delete next[slot];
-    store.slots = next;
-    version++;
-    return;
-  }
-  await dbPut(`${EMOJI_PATH}/map/${key}`, null).catch(() => undefined);
-  await dbPut(`${EMOJI_PATH}/mapimg/${key}`, null).catch(() => undefined);
-  const next = { ...store.rules };
-  delete next[key];
-  store.rules = next;
-  version++;
-}
-
-/** Wipe every emoji setting (rules, artwork, product emojis, old records). */
+/** Wipe every emoji setting (slots, artwork, product emojis). */
 export async function resetAllEmojis(): Promise<void> {
   await dbPut(EMOJI_PATH, null);
-  store = { rules: {}, slots: {}, products: {} };
+  store = { slots: {}, products: {}, enabled: true };
   loadedAt = Date.now();
-  version++;
 }
 
-/* ---------------- global rewriting ---------------- */
+/* ---------------- outgoing text ---------------- */
 
-const EMOJI_RE = /\p{Extended_Pictographic}(\uFE0F|\u200D\p{Extended_Pictographic})*/gu;
+/** Premium markup is dropped when the feature is switched off. */
+function sanitizeText(text: string): string {
+  return store.enabled ? text : stripPremiumEmojiTags(text);
+}
+
+setTextDecorator(sanitizeText);
+
+/* ---------------- coloured inline buttons ---------------- */
+
 const LEAD_EMOJI = /^(\p{Extended_Pictographic}(\uFE0F|\u200D\p{Extended_Pictographic})*)\s*/u;
 const MARKERS = /^[\u{1F7E2}\u{1F535}\u{1F7E3}\u{1F7E0}\u{1F534}\u{1F7E1}\u26AA\u26AB\u{1F7E4}]\s*/u;
-
 const SUCCESS = /(buy|deposit|approve|complete|confirm|save|generate|add|make admin|joined|yes|enable|set )/i;
 const DANGER = /(cancel|reject|remove|delete|refund|turn off|disable|block|withdraw|no,|clear)/i;
 const NEUTRAL = /^(menu|back|admin|orders|products|emojis|home)$/i;
-
-let charCache: { at: number; plain: Map<string, string>; html: Map<string, string>; ids: Map<string, string> } | null = null;
-
-function charMaps() {
-  if (charCache && charCache.at === version) return charCache;
-  const plain = new Map<string, string>();
-  const html = new Map<string, string>();
-  const ids = new Map<string, string>();
-  // Several premium emojis can share the same plain character. Guessing an id
-  // from the character alone then showed the wrong premium emoji, so a
-  // character claimed by two different ids is left plain instead.
-  const clash = new Set<string>();
-  const claim = (char: string, id?: string) => {
-    if (!id || !char) return;
-    const k = normEmoji(char);
-    const seen = ids.get(k);
-    if (seen && seen !== id) {
-      clash.add(k);
-      return;
-    }
-    ids.set(k, id);
-  };
-  for (const r of Object.values(store.rules)) {
-    const from = normEmoji(r.from);
-    if (!from || !r.char) continue;
-    plain.set(from, r.char);
-    html.set(from, render(r));
-    claim(r.char, r.id);
-  }
-  for (const r of Object.values(store.slots)) claim(r.char, r.id);
-  for (const p of Object.values(store.products)) claim(p?.char || "", p?.id);
-  for (const k of clash) ids.delete(k);
-  charCache = { at: version, plain, html, ids };
-  return charCache;
-}
-
-/** Upgrade every emoji in an outgoing message to the admin's choice. */
-export function upgradeText(text: string): string {
-  const { html } = charMaps();
-  if (!html.size) return text;
-  return text
-    .split(/(<tg-emoji[^>]*>[\s\S]*?<\/tg-emoji>)/g)
-    .map((part) =>
-      part.startsWith("<tg-emoji") ? part : part.replace(EMOJI_RE, (m) => html.get(normEmoji(m)) || m),
-    )
-    .join("");
-}
-
-function upgradeButtonText(text: string): string {
-  const { plain } = charMaps();
-  if (!plain.size) return text;
-  return text.replace(EMOJI_RE, (m) => plain.get(normEmoji(m)) || m);
-}
-
-/* ---------------- coloured inline buttons ---------------- */
 
 let buttonColors: ButtonColorMap = {};
 
@@ -320,13 +241,13 @@ function styleFor(label: string): "primary" | "success" | "danger" | undefined {
 
 export function decorateKeyboard(markup: any): any {
   if (!markup || !Array.isArray(markup.inline_keyboard)) return markup;
-  const { ids } = charMaps();
   return {
     ...markup,
     inline_keyboard: markup.inline_keyboard.map((row: any[]) =>
       row.map((btn: any) => {
         if (!btn || typeof btn.text !== "string") return btn;
-        const text = upgradeButtonText(btn.text.replace(MARKERS, ""));
+        // Buttons can only show plain characters, so any markup is stripped.
+        const text = stripPremiumEmojiTags(btn.text.replace(MARKERS, ""));
         const out: any = { ...btn, text };
         if (!out.style) {
           const configured = styleFromConfig(btn);
@@ -337,16 +258,6 @@ export function decorateKeyboard(markup: any): any {
             out.style = configured;
           }
         }
-        if (!out.icon_custom_emoji_id) {
-          const lead = LEAD_EMOJI.exec(text)?.[1];
-          const id = lead ? ids.get(normEmoji(lead)) : undefined;
-          if (id) {
-            // Telegram shows icon_custom_emoji_id beside the label, so the
-            // Unicode copy is removed to avoid the same emoji twice.
-            out.icon_custom_emoji_id = id;
-            out.text = text.replace(LEAD_EMOJI, "").trimStart();
-          }
-        }
         return out;
       }),
     ),
@@ -354,9 +265,23 @@ export function decorateKeyboard(markup: any): any {
 }
 
 setKeyboardDecorator(decorateKeyboard);
-setTextDecorator(upgradeText);
 
-/* ---------------- premium emoji artwork (for the website) ---------------- */
+/* ---------------- capture + artwork ---------------- */
+
+/**
+ * Ask Telegram for the canonical unicode fallback of a premium emoji. A stale
+ * or inaccessible id returns null, so it is never saved.
+ */
+export async function verifyCustomEmoji(id: string): Promise<string | null> {
+  if (!VALID_EMOJI_ID.test(id)) return null;
+  try {
+    const res = await tg("getCustomEmojiStickers", { custom_emoji_ids: [id] });
+    const emoji = res?.result?.[0]?.emoji;
+    return typeof emoji === "string" && emoji.trim() ? emoji : null;
+  } catch {
+    return null;
+  }
+}
 
 /** Grab the sticker image once so the website can show the premium emoji. */
 export async function fetchEmojiImage(id: string): Promise<string | undefined> {
@@ -366,9 +291,7 @@ export async function fetchEmojiImage(id: string): Promise<string | undefined> {
     if (!st) return undefined;
     // Animated .tgs files cannot be displayed by browsers. Prefer their WebP
     // thumbnail; video and static custom emojis can use the original artwork.
-    const candidates = st.is_animated
-      ? [st.thumbnail?.file_id]
-      : [st.file_id, st.thumbnail?.file_id];
+    const candidates = st.is_animated ? [st.thumbnail?.file_id] : [st.file_id, st.thumbnail?.file_id];
     for (const fileId of candidates.filter(Boolean)) {
       const image = await tgFileDataUrl(String(fileId));
       if (image && !image.startsWith("data:application/x-tgsticker")) return image;
@@ -382,19 +305,11 @@ export async function fetchEmojiImage(id: string): Promise<string | undefined> {
 /** Fill in artwork missing for saved premium emojis. Returns how many were fixed. */
 export async function syncEmojiImages(): Promise<number> {
   await loadEmojis(true);
-  const [imgs, prodImgs, slotImgs] = await Promise.all([
-    dbGet<Record<string, string>>(`${EMOJI_PATH}/mapimg`),
-    dbGet<Record<string, string>>(`${EMOJI_PATH}/prodimg`),
+  const [slotImgs, prodImgs] = await Promise.all([
     dbGet<Record<string, string>>(`${EMOJI_PATH}/slotimg`),
+    dbGet<Record<string, string>>(`${EMOJI_PATH}/prodimg`),
   ]);
   let fixed = 0;
-  for (const [key, r] of Object.entries(store.rules)) {
-    if (!r?.id || imgs?.[key]) continue;
-    const img = await fetchEmojiImage(r.id);
-    if (!img) continue;
-    await dbPut(`${EMOJI_PATH}/mapimg/${key}`, img);
-    fixed++;
-  }
   for (const [slot, r] of Object.entries(store.slots)) {
     if (!r?.id || slotImgs?.[encKey(slot)]) continue;
     const img = await fetchEmojiImage(r.id);
@@ -412,19 +327,6 @@ export async function syncEmojiImages(): Promise<number> {
   return fixed;
 }
 
-/** Emoji suggestions the admin can tap instead of typing one. */
-export function suggestedEmojis(): { char: string; label: string }[] {
-  const seen = new Set<string>();
-  const out: { char: string; label: string }[] = [];
-  for (const def of Object.values(EMOJI_SLOTS)) {
-    const k = normEmoji(def.char);
-    if (!k || seen.has(k)) continue;
-    seen.add(k);
-    out.push({ char: def.char, label: def.label });
-  }
-  return out;
-}
-
 /** Pull the first emoji (with custom emoji id when present) out of a message. */
 export function readEmoji(text: string, entities?: any[], sticker?: any): EmojiEntry | null {
   if (sticker?.custom_emoji_id) {
@@ -432,9 +334,21 @@ export function readEmoji(text: string, entities?: any[], sticker?: any): EmojiE
   }
   const custom = (entities || []).find((x) => x?.type === "custom_emoji" && x?.custom_emoji_id);
   if (custom) {
+    // Telegram offsets are UTF-16 code units, which JS string slicing matches.
     const char = text.slice(custom.offset, custom.offset + custom.length) || "⭐";
     return { id: String(custom.custom_emoji_id), char };
   }
   const m = text.match(/\p{Extended_Pictographic}(\uFE0F|\u200D\p{Extended_Pictographic})*/u);
   return m ? { char: m[0] } : null;
+}
+
+/**
+ * Verify a captured emoji before it is saved: an id Telegram does not know is
+ * kept as its plain character instead of a broken premium emoji.
+ */
+export async function verifyEntry(value: EmojiEntry): Promise<EmojiEntry> {
+  if (!value.id) return value;
+  const canonical = await verifyCustomEmoji(value.id);
+  if (!canonical) return { char: value.char };
+  return { id: value.id, char: canonical };
 }

@@ -1,6 +1,7 @@
 /** Server-only helpers for the Telegram bot + Firebase Realtime Database REST access. */
 import { createHash, timingSafeEqual } from "crypto";
 import { isOriginProject } from "./origin";
+import { hasPremiumEmoji, htmlToEntities, stripPremiumEmojiTags } from "./telegram-entities";
 
 /** Database URL: set FIREBASE_DATABASE_URL when remixing to another project. */
 const DEFAULT_RTDB_URL = "https://silvex-ai-default-rtdb.firebaseio.com";
@@ -148,6 +149,18 @@ export async function tg(method: string, body: Record<string, unknown>): Promise
   if (payload["text"]) payload["text"] = decorateText(payload["text"]);
   if (payload["caption"]) payload["caption"] = decorateText(payload["caption"]);
 
+  // Telegram's HTML mode does not render <tg-emoji> on every client, so any
+  // message holding a premium emoji is converted to text + entities instead.
+  for (const field of ["text", "caption"] as const) {
+    const value = payload[field];
+    if (!hasPremiumEmoji(value)) continue;
+    const parsed = htmlToEntities(String(value));
+    if (!parsed) continue;
+    payload[field] = parsed.text;
+    payload[field === "text" ? "entities" : "caption_entities"] = parsed.entities;
+    delete payload["parse_mode"];
+  }
+
 
   const call = async (data: Record<string, unknown>) => {
     const res = await fetch(api.url, {
@@ -171,11 +184,13 @@ export async function tg(method: string, body: Record<string, unknown>): Promise
     if (/custom_emoji|CUSTOM_EMOJI|icon|style|entit/i.test(msg)) {
       // Premium emoji in message text also needs a Fragment-linked bot — fall
       // back to the plain emoji characters rather than dropping the message.
-      const plainText = (v: unknown) =>
-        typeof v === "string" ? v.replace(/<tg-emoji[^>]*>([\s\S]*?)<\/tg-emoji>/g, "$1") : v;
+      const plainText = (v: unknown) => (typeof v === "string" ? stripPremiumEmojiTags(v) : v);
       const retry: Record<string, unknown> = { ...payload };
       if (retry["text"]) retry["text"] = plainText(retry["text"]);
       if (retry["caption"]) retry["caption"] = plainText(retry["caption"]);
+      // Custom-emoji entities are what the server refused — drop them as well.
+      delete retry["entities"];
+      delete retry["caption_entities"];
       if (retry["reply_markup"]) {
         const plain = stripIcons(retry["reply_markup"]);
         retry["reply_markup"] = {
