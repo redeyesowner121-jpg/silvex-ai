@@ -22,7 +22,15 @@ import {
 } from "./core";
 
 export async function adminHome(chatId: number) {
-  await say(chatId, "👑 <b>Owner panel</b>\n\nManage the whole store from here.", {
+  const userMap = (await allUsers()) || {};
+  const rows = Object.entries(userMap);
+  const tgUsers = rows.filter(
+    ([id, u]: [string, any]) => id.startsWith("tg_") || !!u?.telegramChatId,
+  ).length;
+  await say(
+    chatId,
+    `👑 <b>Owner panel</b>\n\nManage the whole store from here.\n\n👥 Total users: <b>${rows.length}</b>\n🌐 Website: ${rows.length - tgUsers} • 🤖 Telegram: ${tgUsers}`,
+    {
     inline_keyboard: [
       [
         { text: "📊 Stats", callback_data: "a:stats" },
@@ -45,8 +53,9 @@ export async function adminHome(chatId: number) {
         { text: "😍 Emojis", callback_data: "a:em" },
       ],
       [{ text: "🌐 Website admin", url: `${siteUrl()}/admin` }],
-    ],
-  });
+      ],
+    },
+  );
 }
 
 export async function adminStats(chatId: number) {
@@ -56,7 +65,11 @@ export async function adminStats(chatId: number) {
     allProducts(),
   ]);
   const orders = Object.values(orderMap || {});
-  const users = Object.keys(userMap || {}).length;
+  const userRows = Object.entries(userMap || {});
+  const users = userRows.length;
+  const tgUsers = userRows.filter(
+    ([id, u]: [string, any]) => id.startsWith("tg_") || !!u?.telegramChatId,
+  ).length;
   const products = Object.values(productMap || {});
   const pending = orders.filter((o: any) => o.status === "Pending").length;
   const revenue = orders
@@ -72,7 +85,7 @@ export async function adminStats(chatId: number) {
   );
   await say(
     chatId,
-    `📊 <b>Stats</b>\n\nOrders: ${orders.length}\nPending: ${pending}\nRevenue: ${money(revenue)}\nThis week: ${money(week)}\nUsers: ${users}\nProducts: ${products.length}\nStock left: ${stock}`,
+    `📊 <b>Stats</b>\n\nOrders: ${orders.length}\nPending: ${pending}\nRevenue: ${money(revenue)}\nThis week: ${money(week)}\nUsers: ${users} (website ${users - tgUsers} • telegram ${tgUsers})\nProducts: ${products.length}\nStock left: ${stock}`,
     adminBack,
   );
 }
