@@ -114,9 +114,9 @@ export const BOT_EMOJI_SLOTS: Record<string, { label: string; char: string; grou
   "btn.edit": { label: "Edit button", char: "✏️", group: "button" },
 };
 
-/** One saved replacement: the original emoji -> the emoji the admin picked. */
-export type EmojiRule = { from: string; char: string; id?: string };
-export type EmojiRuleMap = Record<string, EmojiRule>;
+/** One saved choice: the emoji (and premium id) picked for a named place. */
+export type EmojiEntry = { char: string; id?: string; label?: string };
+export type EmojiEntryMap = Record<string, EmojiEntry>;
 
 /**
  * "🛍" and "🛍️" are the same emoji to a person but different text, so matching
@@ -128,21 +128,6 @@ export const normEmoji = (c: string) => String(c || "").replace(/\uFE0F/g, "");
 export const slotChar = (key: string) =>
   WEB_EMOJI_SLOTS[key]?.char || BOT_EMOJI_SLOTS[key]?.char || "";
 
-/**
- * Build "original emoji -> chosen emoji (+ premium artwork)" so one change by
- * the admin applies to every place that emoji is used.
- */
-export function buildEmojiCharMap(
-  rules: EmojiRuleMap | null | undefined,
-  imgs: Record<string, string> | null | undefined,
-): Record<string, { char: string; img?: string }> {
-  const out: Record<string, { char: string; img?: string }> = {};
-  for (const [key, rule] of Object.entries(rules || {})) {
-    if (!rule?.from || !rule?.char) continue;
-    out[normEmoji(rule.from)] = { char: rule.char, img: imgs?.[key] || "" };
-  }
-  return out;
-}
 
 
 
