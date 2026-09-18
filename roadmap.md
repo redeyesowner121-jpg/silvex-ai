@@ -16,6 +16,8 @@ Phase 1 — core
 - [x] `e()` / `be()` / `productEmoji()` with emoji-id validation (`/^[1-9]\d{14,19}$/`)
 - [x] HTML → `{ text, entities }` converter wired into every send (`src/lib/telegram-entities.ts`)
 - [x] `/setemoji` capture: extract entity → verify with `getCustomEmojiStickers` → save canonical fallback
+- [x] Premium entities applied consistently to messages, uploaded-photo captions, and document captions
+- [x] Fresh emoji settings awaited before each bot response; legacy records normalized on load
 
 Phase 2 — UX
 - [x] Paginated picker: button / normal / website places and products

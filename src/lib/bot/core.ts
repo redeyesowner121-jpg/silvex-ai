@@ -105,7 +105,7 @@ export async function loadBotPresentation(): Promise<void> {
   const stale = Date.now() - colorsLoadedAt >= BOT_CACHE_MS;
   if (cachedButtonColors) {
     if (stale) void refreshColors();
-    void loadEmojis().catch(() => undefined);
+    await loadEmojis().catch(() => undefined);
   } else {
     await Promise.all([loadEmojis().catch(() => undefined), refreshColors()]);
   }

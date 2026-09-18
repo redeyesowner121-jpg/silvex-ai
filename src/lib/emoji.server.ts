@@ -29,6 +29,22 @@ export const decKey = (key: string) => key.split("~").join(".");
 const decodeMap = <T>(map: Record<string, T> | null) =>
   Object.fromEntries(Object.entries(map || {}).map(([k, v]) => [decKey(k), v]));
 
+/** Keep only the current entry fields when old Firebase records are loaded. */
+function normalizeEntries(map: Record<string, EmojiEntry> | null): Record<string, EmojiEntry> {
+  return Object.fromEntries(
+    Object.entries(decodeMap(map)).map(([key, value]) => {
+      const fallback = key.startsWith("web.") || key.startsWith("btn.") || key.startsWith("norm.")
+        ? slotDefault(key)
+        : "🛍";
+      return [key, {
+        char: String(value?.char || fallback),
+        ...(value?.id && VALID_EMOJI_ID.test(String(value.id)) ? { id: String(value.id) } : {}),
+        ...(value?.label ? { label: String(value.label) } : {}),
+      }];
+    }),
+  );
+}
+
 /** "🛍" and "🛍️" are the same emoji to a person but different text. */
 export const normEmoji = (c: string) => String(c || "").replace(/\uFE0F/g, "");
 
@@ -54,8 +70,6 @@ const EMOJI_CACHE_MS = 60_000;
 export async function loadEmojis(force = false): Promise<void> {
   if (!force && loadedAt && Date.now() - loadedAt < EMOJI_CACHE_MS) return;
   if (loading) return loading;
-  // Already have emojis but they went stale: refresh in the background.
-  const background = !force && loadedAt > 0;
   loading = Promise.all([
     dbGet<Record<string, EmojiEntry>>(`${EMOJI_PATH}/slots`),
     dbGet<Record<string, EmojiEntry>>(`${EMOJI_PATH}/products`),
@@ -63,8 +77,8 @@ export async function loadEmojis(force = false): Promise<void> {
   ])
     .then(([slots, products, enabled]) => {
       store = {
-        slots: decodeMap(slots),
-        products: decodeMap(products),
+        slots: normalizeEntries(slots),
+        products: normalizeEntries(products),
         enabled: enabled !== false,
       };
       loadedAt = Date.now();
@@ -73,7 +87,6 @@ export async function loadEmojis(force = false): Promise<void> {
     .finally(() => {
       loading = null;
     });
-  if (background) return;
   return loading;
 }
 
@@ -82,6 +95,7 @@ export const premiumEnabled = () => store.enabled;
 export async function setPremiumEnabled(on: boolean): Promise<void> {
   await dbPut(`${EMOJI_PATH}/enabled`, on);
   store = { ...store, enabled: on };
+  charMap = null;
 }
 
 function render(entry: EmojiEntry | undefined, fallback: string): string {
@@ -133,6 +147,7 @@ export async function setSlotEmoji(slot: string, value: EmojiEntry): Promise<Emo
   };
   await dbPut(`${EMOJI_PATH}/slots/${encKey(slot)}`, entry);
   store.slots = { ...store.slots, [slot]: entry };
+  charMap = null;
   if (value.img)
     await dbPut(`${EMOJI_PATH}/slotimg/${encKey(slot)}`, value.img).catch(() => undefined);
   return entry;
@@ -148,6 +163,7 @@ export async function clearSlotEmoji(slot: string): Promise<void> {
   const next = { ...store.slots };
   delete next[slot];
   store.slots = next;
+  charMap = null;
 }
 
 /* ---------------- product emojis ---------------- */

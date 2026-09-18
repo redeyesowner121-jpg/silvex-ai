@@ -1,5 +1,5 @@
 /** Builds and sends delivery receipts (PDF + SVG). */
-import { tgApi, decorateText } from "@/lib/telegram.server";
+import { tgApi, decorateText, prepareTelegramText } from "@/lib/telegram.server";
 
 /* ---------------- delivery receipts (PDF + SVG) ---------------- */
 
@@ -88,9 +88,10 @@ export async function tgSendDocument(
   const form = new FormData();
   form.append("chat_id", String(chatId));
   if (caption) {
-    form.append("caption", String(decorateText(caption)));
-
-    form.append("parse_mode", "HTML");
+    const prepared = prepareTelegramText(caption);
+    form.append("caption", prepared.text);
+    if (prepared.entities) form.append("caption_entities", JSON.stringify(prepared.entities));
+    else form.append("parse_mode", "HTML");
   }
   form.append("document", new Blob([bytes as unknown as BlobPart], { type: mime }), filename);
   const res = await fetch(api.url, { method: "POST", headers: api.headers, body: form });
@@ -99,6 +100,8 @@ export async function tgSendDocument(
     console.error(`Telegram sendDocument failed [${res.status}]: ${detail}`);
     if (caption && /emoji|entit/i.test(detail)) {
       form.set("caption", plainEmojiText(String(decorateText(caption))));
+      form.delete("caption_entities");
+      form.set("parse_mode", "HTML");
       await fetch(api.url, { method: "POST", headers: api.headers, body: form }).catch(() => undefined);
     }
   }
