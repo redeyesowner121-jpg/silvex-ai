@@ -377,6 +377,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           email: user.email || "",
           wallet: 0,
           myRefCode: (base.slice(0, 3) + Math.floor(100 + Math.random() * 900)).toUpperCase(),
+          joined: new Date().toISOString(),
         }).catch(() => {});
       }
 
