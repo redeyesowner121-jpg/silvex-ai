@@ -22,7 +22,15 @@ import {
 } from "./core";
 
 export async function adminHome(chatId: number) {
-  await say(chatId, "👑 <b>Owner panel</b>\n\nManage the whole store from here.", {
+  const userMap = (await allUsers()) || {};
+  const rows = Object.entries(userMap);
+  const tgUsers = rows.filter(
+    ([id, u]: [string, any]) => id.startsWith("tg_") || !!u?.telegramChatId,
+  ).length;
+  await say(
+    chatId,
+    `👑 <b>Owner panel</b>\n\nManage the whole store from here.\n\n👥 Total users: <b>${rows.length}</b>\n🌐 Website: ${rows.length - tgUsers} • 🤖 Telegram: ${tgUsers}`,
+    {
     inline_keyboard: [
       [
         { text: "📊 Stats", callback_data: "a:stats" },
