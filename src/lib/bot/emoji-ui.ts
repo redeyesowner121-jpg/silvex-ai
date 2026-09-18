@@ -1,18 +1,20 @@
-/** The /setemoji screens: pick a slot, send the new emoji, list and reset. */
+/** The /setemoji screens: pick a slot or a product, then send a premium emoji. */
 import {
   be,
   clearProductEmoji,
+  clearSlotEmoji,
   fetchEmojiImage,
-  listRules,
+  listSlotOverrides,
+  premiumEnabled,
   productEmojiChar,
   productEmojiStats,
   readEmoji,
-  removeRule,
-  ruleKey,
-  ruleStats,
-  saveRuleImage,
+  saveSlotImage,
+  setPremiumEnabled,
   setProductEmoji,
-  setRule,
+  setSlotEmoji,
+  slotStats,
+  verifyEntry,
   EMOJI_SLOTS,
 } from "@/lib/emoji.server";
 import { allProducts, say, setState } from "./core";
@@ -32,13 +34,13 @@ function emPager(prefix: string, page: number, total: number) {
 export async function emojiHome(chatId: number, note = "") {
   const all = await allProducts();
   const p = productEmojiStats(Object.keys(all));
-  const r = ruleStats();
+  const s = slotStats();
+  const on = premiumEnabled();
   await say(
     chatId,
-    `😍 <b>Emoji setup</b>\n\nHow it works: send the emoji you want to change, then send the new one. It is applied everywhere in the bot and on the website at once.\n\n🔁 Replaced emojis: ${r.total} (✨${r.premium} premium)\n🛍 Product emojis: ${p.set}/${p.total} (✨${p.premium})${note ? `\n\n${note}` : ""}`,
+    `😍 <b>Emoji setup</b>\n\nPick the place you want to change, then send the premium emoji for it. Each place keeps its own emoji, so nothing else changes with it.\n\n🎯 Places set: ${s.set}/${s.total} (✨${s.premium} premium)\n🛍 Product emojis: ${p.set}/${p.total} (✨${p.premium})\n⚙️ Premium emojis: ${on ? "on" : "off"}${note ? `\n\n${note}` : ""}`,
     {
       inline_keyboard: [
-        [{ text: "➕ Change an emoji", callback_data: "a:em:add" }],
         [
           { text: "🔘 Button emojis", callback_data: "a:emg:button:0" },
           { text: "🔤 Normal emojis", callback_data: "a:emg:normal:0" },
@@ -49,19 +51,11 @@ export async function emojiHome(chatId: number, note = "") {
           { text: "🛍 Product emojis", callback_data: "a:em:prod" },
         ],
         [{ text: "🔄 Sync website artwork", callback_data: "a:em:sync" }],
+        [{ text: on ? "🚫 Turn premium off" : "✨ Turn premium on", callback_data: "a:em:tog" }],
         [{ text: "♻️ Reset all emojis", callback_data: "a:em:rst" }],
         [{ text: "⬅️ Admin", callback_data: "a:home" }],
       ],
     },
-  );
-}
-
-export async function emojiAsk(chatId: number) {
-  await setState(chatId, { k: "em_from" });
-  await say(
-    chatId,
-    "1️⃣ Send the emoji you want to change (the one you see now in the bot or on the website).",
-    { inline_keyboard: [[{ text: "❌ Cancel", callback_data: "a:em" }]] },
   );
 }
 
@@ -71,7 +65,7 @@ const GROUP_TITLE: Record<string, string> = {
   web: "🌐 <b>Website emojis</b>",
 };
 
-/** Ready-made list of every emoji the bot/website uses, grouped by where it is shown. */
+/** Every place the bot/website shows an emoji, grouped by where it appears. */
 export async function emojiGroup(chatId: number, group: string, page = 0) {
   const slots = Object.entries(EMOJI_SLOTS).filter(([, v]) => v.group === group);
   if (!slots.length)
@@ -92,37 +86,39 @@ export async function emojiGroup(chatId: number, group: string, page = 0) {
   );
 }
 
-/** Admin picked a ready-made slot — jump straight to "send the new emoji". */
+/** Admin picked a place — ask for the emoji to use there. */
 export async function emojiSlotPick(chatId: number, slotKey: string) {
   const slot = EMOJI_SLOTS[slotKey];
   if (!slot) return emojiHome(chatId);
-  await setState(chatId, { k: "em_to", a: slot.char, b: slotKey });
+  await setState(chatId, { k: "em_to", a: slotKey });
   return say(
     chatId,
     `Send the new emoji for <b>${slot.label}</b> (now ${be(slotKey)}).\nPremium (custom) emojis work too.`,
-    { inline_keyboard: [[{ text: "❌ Cancel", callback_data: `a:emg:${slot.group}:0` }]] },
+    {
+      inline_keyboard: [
+        [{ text: "♻️ Use the default", callback_data: `a:emd:${slotKey}` }],
+        [{ text: "❌ Cancel", callback_data: `a:emg:${slot.group}:0` }],
+      ],
+    },
   );
 }
 
 export async function emojiList(chatId: number, page = 0) {
-  const rules = listRules();
-  if (!rules.length)
+  const saved = listSlotOverrides();
+  if (!saved.length)
     return say(chatId, "No emoji changed yet.", {
-      inline_keyboard: [
-        [{ text: "➕ Change an emoji", callback_data: "a:em:add" }],
-        [{ text: "⬅️ Emojis", callback_data: "a:em" }],
-      ],
+      inline_keyboard: [[{ text: "⬅️ Emojis", callback_data: "a:em" }]],
     });
-  const slice = rules.slice(page * EM_PAGE, page * EM_PAGE + EM_PAGE);
-  await say(chatId, "📋 <b>Saved emojis</b>\nTap one to remove it.", {
+  const slice = saved.slice(page * EM_PAGE, page * EM_PAGE + EM_PAGE);
+  await say(chatId, "📋 <b>Saved emojis</b>\nTap one to put the default back.", {
     inline_keyboard: [
       ...slice.map((r) => [
         {
-          text: `${r.slot ? EMOJI_SLOTS[r.slot]?.label || r.slot : r.from} ➜ ${r.char}${r.id ? " ✨" : ""}`,
-          callback_data: `a:emd:${ruleKey(r)}`,
+          text: `${EMOJI_SLOTS[r.slot]?.label || r.slot} ➜ ${r.char}${r.id ? " ✨" : ""}`,
+          callback_data: `a:emd:${r.slot}`,
         },
       ]),
-      ...emPager("a:emL:", page, rules.length),
+      ...emPager("a:emL:", page, saved.length),
       [{ text: "⬅️ Emojis", callback_data: "a:em" }],
     ],
   });
@@ -147,31 +143,19 @@ export async function emojiProducts(chatId: number, page = 0) {
   });
 }
 
-/** Step 1: remember which emoji is being replaced. */
-export async function emojiFromMessage(chatId: number, text: string, entities?: any[], sticker?: any) {
-  const value = readEmoji(text, entities, sticker);
-  if (!value) return say(chatId, "Please send one emoji.");
-  await setState(chatId, { k: "em_to", a: value.char });
-  return say(
-    chatId,
-    `2️⃣ Now send the new emoji to use instead of ${value.char}.\nPremium (custom) emojis work too — send it normally or forward the emoji.`,
-    { inline_keyboard: [[{ text: "❌ Cancel", callback_data: "a:em" }]] },
-  );
-}
-
-/** Step 2: save the replacement and apply it right away. */
+/** Save the emoji the admin sent for one place. */
 export async function emojiToMessage(
   chatId: number,
-  from: string,
+  slot: string,
   text: string,
   entities?: any[],
   sticker?: any,
-  slot?: string,
 ) {
-  const value = readEmoji(text, entities, sticker);
-  if (!value) return say(chatId, "Please send one emoji.");
+  const raw = readEmoji(text, entities, sticker);
+  if (!raw) return say(chatId, "Please send one emoji.");
+  const value = await verifyEntry(raw);
   try {
-    await setRule(from, value, slot);
+    await setSlotEmoji(slot, value);
   } catch (error) {
     console.error("emoji save failed", error);
     return say(chatId, "❌ That emoji could not be saved. Please try again.");
@@ -180,11 +164,16 @@ export async function emojiToMessage(
   let note = "";
   if (value.id) {
     const img = await fetchEmojiImage(value.id);
-    if (img) await saveRuleImage(from, img, slot);
+    if (img) await saveSlotImage(slot, img);
     else note = "\n⚠️ The website could not download this premium emoji's picture.";
+  } else if (raw.id) {
+    note = "\n⚠️ Telegram did not accept that premium emoji, so the plain one is used.";
   }
-  const where = slot ? EMOJI_SLOTS[slot]?.label || slot : from;
-  await say(chatId, `✅ Saved: ${where} ➜ ${value.char}${value.id ? " (premium ✨)" : ""}${note}`);
+  const where = EMOJI_SLOTS[slot]?.label || slot;
+  await say(
+    chatId,
+    `✅ Saved: ${where} ➜ ${value.id ? `<tg-emoji emoji-id="${value.id}">${value.char}</tg-emoji> (premium ✨)` : value.char}${note}`,
+  );
   return emojiHome(chatId);
 }
 
@@ -196,8 +185,9 @@ export async function emojiProductMessage(
   entities?: any[],
   sticker?: any,
 ) {
-  const value = readEmoji(text, entities, sticker);
-  if (!value) return say(chatId, "Please send one emoji.");
+  const raw = readEmoji(text, entities, sticker);
+  if (!raw) return say(chatId, "Please send one emoji.");
+  const value = await verifyEntry(raw);
   try {
     await setProductEmoji(productId, value);
   } catch (error) {
@@ -213,4 +203,18 @@ export async function emojiProductMessage(
   return emojiProducts(chatId);
 }
 
-export { clearProductEmoji, removeRule };
+/** Put the built-in emoji back for one place. */
+export async function emojiSlotReset(chatId: number, slot: string) {
+  await clearSlotEmoji(slot);
+  await setState(chatId, null);
+  return emojiHome(chatId, `♻️ ${EMOJI_SLOTS[slot]?.label || slot} is back to the default.`);
+}
+
+/** Switch premium emojis on or off everywhere. */
+export async function emojiToggle(chatId: number) {
+  const on = !premiumEnabled();
+  await setPremiumEnabled(on);
+  return emojiHome(chatId, on ? "✨ Premium emojis are on." : "🚫 Premium emojis are off.");
+}
+
+export { clearProductEmoji };
