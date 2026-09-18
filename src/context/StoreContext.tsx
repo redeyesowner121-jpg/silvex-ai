@@ -317,14 +317,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       // Product ids hold dots, stored as "~" because Firebase keys can't have dots.
       const decodeKeys = (v: Record<string, any> | null) =>
         Object.fromEntries(Object.entries(v || {}).map(([k, val]) => [k.split("~").join("."), val]));
-      // "Replace this emoji with that one" rules set by the bot admin.
-      unsubs.push(onValue(ref(d, "telegramEmoji/map"), (s) => setEmojis(s.val() || {})));
+      // The emoji chosen for each named place in the bot and website.
       unsubs.push(onValue(ref(d, "telegramEmoji/slots"), (s) => setSlotEmojis(decodeKeys(s.val()))));
       // Emojis the bot admin picked for single products.
       unsubs.push(onValue(ref(d, "telegramEmoji/products"), (s) => setProdEmojis(decodeKeys(s.val()))));
       // Premium emoji artwork can be heavy, so it loads after the first paint.
       const loadArt = () => {
-        unsubs.push(onValue(ref(d, "telegramEmoji/mapimg"), (s) => setEmojiImgs(s.val() || {})));
         unsubs.push(
           onValue(ref(d, "telegramEmoji/slotimg"), (s) => setSlotEmojiImgs(decodeKeys(s.val()))),
         );
@@ -526,8 +524,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     profile,
     products,
     config,
-    emojis,
-    emojiImgs,
     slotEmojis,
     slotEmojiImgs,
     prodEmojis,
