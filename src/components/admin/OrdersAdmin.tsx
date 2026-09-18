@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { ref, update } from "firebase/database";
+import { useEffect, useMemo, useState } from "react";
+import { onValue, ref, update } from "firebase/database";
 import { useStore } from "@/context/StoreContext";
 import { deliveryBlock, emailShell, sendMail } from "@/lib/mailer";
 import { notifyTelegramOrder } from "@/lib/telegram.functions";
@@ -13,24 +13,34 @@ export function OrdersAdmin({ orders }: { orders: OrderRow[] }) {
   const [deliverLines, setDeliverLines] = useState<string[]>([]);
   const [deliverNote, setDeliverNote] = useState("");
   const [delivering, setDelivering] = useState(false);
+  const [query, setQuery] = useState("");
+  const [userNames, setUserNames] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (!db) return;
+    return onValue(ref(db, "users"), (snapshot) => {
+      const names: Record<string, string> = {};
+      Object.entries(snapshot.val() || {}).forEach(([uid, value]) => {
+        const user = value as { name?: string };
+        names[uid] = user.name || "";
+      });
+      setUserNames(names);
+    });
+  }, [db]);
+
+  const filtered = useMemo(() => {
+    const term = query.trim().toLowerCase();
+    if (!term) return orders;
+    return orders.filter((order) => [order.orderId, order.uid, order.email, order.phone, userNames[order.uid]]
+      .filter(Boolean).some((value) => String(value).toLowerCase().includes(term)));
+  }, [orders, query, userNames]);
 
   function deliveryOf(item: { id?: string; title: string }) {
     const product = products.find((entry) => entry.id === item.id || entry.title === item.title);
     return product?.delivery === "auto" ? "Auto stock" : product?.delivery === "repeat" ? "Repeated" : "Manual";
   }
 
-  function exportRows(): ExportRow[] {
-    return orders.flatMap((order) => {
-      const items = order.items || [];
-      if (!items.length) return [{ orderId: order.orderId, date: order.date, buyer: order.email || order.uid, product: "—", delivery: "—", amount: Number(order.total) || 0, status: order.status }];
-      return items.map((item, index) => ({
-        orderId: order.orderId, date: order.date, buyer: order.email || order.uid,
-        product: `${item.title} × ${item.qty}`, delivery: deliveryOf(item),
-        amount: item.price != null ? Number(item.price) * Number(item.qty || 1) : index === 0 ? Number(order.total) || 0 : 0,
-        status: order.status,
-      }));
-    });
-  }
+  function exportRows(): ExportRow[] { return exportFilteredRows(); }
 
   function openDelivery(order: OrderRow) {
     setDeliverFor(order);
@@ -58,14 +68,28 @@ export function OrdersAdmin({ orders }: { orders: OrderRow[] }) {
     } finally { setDelivering(false); }
   }
 
+  function exportFilteredRows(): ExportRow[] {
+    return filtered.flatMap((order) => {
+      const items = order.items || [];
+      if (!items.length) return [{ orderId: order.orderId, date: order.date, buyer: order.email || order.uid, product: "—", delivery: "—", amount: Number(order.total) || 0, status: order.status }];
+      return items.map((item, index) => ({
+        orderId: order.orderId, date: order.date, buyer: order.email || order.uid,
+        product: `${item.title} × ${item.qty}`, delivery: deliveryOf(item),
+        amount: item.price != null ? Number(item.price) * Number(item.qty || 1) : index === 0 ? Number(order.total) || 0 : 0,
+        status: order.status,
+      }));
+    });
+  }
+
   return <div className="space-y-3">
+    <input className={input} placeholder="Search by order ID, user name, user ID or email…" value={query} onChange={(event) => setQuery(event.target.value)} />
     <div className="grid grid-cols-2 gap-2">
-      <button onClick={() => exportOrdersCsv(exportRows(), `orders-${Date.now()}.csv`)} className="rounded-xl bg-card py-2.5 text-xs font-bold shadow-sm">Download CSV</button>
-      <button onClick={() => exportOrdersPdf(exportRows(), `${config.siteName || "Store"} — orders report`, `orders-${Date.now()}.pdf`)} className="rounded-xl bg-card py-2.5 text-xs font-bold shadow-sm">Download PDF</button>
+      <button onClick={() => exportOrdersCsv(exportFilteredRows(), `orders-${Date.now()}.csv`)} className="rounded-xl bg-card py-2.5 text-xs font-bold shadow-sm">Download CSV</button>
+      <button onClick={() => exportOrdersPdf(exportFilteredRows(), `${config.siteName || "Store"} — orders report`, `orders-${Date.now()}.pdf`)} className="rounded-xl bg-card py-2.5 text-xs font-bold shadow-sm">Download PDF</button>
     </div>
-    {orders.map((order) => <div key={order.orderId} className="rounded-2xl border border-border bg-card p-4">
+    {filtered.map((order) => <div key={order.orderId} className="rounded-2xl border border-border bg-card p-4">
       <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 text-xs font-bold"><span className="truncate">#{order.orderId.slice(-6)}</span><span>{order.status}</span></div>
-      <p className="mt-1 break-words text-xs text-muted-foreground">{order.email} · {order.phone}</p>
+      <p className="mt-1 break-words text-xs text-muted-foreground">{userNames[order.uid] ? `${userNames[order.uid]} · ` : ""}{order.email} · {order.phone}</p>
       <ul className="my-2 text-sm">{(order.items || []).map((item, index) => <li key={index}>{item.title} × {item.qty}</li>)}</ul>
       <p className="text-lg font-black">${order.total}</p>
       {order.delivered?.length ? <div className="mt-2 space-y-1 rounded-xl bg-muted/60 p-2 text-[11px]">{order.delivered.map((item, index) => <p key={index} className="break-all"><b>{item.title}:</b> {item.content}</p>)}</div> : null}
@@ -80,6 +104,6 @@ export function OrdersAdmin({ orders }: { orders: OrderRow[] }) {
         <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2"><button disabled={delivering} onClick={completeDelivery} className="rounded-lg bg-emerald-500 py-2 text-xs font-bold text-white disabled:opacity-60">{delivering ? "Sending…" : "Mark delivered & notify buyer"}</button><button onClick={() => setDeliverFor(null)} className="rounded-lg bg-muted px-3 py-2 text-xs font-bold">Close</button></div>
       </div> : null}
     </div>)}
-    {!orders.length ? <Empty text="No orders yet." /> : null}
+    {!filtered.length ? <Empty text={orders.length ? "No orders match your search." : "No orders yet."} /> : null}
   </div>;
 }
