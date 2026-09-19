@@ -76,10 +76,10 @@ export async function sendProduct(chatId: number, id: string) {
     `${productEmoji(id)} <b>${p.title || "Item"}</b>\n\n` +
     `${em("norm.money")} Price: <b>${money(p.price || 0)}</b>\n` +
     `${stockLine}\n${em("norm.fire")} Total sold: <b>${sold}</b>${availability}` +
-    // Keep supplier descriptions as plain lines. Telegram can shift a
-    // blockquote's UTF-16 boundary when premium emojis appear before it,
-    // which pulled the end of “Instant delivery” into the quote.
-    (escDesc ? `\n\n${escDesc}` : "");
+    // Description renders as an expandable quote. It must start on its own
+    // line after the header block — the quote tag sits directly after the
+    // separating newlines so the quote never swallows header text.
+    (escDesc ? `\n\n<blockquote expandable>${escDesc}</blockquote>` : "");
 
   const keyboard = {
     inline_keyboard: [
