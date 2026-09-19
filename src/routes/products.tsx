@@ -1,7 +1,10 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { Download, KeyRound } from "lucide-react";
 import { useStore } from "@/context/StoreContext";
 import { ProductCard } from "@/components/store/ProductCard";
+import { websiteUrl } from "@/lib/referral";
+import { downloadTextFile, resellerApiDocs } from "@/lib/reseller-docs";
 
 type ProductSearch = { q?: string | undefined; category?: string | undefined };
 
@@ -32,8 +35,12 @@ export const Route = createFileRoute("/products")({
 
 function Products() {
   const { q, category } = Route.useSearch();
-  const { products } = useStore();
+  const { products, profile, config, notify } = useStore();
   const [filter, setFilter] = useState(q ?? "");
+  const normalizedFilter = filter.trim().toLowerCase();
+  const showApiDocs = normalizedFilter === "api" || normalizedFilter.includes("reseller api") || normalizedFilter.includes("api docs");
+  const apiKey = (profile as { apiKey?: string } | null)?.apiKey;
+  const base = `${(config.siteUrl || websiteUrl()).replace(/\/+$/, "")}/api/public/reseller`;
 
   const list = useMemo(() => {
     const normalizedFilter = filter.toLowerCase();
@@ -54,7 +61,34 @@ function Products() {
         placeholder="Filter items..."
         className="mb-4 w-full rounded-xl border border-border bg-card p-3 text-sm shadow-sm outline-none"
       />
-      {list.length === 0 ? (
+      {showApiDocs ? (
+        <div className="mb-4 flex items-center gap-3 rounded-lg border border-border bg-card p-4 shadow-sm">
+          <KeyRound className="h-6 w-6 shrink-0 text-primary" aria-hidden="true" />
+          <div className="min-w-0 flex-1">
+            <h2 className="text-sm font-bold">Reseller API documentation</h2>
+            <p className="text-xs text-muted-foreground">Endpoints, authentication, ordering, delivery, and examples.</p>
+          </div>
+          {apiKey ? (
+            <button
+              type="button"
+              aria-label="Download reseller API documentation"
+              title="Download API documentation"
+              onClick={() => {
+                downloadTextFile("silent-seller-reseller-api.txt", resellerApiDocs(base, apiKey));
+                notify("API documentation downloaded");
+              }}
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-primary text-primary-foreground"
+            >
+              <Download className="h-4 w-4" aria-hidden="true" />
+            </button>
+          ) : (
+            <Link to="/api-key" className="shrink-0 rounded-lg bg-primary px-3 py-2 text-xs font-bold text-primary-foreground">
+              Get file
+            </Link>
+          )}
+        </div>
+      ) : null}
+      {list.length === 0 && !showApiDocs ? (
         <p className="rounded-2xl bg-card p-6 text-center text-xs text-muted-foreground shadow-sm">
           Nothing found here yet.
         </p>
