@@ -371,11 +371,14 @@ export function decorateKeyboard(markup: any): any {
         const entry = store.enabled ? buttonEmojiEntry(btn) : undefined;
         const premiumId = entry?.id && VALID_EMOJI_ID.test(entry.id) ? entry.id : undefined;
         let text = stripPremiumEmojiTags(btn.text.replace(MARKERS, ""));
-        // Telegram renders icon_custom_emoji_id before the label. Remove only
-        // this slot's own leading fallback to avoid showing the icon twice.
-        if (premiumId && entry?.char) {
-          const lead = text.match(LEAD_EMOJI)?.[0] || "";
-          if (lead && normEmoji(lead.trim()) === normEmoji(entry.char)) text = text.slice(lead.length);
+        // Telegram renders icon_custom_emoji_id before the label. Strip any
+        // leading emoji chars from the text so the icon never doubles them.
+        if (premiumId) {
+          let lead = text.match(LEAD_EMOJI)?.[0] || "";
+          while (lead) {
+            text = text.slice(lead.length).trimStart();
+            lead = text.match(LEAD_EMOJI)?.[0] || "";
+          }
         }
         const out: any = { ...btn, text: text.trim(), ...(premiumId ? { icon_custom_emoji_id: premiumId } : {}) };
         if (!out.style) {
