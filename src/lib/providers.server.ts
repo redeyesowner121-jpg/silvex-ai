@@ -8,13 +8,7 @@ import { dbGet, dbPatch, dbPut } from "./telegram.server";
 export type ProviderId = "qamify" | "safwan" | "mmostore" | "canboso" | "custom";
 
 /** Shops that were removed — their imported products get cleaned up. */
-export const RETIRED_PROVIDERS = [
-  "elite",
-  "eklas",
-  "mmostore",
-  "canboso",
-  "custom",
-];
+export const RETIRED_PROVIDERS = ["elite", "eklas", "canboso", "custom"];
 
 export type ProviderShape = {
   productsPath: string;
@@ -54,6 +48,21 @@ export const PROVIDERS: ProviderDef[] = [
       qtyField: "qty",
       refField: "",
       idempotencyHeader: true,
+    },
+  },
+  {
+    id: "mmostore",
+    name: "MMO Store",
+    url: "https://api.mmostore.qzz.io",
+    key: "mmostore_c716a85591c17abfd64c9fce3bb05010ee3ce53336d1da27",
+    docs: "https://api.mmostore.qzz.io/apidocumentation",
+    markup: 130,
+    shape: {
+      productsPath: "api/v1/products",
+      balancePath: "api/v1/balance",
+      orderPath: "api/v1/orders",
+      qtyField: "quantity",
+      refField: "client_order_id",
     },
   },
   {
@@ -143,6 +152,8 @@ export async function saveProviderConfig(
  */
 export const PROVIDER_KEEP: Record<string, string[]> = {
   qamify: ["gemini", "capcut", "duolingo", "leonardo"],
+  // MMO Store: only Gemini and Outlook accounts.
+  mmostore: ["gemini", "outlook"],
   // Safwan Tiger: keep the whole catalogue (admin can hide or delete items).
   safwan: [],
 };
