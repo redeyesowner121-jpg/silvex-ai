@@ -32,6 +32,8 @@ Phase 3 — website parity
 
 Phase 4 — polish
 - [x] Apply saved premium IDs to supported Telegram inline-button icons with safe plain fallback
+- [x] Keep uploaded-photo delivery working when Telegram rejects premium button icons
+- [x] Escape customer review text before premium emoji conversion
 - [ ] Digit / letter character slots
 - [ ] Receipts and PDFs strip markup server-side
 - [x] Broadcasts and flash-sale messages through the same pipeline
