@@ -1,8 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { ref, update, set } from "firebase/database";
+import { Download } from "lucide-react";
 import { useStore } from "@/context/StoreContext";
 import { websiteUrl } from "@/lib/referral";
+import { downloadTextFile, resellerApiDocs } from "@/lib/reseller-docs";
 
 export const Route = createFileRoute("/api-key")({
   head: () => ({
@@ -96,6 +98,18 @@ function ApiKeyPage() {
       </div>
 
       <div className="space-y-4 rounded-2xl border border-border p-4 text-xs leading-relaxed">
+        <button
+          type="button"
+          onClick={() => {
+            downloadTextFile("silent-seller-reseller-api.txt", resellerApiDocs(base, key));
+            notify("API documentation downloaded");
+          }}
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 font-bold text-primary-foreground"
+        >
+          <Download className="h-4 w-4" aria-hidden="true" />
+          Download API documentation
+        </button>
+
         <div>
           <p className="mb-2 text-[10px] font-bold uppercase text-muted-foreground">Getting started</p>
           <p>

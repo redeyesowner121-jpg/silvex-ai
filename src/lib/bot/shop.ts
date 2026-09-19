@@ -19,6 +19,7 @@ export {
   startWithdraw,
   sendProfile,
   sendApiKey,
+  sendApiDocsFile,
   sendOrders,
   sendReviews,
   submitReview,

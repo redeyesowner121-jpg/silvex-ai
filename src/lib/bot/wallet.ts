@@ -10,6 +10,8 @@ import {
 } from "@/lib/referral";
 import { dbGet, dbPatch, dbPush, dbPut, money, siteUrl, tg } from "@/lib/telegram.server";
 import { be } from "@/lib/emoji.server";
+import { resellerApiDocs } from "@/lib/reseller-docs";
+import { tgSendDocument } from "@/lib/bot/delivery-files.server";
 import { allUsers, backHome, cfg, channelLink, ensureUser, invalidateUsers, say, setState } from "./core";
 
 
@@ -245,10 +247,27 @@ export async function sendApiKey(chatId: number, regenerate: boolean) {
     {
       inline_keyboard: [
         [{ text: "♻️ Generate new key", callback_data: "apikey_new" }],
+        [{ text: "⬇️ Download API docs", callback_data: "apikey_docs" }],
         [{ text: "📘 Full docs", url: `${siteUrl()}/api-key` }],
         [{ text: "⬅️ Menu", callback_data: "home" }],
       ],
     },
+  );
+}
+
+export async function sendApiDocsFile(chatId: number) {
+  const uid = await ensureUser(chatId);
+  const user = (await dbGet<any>(`users/${uid}`)) || {};
+  const key = String(user.apiKey || "");
+  if (!key) return sendApiKey(chatId, false);
+  const base = `${siteUrl()}/api/public/reseller`;
+  const bytes = new TextEncoder().encode(resellerApiDocs(base, key));
+  await tgSendDocument(
+    chatId,
+    "silent-seller-reseller-api.txt",
+    bytes,
+    "text/plain;charset=utf-8",
+    "🔑 <b>Your reseller API documentation</b>\nKeep this file private because it contains your API key.",
   );
 }
 

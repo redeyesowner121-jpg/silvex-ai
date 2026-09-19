@@ -8,6 +8,7 @@ import {
   askQty,
   createCardLink,
   sendApiKey,
+  sendApiDocsFile,
   sendOrders,
   sendProducts,
   sendProfile,
@@ -68,7 +69,8 @@ export async function handleText(
   }
   if (quick === "api") {
     await setState(chatId, null);
-    return sendApiKey(chatId, false);
+    await sendApiKey(chatId, false);
+    return sendApiDocsFile(chatId);
   }
   if (quick === "warranty") {
     await setState(chatId, null);
@@ -124,7 +126,8 @@ export async function handleText(
   }
   if (t === "/apikey" || t === "/api") {
     await setState(chatId, null);
-    return sendApiKey(chatId, false);
+    await sendApiKey(chatId, false);
+    return sendApiDocsFile(chatId);
   }
   if (t === "/support" || t === "/contact") {
     await setState(chatId, null);
