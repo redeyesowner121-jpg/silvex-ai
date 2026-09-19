@@ -189,6 +189,41 @@ async function handle(request: Request, splat: string): Promise<Response> {
     });
     await dbPatch(`products/${productId}`, { salesCount: Number(p.salesCount || 0) + qty });
 
+    // Tell the key owner about the order on their own account (bell + Telegram),
+    // and let the shop owners know too.
+    const title = String(p.title || "Item");
+    const alert =
+      `API order ${orderId} • ${title} ×${qty} • $${price.toFixed(2)} • ` +
+      (complete ? "Delivered" : "Pending");
+    await dbPush(`users/${uid}/alerts`, {
+      msg: alert,
+      date: new Date().toISOString(),
+      orderId,
+      source: "api",
+    }).catch(() => undefined);
+
+    const chatId = Number(user.telegramChatId || 0);
+    if (chatId) {
+      const { tg } = await import("@/lib/telegram.server");
+      await tg("sendMessage", {
+        chat_id: chatId,
+        text:
+          `🔑 <b>New API order</b>\n` +
+          `${title} ×${qty}\n` +
+          `Charged: $${price.toFixed(2)}\n` +
+          `Balance: $${(balance - price).toFixed(2)}\n` +
+          `Status: ${complete ? "Delivered ✅" : "Pending ⏳"}\n` +
+          `Order: <code>${orderId}</code>`,
+        parse_mode: "HTML",
+      }).catch(() => undefined);
+    }
+
+    const { notifyOwners } = await import("@/lib/telegram.server");
+    await notifyOwners(
+      `🔑 API order <code>${orderId}</code>\n${title} ×${qty} — $${price.toFixed(2)}\n` +
+        `Buyer: ${user.email || uid}\nStatus: ${complete ? "Delivered" : "Pending"}`,
+    ).catch(() => undefined);
+
     return json({
       ok: true,
       orderId,
