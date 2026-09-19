@@ -65,7 +65,9 @@ type Store = {
 let store: Store = { slots: {}, products: {}, enabled: true };
 let loadedAt = 0;
 let loading: Promise<void> | null = null;
-const EMOJI_CACHE_MS = 60_000;
+// Webhook requests can land on different Railway workers. Keep this short so a
+// newly saved emoji starts rendering across every worker within a few seconds.
+const EMOJI_CACHE_MS = 5_000;
 
 export async function loadEmojis(force = false): Promise<void> {
   if (!force && loadedAt && Date.now() - loadedAt < EMOJI_CACHE_MS) return;
@@ -118,7 +120,7 @@ export function e(key: string): string {
   return render(store.slots[key], slotDefault(key));
 }
 
-/** Emoji for inline buttons — Telegram buttons only support plain characters. */
+/** Plain fallback for inline buttons when no premium button icon is available. */
 export function be(key: string): string {
   return store.slots[key]?.char || slotDefault(key);
 }
@@ -318,6 +320,41 @@ function styleFor(label: string): "primary" | "success" | "danger" | undefined {
   return "primary";
 }
 
+const BUTTON_SLOT_BY_ACTION: Record<string, string> = {
+  products: "btn.products",
+  wallet: "btn.wallet",
+  profile: "btn.profile",
+  reviews: "btn.reviews",
+  refer: "btn.refer",
+  support: "btn.support",
+  orders: "btn.orders",
+  apikey: "btn.apikey",
+  dep: "btn.deposit",
+  wd: "btn.withdraw",
+  home: "btn.home",
+};
+
+/** Resolve a button to its exact named emoji slot; never guess from a character. */
+function buttonEmojiEntry(btn: any): EmojiEntry | undefined {
+  const data = String(btn?.callback_data || "");
+  const label = String(btn?.text || "");
+  let slot = BUTTON_SLOT_BY_ACTION[data];
+
+  if (!slot && /^p:/.test(data)) return store.products[data.slice(2)];
+  if (!slot && /^(?:b|bq|bpm|bcf|bgo|pbc):/.test(data)) {
+    const productId = data.split(":")[1] || "";
+    const product = store.products[productId];
+    if (product?.id) return product;
+    slot = data.startsWith("b:") ? "btn.buy" : data.startsWith("bgo:") ? "btn.confirm" : undefined;
+  }
+  if (!slot && btn?.url) slot = "btn.website";
+  if (!slot && /\bback\b|\bmenu\b/i.test(label)) slot = "btn.back";
+  if (!slot && /\bcancel\b/i.test(label)) slot = "btn.cancel";
+  if (!slot && /\bconfirm\b|\bcontinue\b/i.test(label)) slot = "btn.confirm";
+
+  return slot ? store.slots[slot] : undefined;
+}
+
 export function decorateKeyboard(markup: any): any {
   if (!markup || !Array.isArray(markup.inline_keyboard)) return markup;
   return {
@@ -325,9 +362,16 @@ export function decorateKeyboard(markup: any): any {
     inline_keyboard: markup.inline_keyboard.map((row: any[]) =>
       row.map((btn: any) => {
         if (!btn || typeof btn.text !== "string") return btn;
-        // Buttons can only show plain characters, so any markup is stripped.
-        const text = stripPremiumEmojiTags(btn.text.replace(MARKERS, ""));
-        const out: any = { ...btn, text };
+        const entry = store.enabled ? buttonEmojiEntry(btn) : undefined;
+        const premiumId = entry?.id && VALID_EMOJI_ID.test(entry.id) ? entry.id : undefined;
+        let text = stripPremiumEmojiTags(btn.text.replace(MARKERS, ""));
+        // Telegram renders icon_custom_emoji_id before the label. Remove only
+        // this slot's own leading fallback to avoid showing the icon twice.
+        if (premiumId && entry?.char) {
+          const lead = text.match(LEAD_EMOJI)?.[0] || "";
+          if (lead && normEmoji(lead.trim()) === normEmoji(entry.char)) text = text.slice(lead.length);
+        }
+        const out: any = { ...btn, text: text.trim(), ...(premiumId ? { icon_custom_emoji_id: premiumId } : {}) };
         if (!out.style) {
           const configured = styleFromConfig(btn);
           if (configured === false) {

@@ -291,6 +291,12 @@ export async function submitReview(chatId: number, text: string) {
   const m = text.match(/^([1-5])\s+(.*)$/s);
   const rating = m ? Number(m[1]) : 5;
   const body = m ? m[2]! : text;
+  const escapeHtml = (value: unknown) =>
+    String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
   await dbPush("reviews", {
     uid: uid || null,
     name: u?.name || u?.email || "Telegram user",
@@ -304,7 +310,8 @@ export async function submitReview(chatId: number, text: string) {
   if (c.reviewChannel && !c.reviewChannel.startsWith("http")) {
     await tg("sendMessage", {
       chat_id: c.reviewChannel.startsWith("@") ? c.reviewChannel : `@${c.reviewChannel}`,
-      text: `⭐ ${rating}/5 — ${body}\n\n— ${u?.name || "Customer"}`,
+      text: `⭐ ${rating}/5 — ${escapeHtml(body)}\n\n— ${escapeHtml(u?.name || "Customer")}`,
+      parse_mode: "HTML",
     }).catch(() => undefined);
   }
 }

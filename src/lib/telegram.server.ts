@@ -152,6 +152,17 @@ function stripIcons(markup: any): any {
   };
 }
 
+function stripUnsupportedButtonDecorations(markup: any): any {
+  const plain = stripIcons(markup);
+  if (!plain || !Array.isArray(plain.inline_keyboard)) return plain;
+  return {
+    ...plain,
+    inline_keyboard: plain.inline_keyboard.map((row: any[]) =>
+      row.map(({ style, ...button }: any) => button),
+    ),
+  };
+}
+
 export async function tg(method: string, body: Record<string, unknown>): Promise<any> {
   const api = tgApi(method);
   if (!api) throw new Error("Telegram bot is not configured. Add the bot token in the admin panel.");
@@ -202,13 +213,8 @@ export async function tg(method: string, body: Record<string, unknown>): Promise
       // Custom-emoji entities are what the server refused — drop them as well.
       delete retry["entities"];
       delete retry["caption_entities"];
-      if (retry["reply_markup"]) {
-        const plain = stripIcons(retry["reply_markup"]);
-        retry["reply_markup"] = {
-          ...plain,
-          inline_keyboard: plain.inline_keyboard.map((row: any[]) => row.map(({ style, ...r }: any) => r)),
-        };
-      }
+      if (retry["reply_markup"])
+        retry["reply_markup"] = stripUnsupportedButtonDecorations(retry["reply_markup"]);
       return await call(retry);
     }
     throw err;
@@ -382,11 +388,17 @@ export async function tgSendPhoto(
       if (!res.ok) {
         const detail = await res.text();
         console.error(`Telegram sendPhoto failed [${res.status}]: ${detail}`);
-        // Retry without premium emoji markup so the photo still reaches the buyer.
-        if (caption && /emoji|entit/i.test(detail)) {
-          form.set("caption", plainEmojiText(String(decorateText(caption))));
+        // Retry without unsupported premium entities, icons, or button styles so
+        // the photo still reaches the buyer on bots/accounts lacking support.
+        if (/emoji|entit|icon|style|button_type_invalid/i.test(detail)) {
+          if (caption) form.set("caption", plainEmojiText(String(decorateText(caption))));
           form.delete("caption_entities");
-          form.set("parse_mode", "HTML");
+          if (caption) form.set("parse_mode", "HTML");
+          if (keyboard)
+            form.set(
+              "reply_markup",
+              JSON.stringify(stripUnsupportedButtonDecorations(decorateMarkup(keyboard))),
+            );
           const retry = await fetch(api.url, { method: "POST", headers: api.headers, body: form });
           if (retry.ok) return true;
         }

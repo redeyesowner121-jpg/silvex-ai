@@ -31,9 +31,12 @@ Phase 3 — website parity
 - [ ] Animated `.tgs` playback on the website (currently uses the still thumbnail)
 
 Phase 4 — polish
+- [x] Apply saved premium IDs to supported Telegram inline-button icons with safe plain fallback
+- [x] Keep uploaded-photo delivery working when Telegram rejects premium button icons
+- [x] Escape customer review text before premium emoji conversion
 - [ ] Digit / letter character slots
 - [ ] Receipts and PDFs strip markup server-side
-- [ ] Broadcasts and flash-sale messages through the same pipeline
+- [x] Broadcasts and flash-sale messages through the same pipeline
 
 ## Waiting on you
 - [ ] Redeploy on Railway so the live bot uses the new emoji system
