@@ -387,7 +387,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const val = (s.val() || {}) as Record<string, { msg?: string; date?: string }>;
         setMyAlerts(
           Object.entries(val)
-            .map(([id, n]) => ({ id, msg: String(n?.msg || ""), date: n?.date }))
+            .map(([id, n]) => ({ id, msg: String(n?.msg || ""), date: String(n?.date || "") }))
             .filter((n) => n.msg)
             .reverse()
             .slice(0, 30),
