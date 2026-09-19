@@ -72,18 +72,19 @@ const EMOJI_CACHE_MS = 5_000;
 export async function loadEmojis(force = false): Promise<void> {
   if (!force && loadedAt && Date.now() - loadedAt < EMOJI_CACHE_MS) return;
   if (loading) return loading;
-  loading = Promise.all([
-    dbGet<Record<string, EmojiEntry>>(`${EMOJI_PATH}/slots`),
-    dbGet<Record<string, EmojiEntry>>(`${EMOJI_PATH}/products`),
-    dbGet<boolean>(`${EMOJI_PATH}/enabled`),
-  ])
-    .then(([slots, products, enabled]) => {
+  loading = dbGet<{
+    slots?: Record<string, EmojiEntry>;
+    products?: Record<string, EmojiEntry>;
+    enabled?: boolean;
+  }>(EMOJI_PATH)
+    .then((saved) => {
       store = {
-        slots: normalizeEntries(slots),
-        products: normalizeEntries(products),
-        enabled: enabled !== false,
+        slots: normalizeEntries(saved?.slots || null),
+        products: normalizeEntries(saved?.products || null),
+        enabled: saved?.enabled !== false,
       };
       loadedAt = Date.now();
+      charMap = null;
     })
     .catch(() => undefined)
     .finally(() => {
@@ -149,6 +150,7 @@ export async function setSlotEmoji(slot: string, value: EmojiEntry): Promise<Emo
   };
   await dbPut(`${EMOJI_PATH}/slots/${encKey(slot)}`, entry);
   store.slots = { ...store.slots, [slot]: entry };
+  loadedAt = Date.now();
   charMap = null;
   if (value.img)
     await dbPut(`${EMOJI_PATH}/slotimg/${encKey(slot)}`, value.img).catch(() => undefined);
@@ -187,6 +189,7 @@ export async function setProductEmoji(productId: string, value: EmojiEntry): Pro
   const pathKey = encKey(productId);
   await dbPut(`${EMOJI_PATH}/products/${pathKey}`, meta);
   store.products = { ...store.products, [productId]: meta };
+  loadedAt = Date.now();
   if (img) await dbPut(`${EMOJI_PATH}/prodimg/${pathKey}`, img).catch(() => undefined);
 }
 
