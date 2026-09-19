@@ -1,3 +1,8 @@
+# Reseller API documentation downloads
+
+- [x] Website reseller API page offers a downloadable documentation file containing the signed-in user's key.
+- [x] Telegram API search/command sends the documentation file and provides a reusable download button.
+
 # Roadmap
 
 ## Admin pages (done)
