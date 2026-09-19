@@ -343,6 +343,11 @@ function buttonEmojiEntry(btn: any): EmojiEntry | undefined {
   const label = String(btn?.text || "");
   let slot = BUTTON_SLOT_BY_ACTION[data];
 
+  // Back / Continue / Cancel navigation buttons never wear a product's emoji.
+  if (!slot && /\bback\b|\bmenu\b/i.test(label)) slot = "btn.back";
+  if (!slot && /\bcancel\b/i.test(label)) slot = "btn.cancel";
+  if (!slot && /\bcontinue\b/i.test(label)) slot = "btn.confirm";
+
   if (!slot && /^p:/.test(data)) return store.products[data.slice(2)];
   if (!slot && /^(?:b|bq|bpm|bcf|bgo|pbc):/.test(data)) {
     const productId = data.split(":")[1] || "";
@@ -351,9 +356,7 @@ function buttonEmojiEntry(btn: any): EmojiEntry | undefined {
     slot = data.startsWith("b:") ? "btn.buy" : data.startsWith("bgo:") ? "btn.confirm" : undefined;
   }
   if (!slot && btn?.url) slot = "btn.website";
-  if (!slot && /\bback\b|\bmenu\b/i.test(label)) slot = "btn.back";
-  if (!slot && /\bcancel\b/i.test(label)) slot = "btn.cancel";
-  if (!slot && /\bconfirm\b|\bcontinue\b/i.test(label)) slot = "btn.confirm";
+  if (!slot && /\bconfirm\b/i.test(label)) slot = "btn.confirm";
 
   return slot ? store.slots[slot] : undefined;
 }
