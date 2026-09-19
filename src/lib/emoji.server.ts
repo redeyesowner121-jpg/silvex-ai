@@ -349,7 +349,15 @@ function buttonEmojiEntry(btn: any): EmojiEntry | undefined {
   if (!slot && /\bcontinue\b/i.test(label)) slot = "btn.confirm";
 
   if (!slot && /^p:/.test(data)) return store.products[data.slice(2)];
-  if (!slot && /^(?:b|bq|bpm|bcf|bgo|pbc):/.test(data)) {
+  // Quantity callbacks all contain the product id, but only the selected
+  // quantity carries its product emoji in the label. Number-only choices
+  // must remain undecorated.
+  if (!slot && /^bq:/.test(data) && !/^\s*\d+\s*$/.test(stripPremiumEmojiTags(label.replace(MARKERS, "")))) {
+    const productId = data.split(":")[1] || "";
+    const product = store.products[productId];
+    if (product?.id) return product;
+  }
+  if (!slot && /^(?:b|bpm|bcf|bgo|pbc):/.test(data)) {
     const productId = data.split(":")[1] || "";
     const product = store.products[productId];
     if (product?.id) return product;
