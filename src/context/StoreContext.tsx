@@ -242,6 +242,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [banner, setBanner] = useState<Banner>((snap?.banner || {}) as Banner);
   const [flashSale, setFlashSale] = useState<FlashSale>((snap?.flashSale || null) as FlashSale);
   const [notices, setNotices] = useState<NoticeItem[]>([]);
+  const [myAlerts, setMyAlerts] = useState<NoticeItem[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [modal, setModal] = useState<ModalName>(null);
   const [activeProductId, setActiveProductId] = useState<string | null>(null);
@@ -381,7 +382,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         }).catch(() => {});
       }
 
-      unsub = onValue(ref(db, `users/${user.uid}`), (s) => setProfile(s.val() || {}));
+      const offProfile = onValue(ref(db, `users/${user.uid}`), (s) => setProfile(s.val() || {}));
+      const offAlerts = onValue(ref(db, `users/${user.uid}/alerts`), (s) => {
+        const val = (s.val() || {}) as Record<string, { msg?: string; date?: string }>;
+        setMyAlerts(
+          Object.entries(val)
+            .map(([id, n]) => ({ id, msg: String(n?.msg || ""), date: n?.date }))
+            .filter((n) => n.msg)
+            .reverse()
+            .slice(0, 30),
+        );
+      });
+      unsub = () => {
+        offProfile();
+        offAlerts();
+      };
       if (isFixedOwner(user.email)) {
         update(ref(db, `users/${user.uid}`), {
           isAdmin: true,
@@ -497,7 +512,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
       banner,
       flashSale,
-      notices,
+      notices: [...myAlerts, ...notices],
       cart,
       cartCount: cart.reduce((n, i) => n + i.qty, 0),
       cartTotal,
@@ -532,6 +547,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     banner,
     flashSale,
     notices,
+    myAlerts,
     cart,
     modal,
     activeProductId,
