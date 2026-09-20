@@ -52,12 +52,18 @@ export function ProductCard({ product }: { product: Product }) {
         </h3>
         <div className="mt-auto flex items-center justify-between pt-3">
           <span className="text-lg font-black">${product.price}</span>
-          <button
-            onClick={() => addToCart(product)}
-            className="btn-grad rounded-lg px-3 py-1.5 text-xs font-bold"
-          >
-            ADD
-          </button>
+          {product.soldOut ? (
+            <span className="rounded-lg bg-muted px-3 py-1.5 text-[10px] font-bold uppercase text-muted-foreground">
+              Out of stock
+            </span>
+          ) : (
+            <button
+              onClick={() => addToCart(product)}
+              className="btn-grad rounded-lg px-3 py-1.5 text-xs font-bold"
+            >
+              ADD
+            </button>
+          )}
         </div>
       </div>
     </div>

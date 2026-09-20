@@ -172,15 +172,21 @@ export function ProductModal() {
         </div>
       </div>
 
-      <button
-        onClick={() => {
-          addToCart(product!);
-          closeModal();
-        }}
-        className="btn-grad mt-5 w-full rounded-xl py-3 text-sm font-bold"
-      >
-        Add to cart · ${product.price}
-      </button>
+      {product.soldOut ? (
+        <div className="mt-5 w-full rounded-xl bg-muted py-3 text-center text-sm font-bold text-muted-foreground">
+          Out of stock
+        </div>
+      ) : (
+        <button
+          onClick={() => {
+            addToCart(product!);
+            closeModal();
+          }}
+          className="btn-grad mt-5 w-full rounded-xl py-3 text-sm font-bold"
+        >
+          Add to cart · ${product.price}
+        </button>
+      )}
     </Sheet>
   );
 }

@@ -76,6 +76,8 @@ function Cart() {
   async function checkout() {
     if (!user || !db) return openModal("auth");
     if (cart.length === 0) return;
+    const soldOutItem = cart.find((i) => i.soldOut);
+    if (soldOutItem) return notify(`${soldOutItem.title} is out of stock`);
     if (phone.length < 10) return notify("Enter your WhatsApp number");
     if (wallet < total) return notify("Not enough wallet balance");
     setBusy(true);
