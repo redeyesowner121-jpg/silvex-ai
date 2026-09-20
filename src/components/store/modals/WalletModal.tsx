@@ -24,6 +24,7 @@ import {
 import { useStore } from "@/context/StoreContext";
 import { checkDeposit, fallbackDepositAddress } from "@/lib/deposit.functions";
 import { checkDepositLink, createDepositLink } from "@/lib/razorpay.functions";
+import { binanceInfo, verifyBinanceDeposit } from "@/lib/binance.functions";
 import { Emo } from "@/components/store/Emo";
 import { Sheet, inputCls } from "./ui";
 
@@ -42,6 +43,15 @@ export function WalletModal() {
   const [payLink, setPayLink] = useState("");
   const [payLinkId, setPayLinkId] = useState("");
   const [confirming, setConfirming] = useState(false);
+  const [bnb, setBnb] = useState<{ enabled: boolean; address: string; network: string; coins: string[] }>({
+    enabled: false,
+    address: "",
+    network: "",
+    coins: [],
+  });
+  const [bnbTx, setBnbTx] = useState("");
+  const [bnbChecking, setBnbChecking] = useState(false);
+  const [bnbCopied, setBnbCopied] = useState(false);
   const [history, setHistory] = useState<
     Array<{ id: string; type: string; amount: number; desc: string; date: string; status?: string }>
   >([]);
@@ -125,6 +135,36 @@ export function WalletModal() {
   }, [payLinkId]);
 
 
+
+  useEffect(() => {
+    let live = true;
+    void binanceInfo()
+      .then((info) => {
+        if (live) setBnb(info);
+      })
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  async function submitBinance() {
+    if (!user) return notify("Sign in first");
+    const tx = bnbTx.trim();
+    if (tx.replace(/^0x/i, "").length < 16) return notify("Paste the full transaction id");
+    setBnbChecking(true);
+    try {
+      const out = await verifyBinanceDeposit({ data: { uid: user.uid, txId: tx } });
+      if (!out.ok) return notify(out.message);
+      setBnbTx("");
+      closeModal();
+      showSuccess(out.credited ? "Balance added" : "Already added", out.message);
+    } catch (e) {
+      notify(e instanceof Error ? e.message : "Could not check that transfer");
+    } finally {
+      setBnbChecking(false);
+    }
+  }
 
   useEffect(() => {
     if (!db || !user) return;
@@ -279,6 +319,45 @@ export function WalletModal() {
                   </button>
                 </>
               ) : null}
+            </div>
+          ) : null}
+
+          {bnb.enabled ? (
+            <div className="mb-5 rounded-2xl border border-border bg-card p-4">
+              <p className="text-sm font-black">Pay with Binance</p>
+              <p className="mb-2 text-[11px] text-muted-foreground">
+                Send {bnb.coins.join(" or ") || "USDT"}
+                {bnb.network ? ` on ${bnb.network}` : ""} to the address below, then paste the
+                transaction id. 1 USDT = $1 and your balance is added on its own.
+              </p>
+              {bnb.address ? (
+                <div className="mb-2 rounded-xl border border-dashed border-border bg-muted/50 p-3">
+                  <p className="break-all font-mono text-[11px] font-bold">{bnb.address}</p>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard?.writeText(bnb.address);
+                      setBnbCopied(true);
+                      setTimeout(() => setBnbCopied(false), 1500);
+                    }}
+                    className="mt-2 rounded-lg bg-foreground px-3 py-1 text-[11px] font-bold text-background"
+                  >
+                    {bnbCopied ? "Copied" : "Copy address"}
+                  </button>
+                </div>
+              ) : null}
+              <input
+                className={`${inputCls} mb-2 font-mono text-xs`}
+                placeholder="Transaction id (TXID)"
+                value={bnbTx}
+                onChange={(e) => setBnbTx(e.target.value)}
+              />
+              <button
+                onClick={submitBinance}
+                disabled={bnbChecking}
+                className="w-full rounded-xl bg-amber-500 py-3 font-bold text-white disabled:opacity-60"
+              >
+                {bnbChecking ? "Checking on Binance…" : "Verify Binance payment"}
+              </button>
             </div>
           ) : null}
 

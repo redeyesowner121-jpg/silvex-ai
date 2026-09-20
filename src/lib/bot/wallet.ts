@@ -54,9 +54,25 @@ export async function startDeposit(chatId: number) {
     rows.push([{ text: "💳 Pay by card / UPI", callback_data: "depcard" }]);
   }
   rows.push([{ text: "❌ Cancel", callback_data: "home" }]);
+
+  // Binance transfers are checked straight in the store's Binance account.
+  let binance = "";
+  try {
+    const { binanceConfig, binanceDepositAddress } = await import("@/lib/binance.server");
+    const b = await binanceConfig();
+    if (b.apiKey && b.apiSecret) {
+      const addr = b.address || (await binanceDepositAddress(b.coins[0] || "USDT", b.network))?.address || "";
+      if (addr) {
+        binance = `\n\n🟡 <b>Binance</b> (${b.coins.join(" / ")}${b.network ? ` on ${b.network}` : ""}):\n<code>${addr}</code>\nSend the transaction id here and it is credited automatically.`;
+      }
+    }
+  } catch {
+    /* Binance is optional */
+  }
+
   await say(
     chatId,
-    `➕ <b>Deposit</b>\n\nSend USDT / USDC (BEP20 or Polygon) to:\n<code>${c.depositAddress || "-"}</code>\n\nThen send the transaction hash (TXID) here. Payments confirmed within 10 minutes are credited automatically.`,
+    `➕ <b>Deposit</b>\n\nSend USDT / USDC (BEP20 or Polygon) to:\n<code>${c.depositAddress || "-"}</code>\n\nThen send the transaction hash (TXID) here. Payments confirmed within 10 minutes are credited automatically.${binance}`,
     { inline_keyboard: rows },
   );
 }

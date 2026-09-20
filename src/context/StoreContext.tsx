@@ -111,6 +111,12 @@ export type SiteConfig = {
   /** Extra verification fee added on card/UPI payments, in percent (default 3). */
   razorpayFeePercent?: number;
   razorpayVerifyFeePercent?: number;
+  /** Binance deposits (read-only API key, checked automatically). */
+  binanceApiKey?: string;
+  binanceApiSecret?: string;
+  binanceAddress?: string;
+  binanceNetwork?: string;
+  binanceCoins?: string;
 
 };
 

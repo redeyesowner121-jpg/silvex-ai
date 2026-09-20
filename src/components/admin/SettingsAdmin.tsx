@@ -45,6 +45,11 @@ export function SettingsAdmin({
     inrPerDollar?: number;
     razorpayFeePercent?: number;
     razorpayVerifyFeePercent?: number;
+    binanceApiKey?: string;
+    binanceApiSecret?: string;
+    binanceAddress?: string;
+    binanceNetwork?: string;
+    binanceCoins?: string;
 
   };
   banner: { title?: string; desc?: string; link?: string };
@@ -77,6 +82,11 @@ export function SettingsAdmin({
     inrPerDollar: String(config.inrPerDollar ?? 100),
     razorpayFeePercent: String(config.razorpayFeePercent ?? 3),
     razorpayVerifyFeePercent: String(config.razorpayVerifyFeePercent ?? 1),
+    binanceApiKey: config.binanceApiKey ?? "",
+    binanceApiSecret: config.binanceApiSecret ?? "",
+    binanceAddress: config.binanceAddress ?? "",
+    binanceNetwork: config.binanceNetwork ?? "BSC",
+    binanceCoins: config.binanceCoins ?? "USDT,USDC",
 
   });
   const [cats, setCats] = useState<Category[]>(liveCategories);
@@ -134,6 +144,11 @@ export function SettingsAdmin({
       inrPerDollar: Number(cfg.inrPerDollar || 100),
       razorpayFeePercent: Number(cfg.razorpayFeePercent || 0),
       razorpayVerifyFeePercent: Number(cfg.razorpayVerifyFeePercent || 0),
+      binanceApiKey: cfg.binanceApiKey.trim(),
+      binanceApiSecret: cfg.binanceApiSecret.trim(),
+      binanceAddress: cfg.binanceAddress.trim(),
+      binanceNetwork: cfg.binanceNetwork.trim().toUpperCase(),
+      binanceCoins: cfg.binanceCoins.trim().toUpperCase(),
       ...extra,
     });
     notify("Settings saved");
@@ -143,6 +158,51 @@ export function SettingsAdmin({
 
   return (
     <div className="space-y-4">
+      <div className="space-y-2 rounded-2xl border border-border bg-card p-4">
+        <h2 className="text-sm font-black">Binance deposits (automatic)</h2>
+        <p className="text-[11px] text-muted-foreground">
+          Customers send USDT/USDC to your Binance address and paste the transaction id. We ask
+          Binance directly and top up the balance on its own (1 USDT = $1). Use a read-only API key
+          and allow only your server IP address in Binance.
+        </p>
+        <input
+          className={input}
+          placeholder="Binance API key"
+          value={cfg.binanceApiKey}
+          onChange={(e) => setCfg({ ...cfg, binanceApiKey: e.target.value })}
+        />
+        <input
+          className={input}
+          placeholder="Binance API secret"
+          value={cfg.binanceApiSecret}
+          onChange={(e) => setCfg({ ...cfg, binanceApiSecret: e.target.value })}
+        />
+        <input
+          className={input}
+          placeholder="Binance deposit address (leave empty to fetch it automatically)"
+          value={cfg.binanceAddress}
+          onChange={(e) => setCfg({ ...cfg, binanceAddress: e.target.value })}
+        />
+        <input
+          className={input}
+          placeholder="Network (BSC, TRX, MATIC…)"
+          value={cfg.binanceNetwork}
+          onChange={(e) => setCfg({ ...cfg, binanceNetwork: e.target.value })}
+        />
+        <input
+          className={input}
+          placeholder="Coins accepted (USDT,USDC)"
+          value={cfg.binanceCoins}
+          onChange={(e) => setCfg({ ...cfg, binanceCoins: e.target.value })}
+        />
+        <button
+          onClick={() => void saveConfig()}
+          className="w-full rounded-xl bg-primary py-2 text-xs font-bold text-primary-foreground"
+        >
+          Save Binance settings
+        </button>
+      </div>
+
       <div className="space-y-2 rounded-2xl border border-border bg-card p-4">
         <h2 className="text-sm font-black">Card / UPI deposits (Razorpay)</h2>
         <p className="text-[11px] text-muted-foreground">
