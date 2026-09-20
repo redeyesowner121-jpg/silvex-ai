@@ -162,9 +162,34 @@ export async function handleText(
 
   if (k === "dep_hash") {
     const hash = t.trim();
+    const uid = await ensureUser(chatId);
+
+    // A plain number is a Binance Pay order id (internal Binance ID transfer).
+    if (/^[0-9A-Za-z-]{6,30}$/.test(hash) && !/^(0x)?[0-9a-fA-F]{40,80}$/.test(hash)) {
+      try {
+        const { binanceConfig, settleBinancePay } = await import("@/lib/binance.server");
+        const b = await binanceConfig();
+        if (b.apiKey && b.apiSecret && b.payId) {
+          const out = await settleBinancePay(uid, hash);
+          await setState(chatId, null);
+          return say(
+            chatId,
+            out.ok
+              ? out.credited
+                ? `✅ <b>Deposit done</b>\n${out.message}\nNew balance: <b>${money(out.balance)}</b>`
+                : `ℹ️ ${out.message}`
+              : `⚠️ ${out.message}`,
+            backHome,
+          );
+        }
+      } catch {
+        /* fall through */
+      }
+      return say(chatId, "Send the full transaction id (TXID), or a Binance Pay order id.", backHome);
+    }
+
     if (!/^(0x)?[0-9a-fA-F]{40,80}$/.test(hash))
       return say(chatId, "Send the full transaction id (TXID).");
-    const uid = await ensureUser(chatId);
     const u = await dbGet<any>(`users/${uid}`);
     const c = await cfg();
 
