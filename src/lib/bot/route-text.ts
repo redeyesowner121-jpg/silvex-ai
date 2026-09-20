@@ -162,11 +162,35 @@ export async function handleText(
 
   if (k === "dep_hash") {
     const hash = t.trim();
-    if (!/^0x[0-9a-fA-F]{64}$/.test(hash))
-      return say(chatId, "Send the full transaction hash, starting with 0x.");
+    if (!/^(0x)?[0-9a-fA-F]{40,80}$/.test(hash))
+      return say(chatId, "Send the full transaction id (TXID).");
     const uid = await ensureUser(chatId);
     const u = await dbGet<any>(`users/${uid}`);
     const c = await cfg();
+
+    // Binance transfers first: they are confirmed inside the store's account.
+    try {
+      const { binanceConfig, settleBinanceDeposit } = await import("@/lib/binance.server");
+      const b = await binanceConfig();
+      if (b.apiKey && b.apiSecret) {
+        const out = await settleBinanceDeposit(uid, hash);
+        if (out.ok) {
+          await setState(chatId, null);
+          return say(
+            chatId,
+            out.credited
+              ? `✅ <b>Deposit done</b>\n${out.message}\nNew balance: <b>${money(out.balance)}</b>`
+              : `ℹ️ ${out.message}`,
+            backHome,
+          );
+        }
+      }
+    } catch {
+      /* fall back to the public blockchain check */
+    }
+
+    if (!/^0x[0-9a-fA-F]{64}$/.test(hash))
+      return say(chatId, "Send the full transaction hash, starting with 0x.", backHome);
     const address = c.depositAddress || defaultDepositAddress();
     if (!address)
       return say(
