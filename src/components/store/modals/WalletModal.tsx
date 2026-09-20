@@ -137,6 +137,36 @@ export function WalletModal() {
 
 
   useEffect(() => {
+    let live = true;
+    void binanceInfo()
+      .then((info) => {
+        if (live) setBnb(info);
+      })
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  async function submitBinance() {
+    if (!user) return notify("Sign in first");
+    const tx = bnbTx.trim();
+    if (tx.replace(/^0x/i, "").length < 16) return notify("Paste the full transaction id");
+    setBnbChecking(true);
+    try {
+      const out = await verifyBinanceDeposit({ data: { uid: user.uid, txId: tx } });
+      if (!out.ok) return notify(out.message);
+      setBnbTx("");
+      closeModal();
+      showSuccess(out.credited ? "Balance added" : "Already added", out.message);
+    } catch (e) {
+      notify(e instanceof Error ? e.message : "Could not check that transfer");
+    } finally {
+      setBnbChecking(false);
+    }
+  }
+
+  useEffect(() => {
     if (!db || !user) return;
     return onValue(ref(db, `users/${user.uid}/history`), (s) => {
       const val = s.val() || {};
