@@ -350,6 +350,42 @@ export function WalletModal() {
             </div>
           ) : null}
 
+          {bnb.enabled && bnb.payId ? (
+            <div className="mb-5 rounded-2xl border border-border bg-card p-4">
+              <p className="text-sm font-black">Binance Pay (no network fee)</p>
+              <p className="mb-2 text-[11px] text-muted-foreground">
+                Send {bnb.coins.join(" or ") || "USDT"} straight to our Binance ID — no blockchain
+                needed, instant and free inside Binance. Then paste the Pay order id.
+              </p>
+              <div className="mb-2 rounded-xl border border-dashed border-border bg-muted/50 p-3">
+                <p className="break-all font-mono text-[11px] font-bold">{bnb.payId}</p>
+                <button
+                  onClick={() => {
+                    navigator.clipboard?.writeText(bnb.payId || "");
+                    setPayCopied(true);
+                    setTimeout(() => setPayCopied(false), 1500);
+                  }}
+                  className="mt-2 rounded-lg bg-foreground px-3 py-1 text-[11px] font-bold text-background"
+                >
+                  {payCopied ? "Copied" : "Copy Binance ID"}
+                </button>
+              </div>
+              <input
+                className={`${inputCls} mb-2 font-mono text-xs`}
+                placeholder="Binance Pay order id"
+                value={payRef}
+                onChange={(e) => setPayRef(e.target.value)}
+              />
+              <button
+                onClick={submitBinancePay}
+                disabled={payChecking}
+                className="w-full rounded-xl bg-amber-400 py-3 font-bold text-black disabled:opacity-60"
+              >
+                {payChecking ? "Checking on Binance…" : "Verify Binance Pay transfer"}
+              </button>
+            </div>
+          ) : null}
+
           {bnb.enabled ? (
             <div className="mb-5 rounded-2xl border border-border bg-card p-4">
               <p className="text-sm font-black">Pay with Binance</p>
