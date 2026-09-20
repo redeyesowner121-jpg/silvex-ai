@@ -37,6 +37,7 @@ Optional, only if used:
 | `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET` | Razorpay deposits |
 | `SUPPLIER_API_URL`, `SUPPLIER_API_KEY` | Reseller supplier fallback |
 | `BINANCE_API_KEY`, `BINANCE_API_SECRET`, `BINANCE_DEPOSIT_ADDRESS` | Binance deposit checks (admin panel values win) |
+| `BINANCE_PAY_ID` | Binance ID / Pay ID for internal Binance Pay transfers (admin panel value wins) |
 
 ## 3. After the domain is live
 
