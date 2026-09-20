@@ -86,6 +86,7 @@ export function SettingsAdmin({
     binanceApiKey: config.binanceApiKey ?? "",
     binanceApiSecret: config.binanceApiSecret ?? "",
     binanceAddress: config.binanceAddress ?? "",
+    binancePayId: config.binancePayId ?? "",
     binanceNetwork: config.binanceNetwork ?? "BSC",
     binanceCoins: config.binanceCoins ?? "USDT,USDC",
 
