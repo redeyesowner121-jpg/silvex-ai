@@ -176,6 +176,24 @@ export function WalletModal() {
     }
   }
 
+  async function submitBinancePay() {
+    if (!user) return notify("Sign in first");
+    const ref = payRef.trim();
+    if (ref.replace(/[^0-9A-Za-z]/g, "").length < 6) return notify("Paste the full Binance Pay order id");
+    setPayChecking(true);
+    try {
+      const out = await verifyBinancePay({ data: { uid: user.uid, ref } });
+      if (!out.ok) return notify(out.message);
+      setPayRef("");
+      closeModal();
+      showSuccess(out.credited ? "Balance added" : "Already added", out.message);
+    } catch (e) {
+      notify(e instanceof Error ? e.message : "Could not check that transfer");
+    } finally {
+      setPayChecking(false);
+    }
+  }
+
   useEffect(() => {
     if (!db || !user) return;
     return onValue(ref(db, `users/${user.uid}/history`), (s) => {
