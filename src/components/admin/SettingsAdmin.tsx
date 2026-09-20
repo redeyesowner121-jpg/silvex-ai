@@ -45,6 +45,11 @@ export function SettingsAdmin({
     inrPerDollar?: number;
     razorpayFeePercent?: number;
     razorpayVerifyFeePercent?: number;
+    binanceApiKey?: string;
+    binanceApiSecret?: string;
+    binanceAddress?: string;
+    binanceNetwork?: string;
+    binanceCoins?: string;
 
   };
   banner: { title?: string; desc?: string; link?: string };
@@ -77,6 +82,11 @@ export function SettingsAdmin({
     inrPerDollar: String(config.inrPerDollar ?? 100),
     razorpayFeePercent: String(config.razorpayFeePercent ?? 3),
     razorpayVerifyFeePercent: String(config.razorpayVerifyFeePercent ?? 1),
+    binanceApiKey: config.binanceApiKey ?? "",
+    binanceApiSecret: config.binanceApiSecret ?? "",
+    binanceAddress: config.binanceAddress ?? "",
+    binanceNetwork: config.binanceNetwork ?? "BSC",
+    binanceCoins: config.binanceCoins ?? "USDT,USDC",
 
   });
   const [cats, setCats] = useState<Category[]>(liveCategories);
