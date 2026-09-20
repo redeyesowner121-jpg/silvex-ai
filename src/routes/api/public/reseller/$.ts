@@ -33,7 +33,7 @@ function publicProduct(id: string, p: any) {
     price: Number(p.price || 0),
     category: p.category || "",
     delivery: p.delivery || "manual",
-    inStock: p.delivery === "manual" || p.delivery === "repeat" ? true : stock > 0,
+    inStock: p.soldOut ? false : p.delivery === "manual" || p.delivery === "repeat" ? true : stock > 0,
     stock,
     description: p.desc || "",
   };
@@ -112,6 +112,7 @@ async function handle(request: Request, splat: string): Promise<Response> {
 
     const p = await dbGet<any>(`products/${productId}`);
     if (!p) return json({ ok: false, error: "Product not found" }, 404);
+    if (p.soldOut) return json({ ok: false, error: "Product is out of stock" }, 409);
 
     const price = Number(p.price || 0) * qty;
     const balance = Number(user.wallet || 0);
