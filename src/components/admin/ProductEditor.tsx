@@ -80,7 +80,7 @@ export function ProductEditor({ product }: { product: Product }) {
   }
 
   return <div className="fade-in mx-auto max-w-3xl space-y-5">
-    <div className="flex items-center justify-between gap-3"><Link to="/admin/products" className="flex items-center gap-2 text-sm font-bold text-muted-foreground"><ArrowLeft className="h-4 w-4" /> Products</Link><span className={`rounded-lg px-2.5 py-1 text-[11px] font-bold ${product.hidden ? "bg-muted text-muted-foreground" : "bg-emerald-500/10 text-emerald-600"}`}>{product.hidden ? "Hidden" : "Visible"}</span></div>
+    <div className="flex items-center justify-between gap-3"><Link to="/admin/products" className="flex items-center gap-2 text-sm font-bold text-muted-foreground"><ArrowLeft className="h-4 w-4" /> Products</Link><div className="flex items-center gap-2">{product.soldOut ? <span className="rounded-lg bg-destructive/10 px-2.5 py-1 text-[11px] font-bold text-destructive">Out of stock</span> : null}<span className={`rounded-lg px-2.5 py-1 text-[11px] font-bold ${product.hidden ? "bg-muted text-muted-foreground" : "bg-emerald-500/10 text-emerald-600"}`}>{product.hidden ? "Hidden" : "Visible"}</span></div></div>
     <div><p className="text-xs font-bold text-primary">PRODUCT EDITOR</p><h1 className="break-words text-2xl font-black">{product.title}</h1><p className="mt-1 text-xs text-muted-foreground">ID: {product.id}{product.locked ? " · API product" : ""}</p></div>
     <section className="grid gap-5 md:grid-cols-[minmax(0,1fr)_minmax(260px,0.75fr)]">
       <div className="space-y-4">
