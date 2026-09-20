@@ -144,6 +144,11 @@ export function SettingsAdmin({
       inrPerDollar: Number(cfg.inrPerDollar || 100),
       razorpayFeePercent: Number(cfg.razorpayFeePercent || 0),
       razorpayVerifyFeePercent: Number(cfg.razorpayVerifyFeePercent || 0),
+      binanceApiKey: cfg.binanceApiKey.trim(),
+      binanceApiSecret: cfg.binanceApiSecret.trim(),
+      binanceAddress: cfg.binanceAddress.trim(),
+      binanceNetwork: cfg.binanceNetwork.trim().toUpperCase(),
+      binanceCoins: cfg.binanceCoins.trim().toUpperCase(),
       ...extra,
     });
     notify("Settings saved");
