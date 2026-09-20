@@ -10,8 +10,25 @@ export const binanceInfo = createServerFn({ method: "GET" }).handler(async () =>
     const live = await binanceDepositAddress(conf.coins[0] || "USDT", conf.network);
     address = live?.address || "";
   }
-  return { enabled, address, network: conf.network, coins: conf.coins };
+  return { enabled, address, network: conf.network, coins: conf.coins, payId: conf.payId };
 });
+
+/**
+ * Checks one Binance Pay transfer (internal transfer to the store's
+ * Binance ID) and tops the balance up once.
+ */
+export const verifyBinancePay = createServerFn({ method: "POST" })
+  .inputValidator((input: { uid: string; ref: string }) => {
+    const uid = String(input.uid || "").trim();
+    const ref = String(input.ref || "").trim();
+    if (!uid) throw new Error("Sign in first.");
+    if (ref.replace(/[^0-9A-Za-z]/g, "").length < 6) throw new Error("Paste the full Binance Pay order id.");
+    return { uid, ref };
+  })
+  .handler(async ({ data }) => {
+    const { settleBinancePay } = await import("./binance.server");
+    return settleBinancePay(data.uid, data.ref);
+  });
 
 /**
  * Checks one Binance transfer and tops the balance up once.

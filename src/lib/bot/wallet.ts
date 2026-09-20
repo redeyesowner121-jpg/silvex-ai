@@ -61,9 +61,12 @@ export async function startDeposit(chatId: number) {
     const { binanceConfig, binanceDepositAddress } = await import("@/lib/binance.server");
     const b = await binanceConfig();
     if (b.apiKey && b.apiSecret) {
+      if (b.payId) {
+        binance += `\n\n🟡 <b>Binance Pay</b> (no network fee):\nSend ${b.coins.join(" / ")} to Binance ID <code>${b.payId}</code>, then paste the Pay order id here — it is credited automatically.`;
+      }
       const addr = b.address || (await binanceDepositAddress(b.coins[0] || "USDT", b.network))?.address || "";
       if (addr) {
-        binance = `\n\n🟡 <b>Binance</b> (${b.coins.join(" / ")}${b.network ? ` on ${b.network}` : ""}):\n<code>${addr}</code>\nSend the transaction id here and it is credited automatically.`;
+        binance += `\n\n🟡 <b>Binance address</b> (${b.coins.join(" / ")}${b.network ? ` on ${b.network}` : ""}):\n<code>${addr}</code>\nSend the transaction id here and it is credited automatically.`;
       }
     }
   } catch {

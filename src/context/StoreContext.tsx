@@ -115,6 +115,7 @@ export type SiteConfig = {
   binanceApiKey?: string;
   binanceApiSecret?: string;
   binanceAddress?: string;
+  binancePayId?: string;
   binanceNetwork?: string;
   binanceCoins?: string;
 

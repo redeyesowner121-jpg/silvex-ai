@@ -17,6 +17,8 @@ export type BinanceConf = {
   address: string;
   network: string;
   coins: string[];
+  /** The store's Binance ID / Pay ID customers can send internal transfers to. */
+  payId: string;
 };
 
 export async function binanceConfig(): Promise<BinanceConf> {
@@ -31,6 +33,7 @@ export async function binanceConfig(): Promise<BinanceConf> {
     address: String(c.binanceAddress || process.env["BINANCE_DEPOSIT_ADDRESS"] || "").trim(),
     network: String(c.binanceNetwork || "BSC").trim().toUpperCase(),
     coins: coins.length ? coins : ["USDT"],
+    payId: String(c.binancePayId || process.env["BINANCE_PAY_ID"] || "").trim(),
   };
 }
 
@@ -214,6 +217,116 @@ export async function settleBinanceDeposit(uid: string, txId: string): Promise<B
   }
   await notifyOwners(
     `🟡 Binance deposit credited\nUser: ${uid}\nAmount: ${money(found.amount)} ${found.coin}\nTX: ${found.txId}`,
+  ).catch(() => undefined);
+
+  return {
+    ok: true,
+    credited: true,
+    amount: found.amount,
+    balance,
+    message: `${money(found.amount)} added to your balance.`,
+  };
+}
+
+export type BinancePayRow = {
+  orderType: string;
+  transactionId: string;
+  transactionTime: number;
+  amount: string;
+  currency: string;
+  fundsDetail?: { currency: string; amount: string }[];
+};
+
+/**
+ * Looks for one Binance Pay transfer (internal Binance ID / Pay ID payment)
+ * in the store's Pay history. Incoming transfers have orderType "PAYOUT".
+ */
+export async function findBinancePay(ref: string): Promise<BinanceCheck> {
+  const conf = await binanceConfig();
+  if (!conf.apiKey || !conf.apiSecret) {
+    return { ok: false, message: "Binance deposits are not set up yet." };
+  }
+  const wanted = String(ref || "").trim().replace(/[^0-9A-Za-z]/g, "");
+  if (wanted.length < 6) return { ok: false, message: "That does not look like a Binance Pay order id." };
+
+  let out: { code?: string; success?: boolean; data?: BinancePayRow[] };
+  try {
+    out = await signedGet(conf, "/sapi/v1/pay/transactions", { limit: 100 });
+  } catch (e) {
+    return { ok: false, message: e instanceof Error ? e.message : "Could not reach Binance." };
+  }
+  const rows = Array.isArray(out?.data) ? out.data : [];
+  const hit = rows.find(
+    (r) => String(r.transactionId || "") === wanted && String(r.orderType || "").toUpperCase() === "PAYOUT",
+  );
+  if (!hit) {
+    return {
+      ok: false,
+      message:
+        "Binance has not received this Pay transfer in the store account yet. Double-check the order id and try again.",
+    };
+  }
+  const currency = String(hit.currency || "USDT").toUpperCase();
+  if (!conf.coins.includes(currency)) {
+    return { ok: false, message: `This store only accepts ${conf.coins.join(" / ")} by Binance Pay.` };
+  }
+  const amount = Math.round(Number(hit.amount) * 100) / 100;
+  if (!(amount > 0)) return { ok: false, message: "That transfer has no amount." };
+  return { ok: true, amount, coin: currency, network: "Binance Pay", txId: wanted };
+}
+
+/**
+ * Verifies one Binance Pay transfer (internal transfer to the store's
+ * Binance ID) and adds it to a wallet exactly once.
+ */
+export async function settleBinancePay(uid: string, ref: string): Promise<BinanceSettle> {
+  const balanceNow = Number((await dbGet<number>(`users/${uid}/wallet`)) || 0);
+  if (!uid) return { ok: false, credited: false, amount: 0, balance: 0, message: "Sign in first." };
+
+  const found = await findBinancePay(ref);
+  if (!found.ok) return { ok: false, credited: false, amount: 0, balance: balanceNow, message: found.message };
+
+  const key = found.txId.replace(/[.#$/[\]]/g, "_");
+  const date = new Date().toISOString();
+  const claimed = await dbCreateIfAbsent(`binancePayDeposits/${key}`, {
+    uid,
+    amount: found.amount,
+    coin: found.coin,
+    ref: found.txId,
+    status: "Credited",
+    date,
+  });
+  if (!claimed) {
+    return {
+      ok: true,
+      credited: false,
+      amount: found.amount,
+      balance: Number((await dbGet<number>(`users/${uid}/wallet`)) || 0),
+      message: "This transfer was already added to a wallet.",
+    };
+  }
+
+  const balance = Math.round((balanceNow + found.amount) * 100) / 100;
+  await dbPut(`users/${uid}/wallet`, balance);
+  await dbPut(`users/${uid}/history/pay_${key}`, {
+    type: "Deposit",
+    status: "Paid",
+    amount: found.amount,
+    desc: `Binance Pay ${found.coin}`,
+    txId: found.txId,
+    date,
+  });
+
+  const tgId = Number(uid.startsWith("tg_") ? uid.slice(3) : 0);
+  if (tgId > 0) {
+    await tg("sendMessage", {
+      chat_id: tgId,
+      parse_mode: "HTML",
+      text: `✅ <b>Deposit done</b>\n${money(found.amount)} received by Binance Pay.\nNew balance: <b>${money(balance)}</b>`,
+    }).catch(() => undefined);
+  }
+  await notifyOwners(
+    `🟡 Binance Pay deposit credited\nUser: ${uid}\nAmount: ${money(found.amount)} ${found.coin}\nOrder: ${found.txId}`,
   ).catch(() => undefined);
 
   return {

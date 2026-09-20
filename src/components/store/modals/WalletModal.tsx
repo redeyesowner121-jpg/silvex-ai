@@ -24,7 +24,7 @@ import {
 import { useStore } from "@/context/StoreContext";
 import { checkDeposit, fallbackDepositAddress } from "@/lib/deposit.functions";
 import { checkDepositLink, createDepositLink } from "@/lib/razorpay.functions";
-import { binanceInfo, verifyBinanceDeposit } from "@/lib/binance.functions";
+import { binanceInfo, verifyBinanceDeposit, verifyBinancePay } from "@/lib/binance.functions";
 import { Emo } from "@/components/store/Emo";
 import { Sheet, inputCls } from "./ui";
 
@@ -43,15 +43,25 @@ export function WalletModal() {
   const [payLink, setPayLink] = useState("");
   const [payLinkId, setPayLinkId] = useState("");
   const [confirming, setConfirming] = useState(false);
-  const [bnb, setBnb] = useState<{ enabled: boolean; address: string; network: string; coins: string[] }>({
+  const [bnb, setBnb] = useState<{
+    enabled: boolean;
+    address: string;
+    network: string;
+    coins: string[];
+    payId?: string;
+  }>({
     enabled: false,
     address: "",
     network: "",
     coins: [],
+    payId: "",
   });
   const [bnbTx, setBnbTx] = useState("");
   const [bnbChecking, setBnbChecking] = useState(false);
   const [bnbCopied, setBnbCopied] = useState(false);
+  const [payRef, setPayRef] = useState("");
+  const [payChecking, setPayChecking] = useState(false);
+  const [payCopied, setPayCopied] = useState(false);
   const [history, setHistory] = useState<
     Array<{ id: string; type: string; amount: number; desc: string; date: string; status?: string }>
   >([]);
@@ -163,6 +173,24 @@ export function WalletModal() {
       notify(e instanceof Error ? e.message : "Could not check that transfer");
     } finally {
       setBnbChecking(false);
+    }
+  }
+
+  async function submitBinancePay() {
+    if (!user) return notify("Sign in first");
+    const ref = payRef.trim();
+    if (ref.replace(/[^0-9A-Za-z]/g, "").length < 6) return notify("Paste the full Binance Pay order id");
+    setPayChecking(true);
+    try {
+      const out = await verifyBinancePay({ data: { uid: user.uid, ref } });
+      if (!out.ok) return notify(out.message);
+      setPayRef("");
+      closeModal();
+      showSuccess(out.credited ? "Balance added" : "Already added", out.message);
+    } catch (e) {
+      notify(e instanceof Error ? e.message : "Could not check that transfer");
+    } finally {
+      setPayChecking(false);
     }
   }
 
@@ -319,6 +347,42 @@ export function WalletModal() {
                   </button>
                 </>
               ) : null}
+            </div>
+          ) : null}
+
+          {bnb.enabled && bnb.payId ? (
+            <div className="mb-5 rounded-2xl border border-border bg-card p-4">
+              <p className="text-sm font-black">Binance Pay (no network fee)</p>
+              <p className="mb-2 text-[11px] text-muted-foreground">
+                Send {bnb.coins.join(" or ") || "USDT"} straight to our Binance ID — no blockchain
+                needed, instant and free inside Binance. Then paste the Pay order id.
+              </p>
+              <div className="mb-2 rounded-xl border border-dashed border-border bg-muted/50 p-3">
+                <p className="break-all font-mono text-[11px] font-bold">{bnb.payId}</p>
+                <button
+                  onClick={() => {
+                    navigator.clipboard?.writeText(bnb.payId || "");
+                    setPayCopied(true);
+                    setTimeout(() => setPayCopied(false), 1500);
+                  }}
+                  className="mt-2 rounded-lg bg-foreground px-3 py-1 text-[11px] font-bold text-background"
+                >
+                  {payCopied ? "Copied" : "Copy Binance ID"}
+                </button>
+              </div>
+              <input
+                className={`${inputCls} mb-2 font-mono text-xs`}
+                placeholder="Binance Pay order id"
+                value={payRef}
+                onChange={(e) => setPayRef(e.target.value)}
+              />
+              <button
+                onClick={submitBinancePay}
+                disabled={payChecking}
+                className="w-full rounded-xl bg-amber-400 py-3 font-bold text-black disabled:opacity-60"
+              >
+                {payChecking ? "Checking on Binance…" : "Verify Binance Pay transfer"}
+              </button>
             </div>
           ) : null}
 
