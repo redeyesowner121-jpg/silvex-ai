@@ -27,6 +27,7 @@ import { Route as AdminRequestsRouteImport } from './routes/admin.requests'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminEditProductIdRouteImport } from './routes/admin.edit.$productId'
+import { Route as ApiPublicBinanceCheckRouteImport } from './routes/api/public/binance-check'
 import { Route as ApiPublicRazorpayWebhookRouteImport } from './routes/api/public/razorpay/webhook'
 import { Route as ApiPublicResellerSplatRouteImport } from './routes/api/public/reseller/$'
 import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/public/telegram/webhook'
@@ -121,6 +122,11 @@ const AdminEditProductIdRoute = AdminEditProductIdRouteImport.update({
   path: '/edit/$productId',
   getParentRoute: () => AdminRoute,
 } as any)
+const ApiPublicBinanceCheckRoute = ApiPublicBinanceCheckRouteImport.update({
+  id: '/api/public/binance-check',
+  path: '/api/public/binance-check',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicRazorpayWebhookRoute =
   ApiPublicRazorpayWebhookRouteImport.update({
     id: '/api/public/razorpay/webhook',
@@ -158,6 +164,7 @@ export interface FileRoutesByFullPath {
   '/admin/users': typeof AdminUsersRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/edit/$productId': typeof AdminEditProductIdRoute
+  '/api/public/binance-check': typeof ApiPublicBinanceCheckRoute
   '/api/public/razorpay/webhook': typeof ApiPublicRazorpayWebhookRoute
   '/api/public/reseller/$': typeof ApiPublicResellerSplatRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
@@ -180,6 +187,7 @@ export interface FileRoutesByTo {
   '/admin/users': typeof AdminUsersRoute
   '/admin': typeof AdminIndexRoute
   '/admin/edit/$productId': typeof AdminEditProductIdRoute
+  '/api/public/binance-check': typeof ApiPublicBinanceCheckRoute
   '/api/public/razorpay/webhook': typeof ApiPublicRazorpayWebhookRoute
   '/api/public/reseller/$': typeof ApiPublicResellerSplatRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
@@ -204,6 +212,7 @@ export interface FileRoutesById {
   '/admin/users': typeof AdminUsersRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/edit/$productId': typeof AdminEditProductIdRoute
+  '/api/public/binance-check': typeof ApiPublicBinanceCheckRoute
   '/api/public/razorpay/webhook': typeof ApiPublicRazorpayWebhookRoute
   '/api/public/reseller/$': typeof ApiPublicResellerSplatRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
@@ -229,6 +238,7 @@ export interface FileRouteTypes {
     | '/admin/users'
     | '/admin/'
     | '/admin/edit/$productId'
+    | '/api/public/binance-check'
     | '/api/public/razorpay/webhook'
     | '/api/public/reseller/$'
     | '/api/public/telegram/webhook'
@@ -251,6 +261,7 @@ export interface FileRouteTypes {
     | '/admin/users'
     | '/admin'
     | '/admin/edit/$productId'
+    | '/api/public/binance-check'
     | '/api/public/razorpay/webhook'
     | '/api/public/reseller/$'
     | '/api/public/telegram/webhook'
@@ -274,6 +285,7 @@ export interface FileRouteTypes {
     | '/admin/users'
     | '/admin/'
     | '/admin/edit/$productId'
+    | '/api/public/binance-check'
     | '/api/public/razorpay/webhook'
     | '/api/public/reseller/$'
     | '/api/public/telegram/webhook'
@@ -288,6 +300,7 @@ export interface RootRouteChildren {
   OrdersRoute: typeof OrdersRoute
   ProductsRoute: typeof ProductsRoute
   ProfileRoute: typeof ProfileRoute
+  ApiPublicBinanceCheckRoute: typeof ApiPublicBinanceCheckRoute
   ApiPublicRazorpayWebhookRoute: typeof ApiPublicRazorpayWebhookRoute
   ApiPublicResellerSplatRoute: typeof ApiPublicResellerSplatRoute
   ApiPublicTelegramWebhookRoute: typeof ApiPublicTelegramWebhookRoute
@@ -421,6 +434,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminEditProductIdRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/api/public/binance-check': {
+      id: '/api/public/binance-check'
+      path: '/api/public/binance-check'
+      fullPath: '/api/public/binance-check'
+      preLoaderRoute: typeof ApiPublicBinanceCheckRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/razorpay/webhook': {
       id: '/api/public/razorpay/webhook'
       path: '/api/public/razorpay/webhook'
@@ -482,6 +502,7 @@ const rootRouteChildren: RootRouteChildren = {
   OrdersRoute: OrdersRoute,
   ProductsRoute: ProductsRoute,
   ProfileRoute: ProfileRoute,
+  ApiPublicBinanceCheckRoute: ApiPublicBinanceCheckRoute,
   ApiPublicRazorpayWebhookRoute: ApiPublicRazorpayWebhookRoute,
   ApiPublicResellerSplatRoute: ApiPublicResellerSplatRoute,
   ApiPublicTelegramWebhookRoute: ApiPublicTelegramWebhookRoute,
