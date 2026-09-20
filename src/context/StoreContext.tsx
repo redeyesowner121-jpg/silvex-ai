@@ -43,6 +43,8 @@ export type Product = {
   providerName?: string;
   /** Hidden products are only visible in the admin panel */
   hidden?: boolean;
+  /** Out of stock products stay listed but cannot be bought */
+  soldOut?: boolean;
   /** Imported API products cannot be deleted, only hidden */
   locked?: boolean;
 };
@@ -438,6 +440,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     (product: Product, flashPrice?: number | null) => {
       if (!user) {
         setModal("auth");
+        return;
+      }
+      if (product.soldOut) {
+        toast("This product is out of stock");
         return;
       }
       const price = flashPrice != null ? Number(flashPrice) : Number(product.price);
