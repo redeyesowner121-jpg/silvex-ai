@@ -322,6 +322,45 @@ export function WalletModal() {
             </div>
           ) : null}
 
+          {bnb.enabled ? (
+            <div className="mb-5 rounded-2xl border border-border bg-card p-4">
+              <p className="text-sm font-black">Pay with Binance</p>
+              <p className="mb-2 text-[11px] text-muted-foreground">
+                Send {bnb.coins.join(" or ") || "USDT"}
+                {bnb.network ? ` on ${bnb.network}` : ""} to the address below, then paste the
+                transaction id. 1 USDT = $1 and your balance is added on its own.
+              </p>
+              {bnb.address ? (
+                <div className="mb-2 rounded-xl border border-dashed border-border bg-muted/50 p-3">
+                  <p className="break-all font-mono text-[11px] font-bold">{bnb.address}</p>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard?.writeText(bnb.address);
+                      setBnbCopied(true);
+                      setTimeout(() => setBnbCopied(false), 1500);
+                    }}
+                    className="mt-2 rounded-lg bg-foreground px-3 py-1 text-[11px] font-bold text-background"
+                  >
+                    {bnbCopied ? "Copied" : "Copy address"}
+                  </button>
+                </div>
+              ) : null}
+              <input
+                className={`${inputCls} mb-2 font-mono text-xs`}
+                placeholder="Transaction id (TXID)"
+                value={bnbTx}
+                onChange={(e) => setBnbTx(e.target.value)}
+              />
+              <button
+                onClick={submitBinance}
+                disabled={bnbChecking}
+                className="w-full rounded-xl bg-amber-500 py-3 font-bold text-white disabled:opacity-60"
+              >
+                {bnbChecking ? "Checking on Binance…" : "Verify Binance payment"}
+              </button>
+            </div>
+          ) : null}
+
           <p className="mb-2 text-xs font-bold text-muted-foreground">
             Send USDT or USDC to this address, then paste the transaction hash.
           </p>
