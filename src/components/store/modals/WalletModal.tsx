@@ -24,6 +24,7 @@ import {
 import { useStore } from "@/context/StoreContext";
 import { checkDeposit, fallbackDepositAddress } from "@/lib/deposit.functions";
 import { checkDepositLink, createDepositLink } from "@/lib/razorpay.functions";
+import { binanceInfo, verifyBinanceDeposit } from "@/lib/binance.functions";
 import { Emo } from "@/components/store/Emo";
 import { Sheet, inputCls } from "./ui";
 
@@ -42,6 +43,15 @@ export function WalletModal() {
   const [payLink, setPayLink] = useState("");
   const [payLinkId, setPayLinkId] = useState("");
   const [confirming, setConfirming] = useState(false);
+  const [bnb, setBnb] = useState<{ enabled: boolean; address: string; network: string; coins: string[] }>({
+    enabled: false,
+    address: "",
+    network: "",
+    coins: [],
+  });
+  const [bnbTx, setBnbTx] = useState("");
+  const [bnbChecking, setBnbChecking] = useState(false);
+  const [bnbCopied, setBnbCopied] = useState(false);
   const [history, setHistory] = useState<
     Array<{ id: string; type: string; amount: number; desc: string; date: string; status?: string }>
   >([]);
