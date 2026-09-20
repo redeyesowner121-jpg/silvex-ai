@@ -48,6 +48,7 @@ export function SettingsAdmin({
     binanceApiKey?: string;
     binanceApiSecret?: string;
     binanceAddress?: string;
+    binancePayId?: string;
     binanceNetwork?: string;
     binanceCoins?: string;
 
@@ -146,7 +147,8 @@ export function SettingsAdmin({
       razorpayVerifyFeePercent: Number(cfg.razorpayVerifyFeePercent || 0),
       binanceApiKey: cfg.binanceApiKey.trim(),
       binanceApiSecret: cfg.binanceApiSecret.trim(),
-      binanceAddress: cfg.binanceAddress.trim(),
+    binanceAddress: cfg.binanceAddress.trim(),
+      binancePayId: (cfg.binancePayId || "").trim(),
       binanceNetwork: cfg.binanceNetwork.trim().toUpperCase(),
       binanceCoins: cfg.binanceCoins.trim().toUpperCase(),
       ...extra,
@@ -188,6 +190,12 @@ export function SettingsAdmin({
           placeholder="Network (BSC, TRX, MATIC…)"
           value={cfg.binanceNetwork}
           onChange={(e) => setCfg({ ...cfg, binanceNetwork: e.target.value })}
+        />
+        <input
+          className={input}
+          placeholder="Binance ID / Pay ID (internal transfers, no blockchain)"
+          value={cfg.binancePayId || ""}
+          onChange={(e) => setCfg({ ...cfg, binancePayId: e.target.value })}
         />
         <input
           className={input}
