@@ -17,6 +17,8 @@ export type BinanceConf = {
   address: string;
   network: string;
   coins: string[];
+  /** The store's Binance ID / Pay ID customers can send internal transfers to. */
+  payId: string;
 };
 
 export async function binanceConfig(): Promise<BinanceConf> {
@@ -31,6 +33,7 @@ export async function binanceConfig(): Promise<BinanceConf> {
     address: String(c.binanceAddress || process.env["BINANCE_DEPOSIT_ADDRESS"] || "").trim(),
     network: String(c.binanceNetwork || "BSC").trim().toUpperCase(),
     coins: coins.length ? coins : ["USDT"],
+    payId: String(c.binancePayId || process.env["BINANCE_PAY_ID"] || "").trim(),
   };
 }
 
