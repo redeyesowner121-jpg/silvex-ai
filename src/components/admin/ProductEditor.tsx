@@ -62,6 +62,12 @@ export function ProductEditor({ product }: { product: Product }) {
     await navigate({ to: "/admin/products" });
   }
 
+  async function toggleSoldOut() {
+    if (!db) return;
+    await update(ref(db, `products/${product.id}`), { soldOut: !product.soldOut });
+    notify(product.soldOut ? "Product is buyable again" : "Product marked out of stock");
+  }
+
   async function toggleVisibility() {
     if (!db) return;
     await update(ref(db, `products/${product.id}`), { hidden: !product.hidden });
