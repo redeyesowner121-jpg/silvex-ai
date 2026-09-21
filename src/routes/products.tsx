@@ -1,17 +1,18 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { Download, KeyRound } from "lucide-react";
-import { useStore } from "@/context/StoreContext";
-import { ProductCard } from "@/components/store/ProductCard";
+import { groupSlug, useStore, type Product } from "@/context/StoreContext";
+import { FolderCard, ProductCard } from "@/components/store/ProductCard";
 import { websiteUrl } from "@/lib/referral";
 import { downloadTextFile, resellerApiDocs } from "@/lib/reseller-docs";
 
-type ProductSearch = { q?: string | undefined; category?: string | undefined };
+type ProductSearch = { q?: string | undefined; category?: string | undefined; group?: string | undefined };
 
 export const Route = createFileRoute("/products")({
   validateSearch: (search: Record<string, unknown>): ProductSearch => ({
     q: typeof search["q"] === "string" ? search["q"] : "",
     category: typeof search["category"] === "string" ? search["category"] : "",
+    group: typeof search["group"] === "string" ? search["group"] : "",
   }),
   head: () => ({
     meta: [
