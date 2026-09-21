@@ -7,21 +7,22 @@ import { broadcastProductEvent } from "@/lib/broadcast.functions";
 import { syncSupplier } from "@/lib/supplier.functions";
 import { ImageField, input } from "@/components/admin/shared";
 
-type Form = { title: string; desc: string; type: string; price: string; logo: string; link: string; delivery: "manual" | "auto" | "repeat" | "supplier"; supplierId: string; markup: string };
+type Form = { title: string; group: string; desc: string; type: string; price: string; logo: string; link: string; delivery: "manual" | "auto" | "repeat" | "supplier"; supplierId: string; markup: string };
 
 export function ProductEditor({ product }: { product: Product }) {
-  const { db, categories, notify } = useStore();
+  const { db, categories, notify, products } = useStore();
   const navigate = useNavigate();
   const [saving, setSaving] = useState(false);
   const [bulk, setBulk] = useState("");
   const [usedStock, setUsedStock] = useState<Record<string, { content: string; orderId?: string; email?: string }>>({});
-  const [form, setForm] = useState<Form>({ title: product.title, desc: product.desc ?? "", type: product.type ?? categories[0]?.label ?? "Service", price: String(product.price), logo: product.logo ?? "", link: product.link ?? "", delivery: product.delivery ?? "manual", supplierId: product.supplierId == null ? "" : String(product.supplierId), markup: String(product.markup ?? 130) });
+  const [form, setForm] = useState<Form>({ title: product.title, group: product.group ?? "", desc: product.desc ?? "", type: product.type ?? categories[0]?.label ?? "Service", price: String(product.price), logo: product.logo ?? "", link: product.link ?? "", delivery: product.delivery ?? "manual", supplierId: product.supplierId == null ? "" : String(product.supplierId), markup: String(product.markup ?? 130) });
 
   useEffect(() => {
     if (!db) return;
     get(ref(db, `usedStock/${product.id}`)).then((snap) => setUsedStock(snap.val() || {})).catch(() => undefined);
   }, [db, product.id]);
 
+  const folderNames = useMemo(() => [...new Set(products.map((p) => String(p.group || "").trim()).filter(Boolean))].sort(), [products]);
   const available = useMemo(() => (product.stock || []).filter(Boolean), [product.stock]);
   const used = useMemo(() => [...Object.values(product.usedStock || {}), ...Object.values(usedStock)], [product.usedStock, usedStock]);
   const sellingPrice = form.delivery === "supplier" && product.supplierPrice != null ? Number(product.supplierPrice) * (Number(form.markup) || 130) / 100 : Number(form.price) || 0;
@@ -33,7 +34,7 @@ export function ProductEditor({ product }: { product: Product }) {
     setSaving(true);
     try {
       await update(ref(db, `products/${product.id}`), {
-        title: form.title.trim(), desc: form.desc.trim(), type: form.type,
+        title: form.title.trim(), group: form.group.trim() || null, desc: form.desc.trim(), type: form.type,
         price: form.delivery === "supplier" ? Number(sellingPrice.toFixed(2)) : Number(form.price),
         logo: form.logo, link: form.delivery === "supplier" ? null : form.link.trim(), delivery: form.delivery,
         supplierId: form.delivery === "supplier" ? (/^\d+$/.test(form.supplierId) ? Number(form.supplierId) : form.supplierId.trim()) : null,
@@ -87,6 +88,7 @@ export function ProductEditor({ product }: { product: Product }) {
         <div className="space-y-3 rounded-2xl border border-border bg-card p-4"><h2 className="text-sm font-black">Product details</h2>
           <label className="block text-xs font-bold">Name<input className={`${input} mt-1`} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></label>
           <label className="block text-xs font-bold">Category<select className={`${input} mt-1`} value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>{(categories.some((c) => c.label === form.type) ? categories : [{ label: form.type }, ...categories]).map((c) => <option key={c.label}>{c.label}</option>)}</select></label>
+          <label className="block text-xs font-bold">Folder (variations)<input className={`${input} mt-1`} list="product-folders" value={form.group} onChange={(e) => setForm({ ...form, group: e.target.value })} placeholder="e.g. LinkedIn" /><datalist id="product-folders">{folderNames.map((g) => <option key={g} value={g} />)}</datalist><span className="mt-1 block text-[11px] font-medium text-muted-foreground">Products with the same folder name show as one item with plan variations.</span></label>
           <label className="block text-xs font-bold">Description<textarea className={`${input} mt-1 min-h-36 resize-y whitespace-pre-wrap`} value={form.desc} onChange={(e) => setForm({ ...form, desc: e.target.value })} placeholder="Write each detail on a separate line" /></label>
           <label className="block text-xs font-bold">Selling price ($)<input type="number" min="0.01" step="0.01" className={`${input} mt-1`} value={form.delivery === "supplier" ? sellingPrice.toFixed(2) : form.price} disabled={form.delivery === "supplier"} onChange={(e) => setForm({ ...form, price: e.target.value })} /></label>
         </div>

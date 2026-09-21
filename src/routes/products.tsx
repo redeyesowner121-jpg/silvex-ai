@@ -1,17 +1,18 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { Download, KeyRound } from "lucide-react";
-import { useStore } from "@/context/StoreContext";
-import { ProductCard } from "@/components/store/ProductCard";
+import { groupSlug, useStore, type Product } from "@/context/StoreContext";
+import { FolderCard, ProductCard } from "@/components/store/ProductCard";
 import { websiteUrl } from "@/lib/referral";
 import { downloadTextFile, resellerApiDocs } from "@/lib/reseller-docs";
 
-type ProductSearch = { q?: string | undefined; category?: string | undefined };
+type ProductSearch = { q?: string | undefined; category?: string | undefined; group?: string | undefined };
 
 export const Route = createFileRoute("/products")({
   validateSearch: (search: Record<string, unknown>): ProductSearch => ({
     q: typeof search["q"] === "string" ? search["q"] : "",
     category: typeof search["category"] === "string" ? search["category"] : "",
+    group: typeof search["group"] === "string" ? search["group"] : "",
   }),
   head: () => ({
     meta: [
@@ -34,7 +35,7 @@ export const Route = createFileRoute("/products")({
 });
 
 function Products() {
-  const { q, category } = Route.useSearch();
+  const { q, category, group } = Route.useSearch();
   const { products, profile, config, notify } = useStore();
   const [filter, setFilter] = useState(q ?? "");
   const normalizedFilter = filter.trim().toLowerCase();
@@ -46,15 +47,42 @@ function Products() {
     const normalizedFilter = filter.toLowerCase();
     return products.filter((p) => {
       if (p.hidden) return false;
+      if (group && groupSlug(p.group || "") !== group) return false;
       const matchesText = p.title.toLowerCase().includes(normalizedFilter);
       const matchesCat = !category || p.type === category;
       return matchesText && matchesCat;
     });
-  }, [products, filter, category]);
+  }, [products, filter, category, group]);
+
+  // Products sharing a folder name collapse into a single card unless a folder is open.
+  const { singles, folders } = useMemo(() => {
+    if (group) return { singles: list, folders: [] as { name: string; slug: string; items: Product[] }[] };
+    const map = new Map<string, { name: string; slug: string; items: Product[] }>();
+    const rest: Product[] = [];
+    for (const p of list) {
+      const name = String(p.group || "").trim();
+      if (!name) {
+        rest.push(p);
+        continue;
+      }
+      const slug = groupSlug(name);
+      const existing = map.get(slug);
+      if (existing) existing.items.push(p);
+      else map.set(slug, { name, slug, items: [p] });
+    }
+    return { singles: rest, folders: [...map.values()] };
+  }, [list, group]);
+
+  const openFolderName = group ? list[0]?.group || "Plans" : "";
 
   return (
     <div className="fade-in">
-      <h1 className="mb-4 text-2xl font-black">{category || "All products"}</h1>
+      {group ? (
+        <Link to="/products" search={{ group: "" }} className="mb-2 inline-block text-xs font-bold text-muted-foreground">
+          ← All products
+        </Link>
+      ) : null}
+      <h1 className="mb-4 text-2xl font-black">{group ? openFolderName : category || "All products"}</h1>
       <input
         value={filter}
         onChange={(e) => setFilter(e.target.value)}
@@ -94,7 +122,10 @@ function Products() {
         </p>
       ) : (
         <div className="grid grid-cols-2 gap-3 pb-10 md:grid-cols-4">
-          {list.map((p) => (
+          {folders.map((f) => (
+            <FolderCard key={f.slug} name={f.name} slug={f.slug} items={f.items} />
+          ))}
+          {singles.map((p) => (
             <ProductCard key={p.id} product={p} />
           ))}
         </div>

@@ -47,7 +47,17 @@ export type Product = {
   soldOut?: boolean;
   /** Imported API products cannot be deleted, only hidden */
   locked?: boolean;
+  /** Products sharing the same folder name show up as one item with variations */
+  group?: string;
 };
+
+/** Folder key used in links and bot buttons. */
+export const groupSlug = (name: string) =>
+  String(name || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 40);
 
 
 export type CartItem = Product & {

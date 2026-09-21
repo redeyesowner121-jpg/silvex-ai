@@ -29,25 +29,85 @@ export {
   sendSupport,
 } from "./wallet";
 
-export async function sendProducts(chatId: number) {
-  const all = await allProducts();
-  const list = Object.entries(all)
-    .filter(([, p]) => p && p.hidden !== true && String(p.title || "").trim() !== "")
+const slugOf = (name: string) =>
+  String(name || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
     .slice(0, 40);
-  if (!list.length) return say(chatId, "No products available right now.", backHome);
+
+async function visibleProducts() {
+  const all = await allProducts();
+  return Object.entries(all).filter(
+    ([, p]) => p && (p as any).hidden !== true && String(p.title || "").trim() !== "",
+  ) as [string, Product][];
+}
+
+export async function sendProducts(chatId: number) {
+  const entries = await visibleProducts();
+  if (!entries.length) return say(chatId, "No products available right now.", backHome);
+
+  // Products sharing a folder name are shown once as a folder of variations.
+  const folders = new Map<string, { name: string; items: [string, Product][] }>();
+  const singles: [string, Product][] = [];
+  for (const entry of entries) {
+    const name = String((entry[1] as any).group || "").trim();
+    if (!name) {
+      singles.push(entry);
+      continue;
+    }
+    const slug = slugOf(name);
+    const found = folders.get(slug);
+    if (found) found.items.push(entry);
+    else folders.set(slug, { name, items: [entry] });
+  }
+
+  const folderList = [...folders.entries()];
+  const list = singles.slice(0, Math.max(0, 40 - folderList.length));
 
   // Premium (custom) emoji only render inside message text, never on buttons,
   // so the list itself carries them and the buttons stay plain.
-  const lines = list
-    .map(([id, p]) => `${productEmoji(id)} <b>${p.title}</b> — ${money(p.price || 0)}`)
-    .join("\n");
+  const lines = [
+    ...folderList.map(
+      ([, f]) =>
+        `📁 <b>${f.name}</b> — ${f.items.length} plans from ${money(
+          Math.min(...f.items.map(([, p]) => Number(p.price) || 0)),
+        )}`,
+    ),
+    ...list.map(([id, p]) => `${productEmoji(id)} <b>${p.title}</b> — ${money(p.price || 0)}`),
+  ].join("\n");
 
   await say(chatId, `${em("btn.products")} <b>Products</b>\n\n${lines}\n\nTap any item below to see details.`, {
     inline_keyboard: [
+      ...folderList.map(([slug, f]) => [
+        { text: `📁 ${f.name} — ${f.items.length} plans`, callback_data: `g:${slug}` },
+      ]),
       ...list.map(([id, p]) => [
         { text: `${productEmojiChar(id)} ${p.title} — ${money(p.price || 0)}`, callback_data: `p:${id}` },
       ]),
       [{ text: `🔵 ${be("btn.back")} Menu`, callback_data: "home" }],
+    ],
+  });
+}
+
+/** Opens one folder and lists every plan variation inside it. */
+export async function sendGroup(chatId: number, slug: string) {
+  const entries = (await visibleProducts()).filter(
+    ([, p]) => slugOf(String((p as any).group || "")) === slug,
+  );
+  if (!entries.length) return sendProducts(chatId);
+  const name = String((entries[0]![1] as any).group || "Plans").trim();
+  const list = entries.slice(0, 40);
+  const lines = list
+    .map(([id, p]) => `${productEmoji(id)} <b>${p.title}</b> — ${money(p.price || 0)}`)
+    .join("\n");
+
+  await say(chatId, `📁 <b>${name}</b>\n\n${lines}\n\nPick the plan you want.`, {
+    inline_keyboard: [
+      ...list.map(([id, p]) => [
+        { text: `${productEmojiChar(id)} ${p.title} — ${money(p.price || 0)}`, callback_data: `p:${id}` },
+      ]),
+      [{ text: `🔵 ${be("btn.back")} Products`, callback_data: "products" }],
     ],
   });
 }
