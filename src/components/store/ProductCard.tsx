@@ -1,3 +1,6 @@
+import { Link } from "@tanstack/react-router";
+import { Folder } from "lucide-react";
+
 import { useStore, type Product } from "@/context/StoreContext";
 import { Emo } from "@/components/store/Emo";
 import { EmoText } from "@/components/store/EmoText";
