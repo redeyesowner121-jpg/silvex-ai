@@ -5,7 +5,7 @@ import { dbGet, dbPatch, dbPut } from "./telegram.server";
  * Every value here is only a fallback — the admin panel can change the name,
  * base URL, key, profit % and whether a provider is on, in site_settings/providers.
  */
-export type ProviderId = "qamify" | "safwan" | "mmostore" | "canboso" | "custom";
+export type ProviderId = "qamify" | "safwan" | "mmostore" | "w2premium" | "canboso" | "custom";
 
 /** Shops that were removed — their imported products get cleaned up. */
 export const RETIRED_PROVIDERS = ["elite", "eklas", "canboso", "custom"];
@@ -63,6 +63,21 @@ export const PROVIDERS: ProviderDef[] = [
       orderPath: "api/v1/orders",
       qtyField: "quantity",
       refField: "client_order_id",
+    },
+  },
+  {
+    id: "w2premium",
+    name: "W2 Premium",
+    url: "https://bot.w2premium.com/api/public/v1",
+    key: "mk_c804a1f1cb33b7252ee91e82a6e1b4b699c5dd089ee7d754",
+    docs: "https://bot.w2premium.com/api-docs",
+    markup: 130,
+    shape: {
+      productsPath: "products",
+      balancePath: "balance",
+      orderPath: "purchase",
+      qtyField: "quantity",
+      refField: "",
     },
   },
   {
