@@ -35,7 +35,7 @@ export const Route = createFileRoute("/products")({
 });
 
 function Products() {
-  const { q, category } = Route.useSearch();
+  const { q, category, group } = Route.useSearch();
   const { products, profile, config, notify } = useStore();
   const [filter, setFilter] = useState(q ?? "");
   const normalizedFilter = filter.trim().toLowerCase();
