@@ -122,7 +122,10 @@ function Products() {
         </p>
       ) : (
         <div className="grid grid-cols-2 gap-3 pb-10 md:grid-cols-4">
-          {list.map((p) => (
+          {folders.map((f) => (
+            <FolderCard key={f.slug} name={f.name} slug={f.slug} items={f.items} />
+          ))}
+          {singles.map((p) => (
             <ProductCard key={p.id} product={p} />
           ))}
         </div>
