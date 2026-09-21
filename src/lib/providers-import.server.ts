@@ -81,6 +81,8 @@ export async function importProvider(
         desc: sp.description || "",
         type: category,
         ...(sp.image ? { logo: sp.image } : {}),
+        // New LinkedIn plans join the shared LinkedIn folder automatically.
+        ...(/linked\s*in/i.test(sp.name || "") ? { group: "LinkedIn" } : {}),
         hidden: false,
         salesCount: 0,
       });
