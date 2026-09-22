@@ -76,7 +76,8 @@ export function ProductCard({ product }: { product: Product }) {
 
 /** One card standing for a folder of product variations (e.g. all LinkedIn plans). */
 export function FolderCard({ name, slug, items }: { name: string; slug: string; items: Product[] }) {
-  const cover = items.find((p) => p.logo)?.logo;
+  const coverItem = items.find((p) => p.logo);
+  const cover = coverItem ? productImageSrc(coverItem.id, coverItem.logo) : undefined;
   const from = Math.min(...items.map((p) => Number(p.price) || 0));
 
   return (
