@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { EmojiArt } from "@/components/store/EmojiArt";
 import { formatDescription } from "@/lib/format-desc";
+import { productImageSrc } from "@/lib/product-image";
 import { useNavigate } from "@tanstack/react-router";
 import {
   createUserWithEmailAndPassword,
@@ -88,7 +89,7 @@ export function ProductModal() {
     <Sheet onClose={closeModal}>
       {product.logo ? (
         <img
-          src={product.logo}
+          src={productImageSrc(product.id, product.logo)}
           alt={product.title}
           className="mx-auto mb-4 aspect-video w-full rounded-xl object-cover"
         />

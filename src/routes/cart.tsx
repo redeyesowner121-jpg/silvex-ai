@@ -8,6 +8,7 @@ import { referralCap, referralRate, websiteUrl } from "@/lib/referral";
 import { buyFromSupplier } from "@/lib/supplier.functions";
 
 import { Emo } from "@/components/store/Emo";
+import { productImageSrc } from "@/lib/product-image";
 
 
 export const Route = createFileRoute("/cart")({
@@ -285,7 +286,7 @@ function Cart() {
                 className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3"
               >
                 {i.logo ? (
-                  <img src={i.logo} alt="" className="h-14 w-14 rounded-xl object-cover" />
+                  <img src={productImageSrc(i.id, i.logo)} alt="" className="h-14 w-14 rounded-xl object-cover" />
                 ) : (
                   <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-muted">
                     <Emo k="web.bag" />

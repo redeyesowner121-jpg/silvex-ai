@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { Folder } from "lucide-react";
 
 import { useStore, type Product } from "@/context/StoreContext";
+import { productImageSrc } from "@/lib/product-image";
 import { Emo } from "@/components/store/Emo";
 import { EmoText } from "@/components/store/EmoText";
 import { EmojiArt } from "@/components/store/EmojiArt";
@@ -15,7 +16,7 @@ export function ProductCard({ product }: { product: Product }) {
       <button onClick={() => openProduct(product.id)} className="block aspect-video w-full bg-muted">
         {product.logo ? (
           <img
-            src={product.logo}
+            src={productImageSrc(product.id, product.logo)}
             alt={product.title}
             loading="lazy"
             decoding="async"
@@ -75,7 +76,8 @@ export function ProductCard({ product }: { product: Product }) {
 
 /** One card standing for a folder of product variations (e.g. all LinkedIn plans). */
 export function FolderCard({ name, slug, items }: { name: string; slug: string; items: Product[] }) {
-  const cover = items.find((p) => p.logo)?.logo;
+  const coverItem = items.find((p) => p.logo);
+  const cover = coverItem ? productImageSrc(coverItem.id, coverItem.logo) : undefined;
   const from = Math.min(...items.map((p) => Number(p.price) || 0));
 
   return (
