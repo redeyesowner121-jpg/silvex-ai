@@ -9,7 +9,7 @@ export function AdminPageShell({ title, description, children }: { title: string
         <ArrowLeft className="h-4 w-4" /> Management
       </Link>
       <header>
-        <h1 className="text-2xl font-black">{title}</h1>
+        <h1 className="font-display text-2xl font-black">{title}</h1>
         <p className="mt-1 text-sm text-muted-foreground">{description}</p>
       </header>
       {children}

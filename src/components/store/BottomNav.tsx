@@ -14,25 +14,38 @@ export function BottomNav() {
   const { cartCount } = useStore();
 
   return (
-    <nav className="fixed bottom-0 left-0 z-40 w-full border-t border-border bg-card">
-      <div className="mx-auto flex w-full max-w-md items-stretch justify-between px-2 py-2 md:max-w-2xl">
+    <nav className="fixed bottom-0 left-0 z-50 w-full border-t border-border/30 bg-background">
+      <div className="mx-auto flex w-full max-w-md items-center justify-around px-2 py-2 md:max-w-2xl">
         {items.map((item) => {
           const Icon = item.icon;
           return (
             <Link
               key={item.to}
               to={item.to}
-              activeProps={{ className: "text-primary" }}
               activeOptions={{ exact: item.to === "/" }}
-              className="relative flex flex-1 flex-col items-center gap-0.5 py-1 text-[10px] font-bold text-muted-foreground"
+              className="group relative flex min-w-[56px] flex-col items-center justify-center rounded-2xl px-4 py-1.5 text-[10px] font-semibold text-muted-foreground transition-all duration-200 active:scale-90"
+              activeProps={{ className: "text-primary-foreground -translate-y-0.5" }}
             >
-              <Icon aria-hidden="true" className="h-5 w-5" strokeWidth={2.2} />
-              {item.label}
-              {item.to === "/cart" && cartCount > 0 ? (
-                <span className="absolute right-3 top-0 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[9px] text-destructive-foreground">
-                  {cartCount}
-                </span>
-              ) : null}
+              {({ isActive }) => (
+                <>
+                  {isActive ? (
+                    <span className="gradient-primary shadow-colored-primary absolute inset-0 rounded-2xl" aria-hidden="true" />
+                  ) : null}
+                  <span className="relative z-10">
+                    <Icon
+                      aria-hidden="true"
+                      strokeWidth={2.2}
+                      className={`h-5 w-5 transition-transform duration-200 ${isActive ? "scale-110" : ""}`}
+                    />
+                    {item.to === "/cart" && cartCount > 0 ? (
+                      <span className="gradient-accent shadow-colored-accent absolute -right-3 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full text-[9px] font-bold text-accent-foreground">
+                        {cartCount > 9 ? "9+" : cartCount}
+                      </span>
+                    ) : null}
+                  </span>
+                  <span className="relative z-10 mt-0.5">{item.label}</span>
+                </>
+              )}
             </Link>
           );
         })}

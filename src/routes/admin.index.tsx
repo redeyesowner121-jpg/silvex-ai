@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { Shield, TrendingUp } from "lucide-react";
 import { useEffect, useState } from "react";
 import { get, onValue, ref } from "firebase/database";
 import { Dashboard } from "@/components/admin/Dashboard";
@@ -43,10 +44,39 @@ function AdminHome() {
 
   return (
     <div className="fade-in mx-auto max-w-4xl">
-      <h1 className="mb-4 text-2xl font-black">Admin panel</h1>
-      <div className="mb-5 grid grid-cols-2 gap-2 rounded-2xl bg-muted/60 p-1">
-        <button onClick={() => navigate({ search: { view: "analysis" }, replace: true })} className={`rounded-xl py-2.5 text-sm font-black transition ${view !== "management" ? "btn-grad" : "text-muted-foreground"}`}>Analysis</button>
-        <button onClick={() => navigate({ search: { view: "management" }, replace: true })} className={`rounded-xl py-2.5 text-sm font-black transition ${view === "management" ? "btn-grad" : "text-muted-foreground"}`}>Management</button>
+      <h1 className="font-display mb-1 flex items-center gap-2 text-2xl font-black">
+        <Shield className="h-6 w-6 text-primary" /> Admin panel
+      </h1>
+      <p className="mb-5 text-sm text-muted-foreground">Overview, reports and full store control.</p>
+      <div className="mb-6 grid grid-cols-2 gap-4">
+        <button
+          onClick={() => navigate({ search: { view: "analysis" }, replace: true })}
+          className={`relative overflow-hidden rounded-3xl p-5 text-left transition-all active:scale-[0.98] ${view !== "management" ? "gradient-primary shadow-colored-primary text-primary-foreground" : "border border-border bg-card hover:border-primary/50 hover:shadow-md"}`}
+        >
+          <span className="flex flex-col items-center gap-3">
+            <span className={`grid h-14 w-14 place-items-center rounded-2xl ${view !== "management" ? "bg-white/20" : "bg-primary/10 text-primary"}`}>
+              <TrendingUp className="h-7 w-7" />
+            </span>
+            <span className="text-center">
+              <span className="font-display block text-lg font-bold">Analysis</span>
+              <span className={`mt-0.5 block text-xs ${view !== "management" ? "text-primary-foreground/75" : "text-muted-foreground"}`}>Overview & reports</span>
+            </span>
+          </span>
+        </button>
+        <button
+          onClick={() => navigate({ search: { view: "management" }, replace: true })}
+          className={`relative overflow-hidden rounded-3xl p-5 text-left transition-all active:scale-[0.98] ${view === "management" ? "gradient-sunset shadow-colored-secondary text-secondary-foreground" : "border border-border bg-card hover:border-secondary/50 hover:shadow-md"}`}
+        >
+          <span className="flex flex-col items-center gap-3">
+            <span className={`grid h-14 w-14 place-items-center rounded-2xl ${view === "management" ? "bg-white/20" : "bg-secondary/10 text-secondary"}`}>
+              <Shield className="h-7 w-7" />
+            </span>
+            <span className="text-center">
+              <span className="font-display block text-lg font-bold">Management</span>
+              <span className={`mt-0.5 block text-xs ${view === "management" ? "text-secondary-foreground/75" : "text-muted-foreground"}`}>Manage everything</span>
+            </span>
+          </span>
+        </button>
       </div>
       {view !== "management" ? <div className="mb-5 grid grid-cols-2 gap-2"><button onClick={() => navigate({ search: { view: "analysis" }, replace: true })} className={`rounded-xl px-4 py-2 text-xs font-bold ${view === "analysis" ? "bg-foreground text-background" : "bg-card shadow-sm"}`}>Dashboard</button><button onClick={() => navigate({ search: { view: "orders" }, replace: true })} className={`rounded-xl px-4 py-2 text-xs font-bold ${view === "orders" ? "bg-foreground text-background" : "bg-card shadow-sm"}`}>Orders</button></div> : null}
       {view === "management" ? <ManagementHub /> : view === "orders" ? <OrdersAdmin orders={orders} /> : <Dashboard orders={orders} products={products} config={config} onRefresh={refresh} />}
