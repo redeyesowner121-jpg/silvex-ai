@@ -64,7 +64,7 @@ function listButton(id: string, p: Product) {
     text: `${productEmojiChar(id)} ${p.title} | ${money(p.price || 0)}${stockPart}`,
     callback_data: `p:${id}`,
   };
-  if (isOutOfStock(p)) button.style = "danger";
+  if (isOutOfStock(p)) button["style"] = "danger";
   return button;
 }
 
@@ -126,9 +126,7 @@ export async function sendGroup(chatId: number, slug: string) {
 
   await say(chatId, `📁 <b>${name}</b>\n\n${lines}\n\nPick the plan you want.`, {
     inline_keyboard: [
-      ...list.map(([id, p]) => [
-        { text: `${productEmojiChar(id)} ${p.title} — ${money(p.price || 0)}`, callback_data: `p:${id}` },
-      ]),
+      ...list.map(([id, p]) => [listButton(id, p)]),
       [{ text: `🔵 ${be("btn.back")} Products`, callback_data: "products" }],
     ],
   });
