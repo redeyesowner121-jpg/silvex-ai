@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { Shield, TrendingUp } from "lucide-react";
 import { useEffect, useState } from "react";
 import { get, onValue, ref } from "firebase/database";
 import { Dashboard } from "@/components/admin/Dashboard";
