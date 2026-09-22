@@ -7,7 +7,7 @@ import { createFileRoute } from "@tanstack/react-router";
  * cache lifetime; a short server-side cache avoids a database hit per image.
  */
 
-let cache: { at: number; products: Record<string, { logo?: string }> } | null = null;
+let cache: { at: number; products: Record<string, { logo?: string | undefined }> } | null = null;
 const TTL = 60_000;
 
 function dbUrl() {
@@ -23,15 +23,11 @@ async function logoFor(id: string): Promise<string | null> {
     if (!res.ok) return null;
     const products = (await res.json()) as Record<string, { logo?: string }> | null;
     if (!products) return null;
-    // Only keep the logo fields — the full records can be heavy.
-    cache = {
-      at: Date.now(),
-      products: Object.fromEntries(
-        Object.entries(products).map(([k, v]) => [k, { logo: v?.logo }]),
-      ),
-    };
+    const slim: Record<string, { logo?: string | undefined }> = {};
+    for (const [k, v] of Object.entries(products)) slim[k] = { logo: v?.logo };
+    cache = { at: Date.now(), products: slim };
   }
-  return cache.products[id]?.logo || null;
+  return cache?.products[id]?.logo || null;
 }
 
 export const Route = createFileRoute("/api/public/product-img/$id")({
