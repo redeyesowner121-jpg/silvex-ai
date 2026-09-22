@@ -5,10 +5,10 @@ import { dbGet, dbPatch, dbPut } from "./telegram.server";
  * Every value here is only a fallback — the admin panel can change the name,
  * base URL, key, profit % and whether a provider is on, in site_settings/providers.
  */
-export type ProviderId = "qamify" | "safwan" | "mmostore" | "w2premium" | "canboso" | "custom";
+export type ProviderId = "qamify" | "safwan" | "mmostore" | "w2premium" | "eklas" | "canboso" | "custom";
 
 /** Shops that were removed — their imported products get cleaned up. */
-export const RETIRED_PROVIDERS = ["elite", "eklas", "canboso", "custom"];
+export const RETIRED_PROVIDERS = ["elite", "canboso", "custom"];
 
 export type ProviderShape = {
   productsPath: string;
@@ -78,6 +78,21 @@ export const PROVIDERS: ProviderDef[] = [
       orderPath: "purchase",
       qtyField: "quantity",
       refField: "",
+    },
+  },
+  {
+    id: "eklas",
+    name: "Eklas Store",
+    url: "https://api-esb.eklas.dev/v1",
+    key: "tgb_O0aZZYoosD_gMgAo8DCGcNJyVO7YwrnkpAeRMd4z21z8kXEQ",
+    docs: "https://api-esb.eklas.dev/docs",
+    markup: 130,
+    shape: {
+      productsPath: "products",
+      balancePath: "balance",
+      orderPath: "orders",
+      qtyField: "quantity",
+      refField: "client_order_id",
     },
   },
   {
@@ -171,6 +186,8 @@ export const PROVIDER_KEEP: Record<string, string[]> = {
   mmostore: ["gemini", "outlook"],
   // Safwan Tiger: keep the whole catalogue (admin can hide or delete items).
   safwan: [],
+  // Eklas Store: keep the whole catalogue (admin can hide or delete items).
+  eklas: [],
 };
 
 /** Admin-editable keep list for a provider (empty list = keep everything). */
