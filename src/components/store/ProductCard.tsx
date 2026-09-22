@@ -15,7 +15,7 @@ export function ProductCard({ product }: { product: Product }) {
       <button onClick={() => openProduct(product.id)} className="block aspect-video w-full bg-muted">
         {product.logo ? (
           <img
-            src={product.logo}
+            src={productImageSrc(product.id, product.logo)}
             alt={product.title}
             loading="lazy"
             decoding="async"

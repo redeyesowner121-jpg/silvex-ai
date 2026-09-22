@@ -64,8 +64,8 @@ export const getStoreSnapshot = createServerFn({ method: "GET" }).handler(async 
     const left = Array.isArray(stock) ? stock.filter(Boolean).length : 0;
     // Base64 photos would inline megabytes into the page HTML — swap them
     // for the cached image endpoint; external URLs stay as they are.
-    if (typeof rest.logo === "string" && rest.logo.startsWith("data:")) {
-      rest.logo = `/api/public/product-img/${id}`;
+    if (typeof rest["logo"] === "string" && (rest["logo"] as string).startsWith("data:")) {
+      rest["logo"] = `/api/public/product-img/${id}`;
     }
     products[id] = left ? { ...rest, stock: Array.from({ length: left }, () => "1") } : rest;
   }
