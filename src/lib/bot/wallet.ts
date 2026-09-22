@@ -8,7 +8,7 @@ import {
   referralRate,
   websiteReferralLink,
 } from "@/lib/referral";
-import { dbGet, dbPatch, dbPush, dbPut, money, siteUrl, tg } from "@/lib/telegram.server";
+import { dbGet, dbPatch, dbPush, dbPut, money, notifyGroup, siteUrl, tg } from "@/lib/telegram.server";
 import { be } from "@/lib/emoji.server";
 import { resellerApiDocs } from "@/lib/reseller-docs";
 import { tgSendDocument } from "@/lib/bot/delivery-files.server";
@@ -401,6 +401,12 @@ export async function applyStartReferral(uid: string, rawCode: string) {
   if (!hit) return;
   await dbPatch(`users/${uid}`, { usedRef: code, refBy: hit[0] });
   invalidateUsers();
+  void notifyGroup(
+    `🎉 <b>New Referral Success!</b>\n\n` +
+      `👤 User: <code>${uid}</code>\n` +
+      `📌 Referred by: <code>${hit[0]}</code>\n` +
+      `🤩 Code: <code>${code}</code>`,
+  ).catch(() => undefined);
 }
 
 export async function sendRefer(chatId: number) {

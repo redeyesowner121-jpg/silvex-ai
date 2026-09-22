@@ -37,6 +37,7 @@ export function SettingsAdmin({
     referralCap?: number;
     ownerEmails?: string;
     telegramOwners?: string;
+    notifyGroup?: string;
     supplierApiUrl?: string;
     supplierApiKey?: string;
     razorpayKeyId?: string;
@@ -75,6 +76,7 @@ export function SettingsAdmin({
     referralCap: String(config.referralCap ?? 201),
     ownerEmails: config.ownerEmails ?? "",
     telegramOwners: config.telegramOwners ?? "",
+    notifyGroup: config.notifyGroup ?? "",
     supplierApiUrl: config.supplierApiUrl ?? "",
     supplierApiKey: config.supplierApiKey ?? "",
     razorpayKeyId: config.razorpayKeyId ?? "",
@@ -138,6 +140,7 @@ export function SettingsAdmin({
       referralCap: Number(cfg.referralCap || 0),
       ownerEmails: cfg.ownerEmails.trim(),
       telegramOwners: cfg.telegramOwners.trim(),
+      notifyGroup: cfg.notifyGroup.trim(),
       supplierApiUrl: cfg.supplierApiUrl.trim().replace(/\/+$/, ""),
       supplierApiKey: cfg.supplierApiKey.trim(),
       razorpayKeyId: cfg.razorpayKeyId.trim(),
@@ -454,6 +457,12 @@ export function SettingsAdmin({
           placeholder="Telegram owner IDs (comma separated)"
           value={cfg.telegramOwners}
           onChange={(e) => setCfg({ ...cfg, telegramOwners: e.target.value })}
+        />
+        <input
+          className={input}
+          placeholder="Notification group ID (e.g. -1003955387789) — every bot event is posted here"
+          value={cfg.notifyGroup}
+          onChange={(e) => setCfg({ ...cfg, notifyGroup: e.target.value })}
         />
         <button
           onClick={() => saveConfig()}

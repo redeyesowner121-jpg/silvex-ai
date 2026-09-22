@@ -1,6 +1,6 @@
 /** Handles every typed message and command in the bot. */
 import { defaultDepositAddress, verifyDepositAnyChain } from "@/lib/deposit.server";
-import { dbGet, dbPatch, dbPush, dbPut, money, notifyOwners } from "@/lib/telegram.server";
+import { dbGet, dbPatch, dbPush, dbPut, money, notifyGroup, notifyOwners } from "@/lib/telegram.server";
 
 import { adminBack, askEmail, backHome, cfg, ensureUser, forceJoinBlocked, getState, invalidateProducts, isBotAdmin, say, saveConfig, saveEmail, setState, welcome } from "@/lib/bot/core";
 import {
@@ -29,6 +29,7 @@ export async function handleText(
   entities?: any[],
   sticker?: any,
   replyToMessageId?: number,
+  fromUser?: { id?: number; first_name?: string; last_name?: string; username?: string },
 ) {
   const t = text.trim();
   void dbPut(`telegramUsers/${chatId}`, true).catch(() => undefined);
@@ -44,6 +45,16 @@ export async function handleText(
     await setState(chatId, null);
     void registerBotCommands().catch(() => undefined);
     if (await forceJoinBlocked(chatId)) return;
+    // Announce brand-new bot users in the activity group.
+    if (t.startsWith("/start") && !(await dbGet<string>(`telegramLinks/${chatId}`))) {
+      const fullName = [fromUser?.first_name, fromUser?.last_name].filter(Boolean).join(" ").trim();
+      void notifyGroup(
+        `🚀 <b>NEW BOT START</b>\n\n` +
+          `👤 Name: ${fullName || "-"}\n` +
+          `🆔 ID: <code>${fromUser?.id ?? chatId}</code>\n` +
+          `🔗 Username: ${fromUser?.username ? `@${fromUser.username}` : "None"}`,
+      ).catch(() => undefined);
+    }
     if (t.startsWith("/start ")) {
       const uid = await ensureUser(chatId);
       await applyStartReferral(uid, t.slice(7));
