@@ -365,6 +365,31 @@ export function money(n: number): string {
   return `$${Number(n || 0).toFixed(2)}`;
 }
 
+/* ---------------- who the log is about ---------------- */
+
+const usernameCache = new Map<number, string>();
+
+/** Keep the Telegram @username of anyone who writes to the bot, for the logs. */
+export function rememberUsername(chatId: number, username?: string): void {
+  const id = Number(chatId);
+  if (!id || !username) return;
+  if (usernameCache.get(id) === username) return;
+  usernameCache.set(id, username);
+  void dbPut(`telegramUsernames/${id}`, username).catch(() => undefined);
+}
+
+/** "@name" when we know it, otherwise "user <id>". */
+export async function tgTag(chatId: number | string): Promise<string> {
+  const id = Number(chatId);
+  if (!id) return `user <code>${String(chatId)}</code>`;
+  let u = usernameCache.get(id);
+  if (!u) {
+    u = (await dbGet<string>(`telegramUsernames/${id}`).catch(() => undefined)) || undefined;
+    if (u) usernameCache.set(id, u);
+  }
+  return u ? `@${u}` : `user <code>${id}</code>`;
+}
+
 /** Mirror a notification into the activity group (silently skipped when unset). */
 export async function notifyGroup(text: string): Promise<void> {
   const gid = groupId();
