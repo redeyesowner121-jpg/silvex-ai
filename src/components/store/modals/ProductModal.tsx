@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { EmojiArt } from "@/components/store/EmojiArt";
 import { formatDescription } from "@/lib/format-desc";
+import { productImageSrc } from "@/lib/product-image";
 import { useNavigate } from "@tanstack/react-router";
 import {
   createUserWithEmailAndPassword,
