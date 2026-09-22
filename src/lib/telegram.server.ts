@@ -419,7 +419,47 @@ export {
 
 /* ---------------- photos ---------------- */
 
-/** Send a product photo. Accepts an http(s) URL or a data: URL (uploaded image). */
+/**
+ * Telegram re-hosts every photo we upload. Re-uploading the same product image
+ * on each view is what makes photos slow, so the returned file_id is cached
+ * (memory + database) and reused — later sends are a tiny JSON call.
+ */
+const photoIdMemo = new Map<string, string>();
+
+function photoKey(photo: string): string {
+  let h1 = 0x811c9dc5;
+  let h2 = 0x01000193;
+  for (let i = 0; i < photo.length; i++) {
+    h1 = ((h1 ^ photo.charCodeAt(i)) * 16777619) >>> 0;
+    h2 = ((h2 + photo.charCodeAt(i) * (i + 1)) * 2654435761) >>> 0;
+  }
+  return `${h1.toString(36)}${h2.toString(36)}${photo.length.toString(36)}`;
+}
+
+async function cachedPhotoId(key: string): Promise<string | null> {
+  const local = photoIdMemo.get(key);
+  if (local) return local;
+  const stored = await dbGet<string>(`tg_photo_cache/${key}`).catch(() => null);
+  if (stored && typeof stored === "string") {
+    photoIdMemo.set(key, stored);
+    return stored;
+  }
+  return null;
+}
+
+function rememberPhotoId(key: string, fileId: string) {
+  photoIdMemo.set(key, fileId);
+  void dbPut(`tg_photo_cache/${key}`, fileId).catch(() => {});
+}
+
+function extractFileId(result: any): string | null {
+  const photos = result?.result?.photo;
+  if (!Array.isArray(photos) || !photos.length) return null;
+  const biggest = photos[photos.length - 1];
+  return typeof biggest?.file_id === "string" ? biggest.file_id : null;
+}
+
+/** Send a product photo. Accepts an http(s) URL, a data: URL, or a Telegram file_id. */
 export async function tgSendPhoto(
   chatId: number,
   photo: string,
@@ -427,7 +467,26 @@ export async function tgSendPhoto(
   keyboard?: unknown,
 ): Promise<boolean> {
   try {
-    const m = /^data:([^;,]+);base64,(.*)$/i.exec(photo.trim());
+    const src = photo.trim();
+    const key = photoKey(src);
+    const cached = await cachedPhotoId(key);
+    if (cached) {
+      try {
+        await tg("sendPhoto", {
+          chat_id: chatId,
+          photo: cached,
+          ...(caption ? { caption: String(decorateText(caption)), parse_mode: "HTML" } : {}),
+          ...(keyboard ? { reply_markup: decorateMarkup(keyboard) } : {}),
+        });
+        return true;
+      } catch {
+        // Cached id expired or was rejected — fall through and upload again.
+        photoIdMemo.delete(key);
+        void dbPut(`tg_photo_cache/${key}`, null).catch(() => {});
+      }
+    }
+
+    const m = /^data:([^;,]+);base64,(.*)$/i.exec(src);
     if (m) {
       const api = tgApi("sendPhoto");
       if (!api) return false;
@@ -459,19 +518,27 @@ export async function tgSendPhoto(
               JSON.stringify(stripUnsupportedButtonDecorations(decorateMarkup(keyboard))),
             );
           const retry = await fetch(api.url, { method: "POST", headers: api.headers, body: form });
-          if (retry.ok) return true;
+          if (retry.ok) {
+            const id = extractFileId(await retry.json().catch(() => null));
+            if (id) rememberPhotoId(key, id);
+            return true;
+          }
         }
         return false;
       }
+      const id = extractFileId(await res.json().catch(() => null));
+      if (id) rememberPhotoId(key, id);
       return true;
     }
-    if (!/^https?:\/\//i.test(photo.trim())) return false;
-    await tg("sendPhoto", {
+    if (!/^https?:\/\//i.test(src)) return false;
+    const sent = await tg("sendPhoto", {
       chat_id: chatId,
-      photo: photo.trim(),
+      photo: src,
       ...(caption ? { caption: String(decorateText(caption)), parse_mode: "HTML" } : {}),
       ...(keyboard ? { reply_markup: decorateMarkup(keyboard) } : {}),
     });
+    const id = extractFileId(sent);
+    if (id) rememberPhotoId(key, id);
     return true;
   } catch (e) {
     console.error("sendPhoto error", e);
