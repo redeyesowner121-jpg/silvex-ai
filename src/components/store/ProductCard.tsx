@@ -12,7 +12,7 @@ export function ProductCard({ product }: { product: Product }) {
   const pe = productEmoji(product.id);
 
   return (
-    <div className="flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+    <div className="card-hover shadow-card flex flex-col overflow-hidden rounded-3xl border border-border/60 bg-card">
       <button onClick={() => openProduct(product.id)} className="block aspect-video w-full bg-muted">
         {product.logo ? (
           <img
