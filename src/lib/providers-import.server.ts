@@ -206,6 +206,8 @@ export async function syncAllProviders(force = true): Promise<{
       price,
       supplierPrice: sp.price,
       supplierStock: stock,
+      // Sold-out badge follows the shop's real stock.
+      soldOut: stock <= 0,
       supplierSyncedAt: new Date().toISOString(),
       // Keep the shop description in step with the supplier's own text,
       // unless the admin wrote their own (descEdited).
