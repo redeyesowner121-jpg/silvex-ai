@@ -137,7 +137,7 @@ export async function syncAllProviders(force = true): Promise<{
 }> {
   if (!force) {
     const last = await dbGet<string>("site_settings/supplier_synced_at");
-    if (last && Date.now() - new Date(last).getTime() < 5 * 60 * 1000) return { updated: [] };
+    if (last && Date.now() - new Date(last).getTime() < 60 * 1000) return { updated: [] };
   }
   await dbPatch("site_settings", { supplier_synced_at: new Date().toISOString() });
 
@@ -157,10 +157,20 @@ export async function syncAllProviders(force = true): Promise<{
       String(p.supplierId ?? "").trim() !== "" &&
       !deleted[id],
   );
-  const providers = [...new Set(linked.map(([, p]) => String(p.provider || "custom")))];
+  // Load every switched-on shop, so products saved without a shop name
+  // (older items, or the removed "custom" one) are still refreshed.
+  const providers = new Set(
+    linked
+      .map(([, p]) => String(p.provider || ""))
+      .filter((pid) => pid && !RETIRED_PROVIDERS.includes(pid)),
+  );
+  for (const def of PROVIDERS) {
+    const cfg = await providerConfig(def.id).catch(() => null);
+    if (cfg && cfg.enabled) providers.add(def.id);
+  }
   const catalogues = new Map<string, Map<string, ApiProduct>>();
   await Promise.all(
-    providers.map(async (pid) => {
+    [...providers].map(async (pid) => {
       try {
         const items = await providerProducts(pid);
         catalogues.set(pid, new Map(items.map((i) => [String(i.id), i])));
@@ -172,8 +182,21 @@ export async function syncAllProviders(force = true): Promise<{
 
   const updated: { id: string; title: string; price: number; stock: number }[] = [];
   for (const [id, p] of linked) {
-    const cat = catalogues.get(String(p.provider || "custom"));
-    const sp = cat?.get(String(p.supplierId));
+    const sid = String(p.supplierId);
+    let pid = String(p.provider || "");
+    let sp = catalogues.get(pid)?.get(sid);
+    if (!sp) {
+      // Find the shop this item actually comes from and remember it.
+      for (const [otherId, cat] of catalogues) {
+        const hit = cat.get(sid);
+        if (hit) {
+          sp = hit;
+          pid = otherId;
+          await dbPatch(`products/${id}`, { provider: otherId });
+          break;
+        }
+      }
+    }
     if (!sp) continue;
     const price = sellPrice(sp.price, Number(p.markup) || 130);
     const stock = sp.unlimited ? 9999 : Math.max(0, sp.stock);
@@ -183,6 +206,8 @@ export async function syncAllProviders(force = true): Promise<{
       price,
       supplierPrice: sp.price,
       supplierStock: stock,
+      // Sold-out badge follows the shop's real stock.
+      soldOut: stock <= 0,
       supplierSyncedAt: new Date().toISOString(),
       // Keep the shop description in step with the supplier's own text,
       // unless the admin wrote their own (descEdited).
