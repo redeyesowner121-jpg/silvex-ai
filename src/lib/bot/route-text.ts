@@ -45,14 +45,18 @@ export async function handleText(
     await setState(chatId, null);
     void registerBotCommands().catch(() => undefined);
     if (await forceJoinBlocked(chatId)) return;
-    // Announce brand-new bot users in the activity group.
-    if (t.startsWith("/start") && !(await dbGet<string>(`telegramLinks/${chatId}`))) {
+    // Every /start goes to the activity group right away.
+    if (t.startsWith("/start")) {
+      const isNew = !(await dbGet<string>(`telegramLinks/${chatId}`));
       const fullName = [fromUser?.first_name, fromUser?.last_name].filter(Boolean).join(" ").trim();
+      const tag = fromUser?.username
+        ? `@${fromUser.username}`
+        : `user <code>${fromUser?.id ?? chatId}</code>`;
       void notifyGroup(
-        `🚀 <b>NEW BOT START</b>\n\n` +
+        `🚀 <b>${isNew ? "NEW BOT START" : "BOT START"}</b>\n\n` +
           `👤 Name: ${fullName || "-"}\n` +
           `🆔 ID: <code>${fromUser?.id ?? chatId}</code>\n` +
-          `🔗 Username: ${fromUser?.username ? `@${fromUser.username}` : `user <code>${fromUser?.id ?? chatId}</code>`}`,
+          `🔗 Username: ${tag}`,
       ).catch(() => undefined);
     }
     if (t.startsWith("/start ")) {
