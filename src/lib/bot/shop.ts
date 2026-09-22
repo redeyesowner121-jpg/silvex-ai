@@ -167,7 +167,7 @@ export async function sendProduct(chatId: number, id: string) {
 
   const keyboard = {
     inline_keyboard: [
-      ...((p as any).soldOut
+      ...(isOutOfStock(p)
         ? [[{ text: "🚫 Out of stock", callback_data: `p:${id}` }]]
         : [[{ text: `🟢 ${be("btn.buy")} Buy now — ${money(p.price || 0)}`, callback_data: `b:${id}` }]]),
       [
@@ -200,7 +200,7 @@ async function maxQty(p: Product) {
 export async function askQty(chatId: number, productId: string, qty = 1) {
   const p = await dbGet<Product>(`products/${productId}`);
   if (!p) return say(chatId, "Product not found.", backHome);
-  if ((p as any).soldOut)
+  if (isOutOfStock(p))
     return say(chatId, "This product is out of stock right now.", backHome);
   const price = Number(p.price || 0);
   const max = await maxQty(p);
@@ -233,7 +233,7 @@ export async function askQty(chatId: number, productId: string, qty = 1) {
 export async function askPayMethod(chatId: number, productId: string, qty: number) {
   const p = await dbGet<Product>(`products/${productId}`);
   if (!p) return say(chatId, "Product not found.", backHome);
-  if ((p as any).soldOut)
+  if (isOutOfStock(p))
     return say(chatId, "This product is out of stock right now.", backHome);
   const uid = await ensureUser(chatId);
   const user = (await dbGet<any>(`users/${uid}`)) || {};
@@ -262,7 +262,7 @@ export async function askPayMethod(chatId: number, productId: string, qty: numbe
 export async function confirmWalletPay(chatId: number, productId: string, qty: number) {
   const p = await dbGet<Product>(`products/${productId}`);
   if (!p) return say(chatId, "Product not found.", backHome);
-  if ((p as any).soldOut)
+  if (isOutOfStock(p))
     return say(chatId, "This product is out of stock right now.", backHome);
   const total = Math.round(Number(p.price || 0) * qty * 100) / 100;
   await say(
@@ -284,7 +284,7 @@ export async function buy(chatId: number, productId: string, qty = 1) {
     dbGet<any>(`users/${uid}`),
   ]);
   if (!p) return say(chatId, "Product not found.", backHome);
-  if ((p as any).soldOut)
+  if (isOutOfStock(p))
     return say(chatId, "This product is out of stock right now.", backHome);
   const count = Math.max(1, Math.min(Math.floor(Number(qty) || 1), 20));
   const unitPrice = Number(p.price || 0);
