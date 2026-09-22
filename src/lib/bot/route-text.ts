@@ -169,6 +169,11 @@ export async function handleText(
     return askQty(chatId, String(state?.a || ""), n);
   }
 
+  if (k === "prod_search") {
+    await setState(chatId, null);
+    return sendProducts(chatId, 0, t);
+  }
+
   if (k === "dep_card") return createCardLink(chatId, t);
 
   if (k === "dep_hash") {
