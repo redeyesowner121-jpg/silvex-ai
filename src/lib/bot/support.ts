@@ -27,7 +27,7 @@ export async function startSupportChat(chatId: number) {
     {
       inline_keyboard: [
         [{ text: "🛍 Products", callback_data: "products" }],
-        [{ text: "⬅️ Menu", callback_data: "home" }],
+        [{ text: "⬅️ Back to Shop", callback_data: "home" }],
       ],
     },
   );
@@ -354,7 +354,7 @@ async function aiReply(chatId: number, uid: string, question: string) {
     reply_markup: {
       inline_keyboard: [
         [{ text: "🛍 Products", callback_data: "products" }],
-        [{ text: "⬅️ Menu", callback_data: "home" }],
+        [{ text: "⬅️ Back to Shop", callback_data: "home" }],
       ],
     },
   }).catch(() => undefined);

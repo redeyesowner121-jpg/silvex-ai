@@ -93,7 +93,7 @@ export async function handleCallback(chatId: number, data: string) {
         inline_keyboard: [
           [{ text: "✏️ Set channel", callback_data: "a:s:forceJoin" }],
           [{ text: "🚫 Turn off", callback_data: "a:fjoff" }],
-          [{ text: "⬅️ Admin", callback_data: "a:home" }],
+          [{ text: "⬅️ Back to Admin Panel", callback_data: "a:home" }],
         ],
       });
     }
@@ -106,7 +106,7 @@ export async function handleCallback(chatId: number, data: string) {
       return say(chatId, `⭐ <b>Review channel</b>\n\nCurrent: ${c.reviewChannel || "not set"}`, {
         inline_keyboard: [
           [{ text: "✏️ Set channel", callback_data: "a:s:reviewChannel" }],
-          [{ text: "⬅️ Admin", callback_data: "a:home" }],
+          [{ text: "⬅️ Back to Admin Panel", callback_data: "a:home" }],
         ],
       });
     }
@@ -194,7 +194,7 @@ export async function handleCallback(chatId: number, data: string) {
     const pid = data.slice(4);
     await setState(chatId, { k: "buy_qty", a: pid });
     return say(chatId, "✏️ Send the number of items you want (1–20).", {
-      inline_keyboard: [[{ text: "⬅️ Back", callback_data: `b:${pid}` }]],
+      inline_keyboard: [[{ text: "⬅️ Back to Product", callback_data: `b:${pid}` }]],
     });
   }
   if (data.startsWith("bq:")) {

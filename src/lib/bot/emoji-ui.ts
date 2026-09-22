@@ -25,9 +25,9 @@ function emPager(prefix: string, page: number, total: number) {
   const pages = Math.max(1, Math.ceil(total / EM_PAGE));
   if (pages < 2) return [] as any[];
   const row: any[] = [];
-  if (page > 0) row.push({ text: "⬅️ Prev", callback_data: `${prefix}${page - 1}` });
+  if (page > 0) row.push({ text: "⬅️ Previous Page", callback_data: `${prefix}${page - 1}` });
   row.push({ text: `${page + 1}/${pages}`, callback_data: "noop" });
-  if (page < pages - 1) row.push({ text: "Next ➡️", callback_data: `${prefix}${page + 1}` });
+  if (page < pages - 1) row.push({ text: "Next Page ➡️", callback_data: `${prefix}${page + 1}` });
   return [row];
 }
 
@@ -53,7 +53,7 @@ export async function emojiHome(chatId: number, note = "") {
         [{ text: "🔄 Sync website artwork", callback_data: "a:em:sync" }],
         [{ text: on ? "🚫 Turn premium off" : "✨ Turn premium on", callback_data: "a:em:tog" }],
         [{ text: "♻️ Reset all emojis", callback_data: "a:em:rst" }],
-        [{ text: "⬅️ Admin", callback_data: "a:home" }],
+        [{ text: "⬅️ Back to Admin Panel", callback_data: "a:home" }],
       ],
     },
   );
@@ -70,7 +70,7 @@ export async function emojiGroup(chatId: number, group: string, page = 0) {
   const slots = Object.entries(EMOJI_SLOTS).filter(([, v]) => v.group === group);
   if (!slots.length)
     return say(chatId, "Nothing here yet.", {
-      inline_keyboard: [[{ text: "⬅️ Emojis", callback_data: "a:em" }]],
+      inline_keyboard: [[{ text: "⬅️ Back to Emoji Setup", callback_data: "a:em" }]],
     });
   const slice = slots.slice(page * EM_PAGE, page * EM_PAGE + EM_PAGE);
   await say(
@@ -80,7 +80,7 @@ export async function emojiGroup(chatId: number, group: string, page = 0) {
       inline_keyboard: [
         ...slice.map(([key, v]) => [{ text: `${be(key)} ${v.label}`, callback_data: `a:emk:${key}` }]),
         ...emPager(`a:emg:${group}:`, page, slots.length),
-        [{ text: "⬅️ Emojis", callback_data: "a:em" }],
+        [{ text: "⬅️ Back to Emoji Setup", callback_data: "a:em" }],
       ],
     },
   );
@@ -107,7 +107,7 @@ export async function emojiList(chatId: number, page = 0) {
   const saved = listSlotOverrides();
   if (!saved.length)
     return say(chatId, "No emoji changed yet.", {
-      inline_keyboard: [[{ text: "⬅️ Emojis", callback_data: "a:em" }]],
+      inline_keyboard: [[{ text: "⬅️ Back to Emoji Setup", callback_data: "a:em" }]],
     });
   const slice = saved.slice(page * EM_PAGE, page * EM_PAGE + EM_PAGE);
   await say(chatId, "📋 <b>Saved emojis</b>\nTap one to put the default back.", {
@@ -119,7 +119,7 @@ export async function emojiList(chatId: number, page = 0) {
         },
       ]),
       ...emPager("a:emL:", page, saved.length),
-      [{ text: "⬅️ Emojis", callback_data: "a:em" }],
+      [{ text: "⬅️ Back to Emoji Setup", callback_data: "a:em" }],
     ],
   });
 }
@@ -129,7 +129,7 @@ export async function emojiProducts(chatId: number, page = 0) {
   const entries = Object.entries(all);
   if (!entries.length)
     return say(chatId, "No products yet.", {
-      inline_keyboard: [[{ text: "⬅️ Emojis", callback_data: "a:em" }]],
+      inline_keyboard: [[{ text: "⬅️ Back to Emoji Setup", callback_data: "a:em" }]],
     });
   const slice = entries.slice(page * EM_PAGE, page * EM_PAGE + EM_PAGE);
   await say(chatId, "🛍 <b>Product emojis</b>\nChoose a product, then send the emoji.", {
@@ -138,7 +138,7 @@ export async function emojiProducts(chatId: number, page = 0) {
         { text: `${productEmojiChar(id)} ${p.title || "Item"}`, callback_data: `a:emp:${id}` },
       ]),
       ...emPager("a:emP:", page, entries.length),
-      [{ text: "⬅️ Emojis", callback_data: "a:em" }],
+      [{ text: "⬅️ Back to Emoji Setup", callback_data: "a:em" }],
     ],
   });
 }
