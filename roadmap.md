@@ -5,6 +5,10 @@
 
 # Roadmap
 
+## Telegram navigation (done)
+- [x] Restore a Back to Shop button below the full product list
+- [x] Use complete destination labels for Back buttons throughout the bot
+
 ## Admin pages (done)
 - [x] Keep the admin dashboard at `/admin` under a proper admin layout
 - [x] Add a complete dedicated product editor at `/admin/edit/:productId`
