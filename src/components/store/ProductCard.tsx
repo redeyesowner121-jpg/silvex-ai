@@ -81,7 +81,7 @@ export function FolderCard({ name, slug, items }: { name: string; slug: string; 
   const from = Math.min(...items.map((p) => Number(p.price) || 0));
 
   return (
-    <div className="flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+    <div className="card-hover shadow-card flex flex-col overflow-hidden rounded-3xl border border-border/60 bg-card">
       <Link to="/products" search={{ group: slug }} className="block aspect-video w-full bg-muted">
         {cover ? (
           <img src={cover} alt={name} loading="lazy" decoding="async" className="h-full w-full object-cover" />
