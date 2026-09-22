@@ -297,8 +297,8 @@ export async function say(chatId: number, text: string, keyboard?: any) {
   await tg("sendMessage", body);
 }
 
-export const backHome = { inline_keyboard: [[{ text: "⬅️ Menu", callback_data: "home" }]] };
-export const adminBack = { inline_keyboard: [[{ text: "⬅️ Admin", callback_data: "a:home" }]] };
+export const backHome = { inline_keyboard: [[{ text: "⬅️ Back to Shop", callback_data: "home" }]] };
+export const adminBack = { inline_keyboard: [[{ text: "⬅️ Back to Admin Panel", callback_data: "a:home" }]] };
 
 /* ---------------- force join ---------------- */
 

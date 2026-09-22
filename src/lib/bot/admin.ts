@@ -105,7 +105,7 @@ export async function adminOrders(chatId: number) {
           callback_data: `a:o:${o.orderId}`,
         },
       ]),
-      [{ text: "⬅️ Admin", callback_data: "a:home" }],
+      [{ text: "⬅️ Back to Admin Panel", callback_data: "a:home" }],
     ],
   });
 }
@@ -121,7 +121,7 @@ export async function adminOrder(chatId: number, orderId: string) {
       inline_keyboard: [
         [{ text: "✅ Complete delivery", callback_data: `a:dl:${orderId}` }],
         [{ text: "❌ Cancel & refund", callback_data: `a:oc:${orderId}` }],
-        [{ text: "⬅️ Orders", callback_data: "a:orders" }],
+        [{ text: "⬅️ Back to Orders", callback_data: "a:orders" }],
       ],
     },
   );
@@ -201,7 +201,7 @@ export async function adminRequests(chatId: number) {
           { text: "❌ Reject", callback_data: `a:rr:${id}` },
         ],
       ]),
-      [{ text: "⬅️ Admin", callback_data: "a:home" }],
+      [{ text: "⬅️ Back to Admin Panel", callback_data: "a:home" }],
     ],
   });
 }
@@ -238,7 +238,7 @@ export async function adminProducts(chatId: number) {
   const newBtn = [{ text: "➕ New product", callback_data: "a:pnew" }];
   if (!list.length)
     return say(chatId, "📦 No products yet. Add your first one.", {
-      inline_keyboard: [newBtn, [{ text: "⬅️ Admin", callback_data: "a:home" }]],
+      inline_keyboard: [newBtn, [{ text: "⬅️ Back to Admin Panel", callback_data: "a:home" }]],
     });
   await say(chatId, "📦 <b>Products</b>\nTap one to manage.", {
     inline_keyboard: [
@@ -249,7 +249,7 @@ export async function adminProducts(chatId: number) {
         },
       ]),
       newBtn,
-      [{ text: "⬅️ Admin", callback_data: "a:home" }],
+      [{ text: "⬅️ Back to Admin Panel", callback_data: "a:home" }],
     ],
   });
 }
@@ -280,7 +280,7 @@ export async function adminProduct(chatId: number, id: string) {
           { text: "🧹 Clear stock", callback_data: `a:psc:${id}` },
           { text: "🗑 Delete", callback_data: `a:pdel:${id}` },
         ],
-        [{ text: "⬅️ Products", callback_data: "a:prod" }],
+        [{ text: "⬅️ Back to Products", callback_data: "a:prod" }],
       ],
     },
   );
@@ -305,7 +305,7 @@ export async function adminFindUser(chatId: number, q: string) {
       ...hits.map(([uid, u]: [string, any]) => [
         { text: `${u.email} • ${money(u.wallet || 0)}`.slice(0, 60), callback_data: `a:u:${uid}` },
       ]),
-      [{ text: "⬅️ Admin", callback_data: "a:home" }],
+      [{ text: "⬅️ Back to Admin Panel", callback_data: "a:home" }],
     ],
   });
 }
@@ -319,7 +319,7 @@ export async function adminUser(chatId: number, uid: string) {
       inline_keyboard: [
         [{ text: "💵 Set wallet balance", callback_data: `a:uw:${uid}` }],
         [{ text: u.isAdmin ? "🚫 Remove admin" : "🛠 Make admin", callback_data: `a:ua:${uid}` }],
-        [{ text: "⬅️ Admin", callback_data: "a:home" }],
+        [{ text: "⬅️ Back to Admin Panel", callback_data: "a:home" }],
       ],
     },
   );
@@ -335,7 +335,7 @@ export async function adminSettings(chatId: number) {
         [{ text: "✏️ Site name", callback_data: "a:s:siteName" }],
         [{ text: "✏️ Support link", callback_data: "a:s:supportLink" }],
         [{ text: "✏️ Deposit address", callback_data: "a:s:depositAddress" }],
-        [{ text: "⬅️ Admin", callback_data: "a:home" }],
+        [{ text: "⬅️ Back to Admin Panel", callback_data: "a:home" }],
       ],
     },
   );

@@ -108,6 +108,7 @@ export async function sendProducts(chatId: number) {
         { text: `📁 ${f.name} — ${f.items.length} plans`, callback_data: `g:${slug}` },
       ]),
       ...list.map(([id, p]) => [listButton(id, p)]),
+      [{ text: "⬅️ Back to Shop", callback_data: "home" }],
     ],
   });
 }
@@ -127,7 +128,7 @@ export async function sendGroup(chatId: number, slug: string) {
   await say(chatId, `📁 <b>${name}</b>\n\n${lines}\n\nPick the plan you want.`, {
     inline_keyboard: [
       ...list.map(([id, p]) => [listButton(id, p)]),
-      [{ text: `🔵 ${be("btn.back")} Products`, callback_data: "products" }],
+      [{ text: `🔵 ${be("btn.back")} Back to Products`, callback_data: "products" }],
     ],
   });
 }
@@ -171,7 +172,7 @@ export async function sendProduct(chatId: number, id: string) {
         ? [[{ text: "🚫 Out of stock", callback_data: `p:${id}` }]]
         : [[{ text: `🟢 ${be("btn.buy")} Buy now — ${money(p.price || 0)}`, callback_data: `b:${id}` }]]),
       [
-        { text: `🔵 ${be("btn.back")} Products`, callback_data: "products" },
+        { text: `🔵 ${be("btn.back")} Back to Products`, callback_data: "products" },
         { text: `🟣 ${be("btn.wallet")} Wallet`, callback_data: "wallet" },
       ],
     ],
@@ -225,7 +226,7 @@ export async function askQty(chatId: number, productId: string, qty = 1) {
       `Selected quantity: <b>${count}</b>\n` +
       `Total: <b>${money(Math.round(price * count * 100) / 100)}</b>\n\n` +
       `Pick another quantity if you like (1–${max}), then press Continue.`,
-    { inline_keyboard: [...rows, [{ text: "⬅️ Back", callback_data: `p:${productId}` }]] },
+    { inline_keyboard: [...rows, [{ text: "⬅️ Back to Product", callback_data: `p:${productId}` }]] },
   );
 }
 
@@ -246,7 +247,7 @@ export async function askPayMethod(chatId: number, productId: string, qty: numbe
   if (String(c.razorpayKeyId || "").trim())
     rows.push([{ text: "💳 Card / UPI", callback_data: `pbc:${productId}:${qty}` }]);
   rows.push([{ text: "🪙 Crypto (USDT)", callback_data: "dep" }]);
-  rows.push([{ text: "⬅️ Back", callback_data: `bq:${productId}:${qty}` }]);
+  rows.push([{ text: "⬅️ Back to Quantity", callback_data: `bq:${productId}:${qty}` }]);
   await say(
     chatId,
     `💳 <b>Payment method</b>\n\n${productEmoji(productId)} ${p.title}\nQuantity: <b>${qty}</b>\nTotal: <b>${money(total)}</b>\n` +
@@ -271,7 +272,7 @@ export async function confirmWalletPay(chatId: number, productId: string, qty: n
     {
       inline_keyboard: [
         [{ text: `${productEmojiChar(productId)} Confirm & pay`, callback_data: `bgo:${productId}:${qty}` }],
-        [{ text: "⬅️ Back", callback_data: `bpm:${productId}:${qty}` }],
+        [{ text: "⬅️ Back to Payment Methods", callback_data: `bpm:${productId}:${qty}` }],
       ],
     },
   );

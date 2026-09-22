@@ -25,7 +25,7 @@ export async function sendWallet(chatId: number) {
         { text: "➖ Withdraw", callback_data: "wd" },
       ],
       [{ text: "📜 History", callback_data: "whist" }],
-      [{ text: "⬅️ Menu", callback_data: "home" }],
+      [{ text: "⬅️ Back to Shop", callback_data: "home" }],
     ],
   });
 }
@@ -124,7 +124,7 @@ export async function createCardLink(chatId: number, text: string) {
       inline_keyboard: [
         [{ text: "💳 Pay now", url: res.url }],
         [{ text: "✅ I have paid", callback_data: `pchk:${res.id}` }],
-        [{ text: "🏠 Home", callback_data: "home" }],
+        [{ text: "⬅️ Back to Shop", callback_data: "home" }],
       ],
     },
   );
@@ -171,7 +171,7 @@ export async function payProductByCard(chatId: number, productId: string, qty: n
       inline_keyboard: [
         [{ text: "💳 Pay now", url: res.url }],
         [{ text: "✅ I have paid", callback_data: `pchk:${res.id}` }],
-        [{ text: "🏠 Home", callback_data: "home" }],
+        [{ text: "⬅️ Back to Shop", callback_data: "home" }],
       ],
     },
   );
@@ -200,7 +200,7 @@ export async function checkCardPayment(chatId: number, linkId: string) {
     return say(
       chatId,
       "⏳ We have not received this payment yet. If you just paid, wait a few seconds and tap again.",
-      { inline_keyboard: [[{ text: "🔄 I have paid", callback_data: `pchk:${id}` }], [{ text: "🏠 Home", callback_data: "home" }]] },
+      { inline_keyboard: [[{ text: "🔄 I have paid", callback_data: `pchk:${id}` }], [{ text: "⬅️ Back to Shop", callback_data: "home" }]] },
     );
   }
   return say(chatId, `❌ ${out.message}`, backHome);
@@ -226,7 +226,7 @@ export async function sendProfile(chatId: number) {
     {
       inline_keyboard: [
         [{ text: "📧 Set email", callback_data: "setmail" }],
-        [{ text: "⬅️ Menu", callback_data: "home" }],
+        [{ text: "⬅️ Back to Shop", callback_data: "home" }],
       ],
     },
   );
@@ -268,7 +268,7 @@ export async function sendApiKey(chatId: number, regenerate: boolean) {
         [{ text: "♻️ Generate new key", callback_data: "apikey_new" }],
         [{ text: "⬇️ Download API docs", callback_data: "apikey_docs" }],
         [{ text: "📘 Full docs", url: `${siteUrl()}/api-key` }],
-        [{ text: "⬅️ Menu", callback_data: "home" }],
+        [{ text: "⬅️ Back to Shop", callback_data: "home" }],
       ],
     },
   );
@@ -306,7 +306,7 @@ export async function sendOrders(chatId: number) {
     })
     .join("\n\n");
   await say(chatId, text, {
-    inline_keyboard: [[{ text: "⬅️ Menu", callback_data: "home" }]],
+    inline_keyboard: [[{ text: "⬅️ Back to Shop", callback_data: "home" }]],
   });
 }
 
@@ -319,7 +319,7 @@ export async function sendReviews(chatId: number) {
     : "No reviews yet.";
   const rows: any[] = [[{ text: "✍️ Write a review", callback_data: "rev_new" }]];
   if (c.reviewChannel) rows.push([{ text: "📢 Review channel", url: channelLink(c.reviewChannel) }]);
-  rows.push([{ text: "⬅️ Menu", callback_data: "home" }]);
+  rows.push([{ text: "⬅️ Back to Shop", callback_data: "home" }]);
   await say(chatId, `⭐ <b>Reviews</b>\n\n${text}`, { inline_keyboard: rows });
 }
 
@@ -444,7 +444,7 @@ export async function sendSupport(chatId: number) {
   const tgLink = telegramSupportLink((c as any).supportTelegram);
   if (tgLink) rows.push([{ text: "✈️ Telegram support", url: tgLink }]);
   if (c.supportLink) rows.push([{ text: "💬 WhatsApp support", url: c.supportLink }]);
-  rows.push([{ text: "⬅️ Menu", callback_data: "home" }]);
+  rows.push([{ text: "⬅️ Back to Shop", callback_data: "home" }]);
   await say(chatId, "🆘 <b>Support</b>\n\nWe reply 24/7. You can also message us on the website.", {
     inline_keyboard: rows,
   });
