@@ -137,7 +137,7 @@ export async function syncAllProviders(force = true): Promise<{
 }> {
   if (!force) {
     const last = await dbGet<string>("site_settings/supplier_synced_at");
-    if (last && Date.now() - new Date(last).getTime() < 5 * 60 * 1000) return { updated: [] };
+    if (last && Date.now() - new Date(last).getTime() < 60 * 1000) return { updated: [] };
   }
   await dbPatch("site_settings", { supplier_synced_at: new Date().toISOString() });
 
