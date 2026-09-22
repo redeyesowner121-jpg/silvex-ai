@@ -36,7 +36,7 @@ export function ProductCard({ product }: { product: Product }) {
       </button>
       <div className="flex flex-1 flex-col p-3">
         {product.type ? (
-          <span className="mb-1 w-fit rounded bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase text-primary">
+          <span className="mb-1 w-fit rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary">
             {product.type}
           </span>
         ) : null}
