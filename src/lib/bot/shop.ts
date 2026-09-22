@@ -2,7 +2,7 @@
 import { defaultDepositAddress } from "@/lib/deposit.server";
 import { formatDescription } from "@/lib/format-desc";
 
-import { dbGet, dbPush, dbPut, money, notifyOwners, sendDeliveryFiles, siteUrl, tg, tgSendPhoto } from "@/lib/telegram.server";
+import { dbGet, dbPush, dbPut, money, notifyOwners, sendDeliveryFiles, siteUrl, tg, tgSendPhoto, tgTag } from "@/lib/telegram.server";
 import { be, e as em, productEmoji, productEmojiChar } from "@/lib/emoji.server";
 import { allProducts, askEmail, backHome, cfg, editTarget, ensureUser, invalidateProducts, invalidateUsers, say, type Product } from "./core";
 import { payReferralCommission } from "./wallet";
@@ -142,7 +142,7 @@ export async function sendProducts(chatId: number, page = 0, query = "") {
     if (q) {
       // Nobody found anything for this search — let the owners and the log group know.
       void notifyOwners(
-        `🔍 <b>Search with no result</b>\nUser: <code>${chatId}</code>\nSearched: <b>${q.replace(/</g, "&lt;")}</b>`,
+        `🔍 <b>Search with no result</b>\nUser: ${await tgTag(chatId)}\nSearched: <b>${q.replace(/</g, "&lt;")}</b>`,
       ).catch(() => undefined);
       return say(
         chatId,
@@ -483,6 +483,6 @@ export async function buy(chatId: number, productId: string, qty = 1) {
   }
 
   await notifyOwners(
-    `🛒 <b>New Telegram order</b>\n${p.title}\nBuyer: ${user.email || chatId}\nTotal: ${money(price)}\nOrder: ${orderId}\nStatus: ${complete ? "Completed" : "Pending"}`,
+    `🛒 <b>New Telegram order</b>\n${p.title}\nBuyer: ${await tgTag(chatId)}${user.email ? ` (${user.email})` : ""}\nTotal: ${money(price)}\nOrder: ${orderId}\nStatus: ${complete ? "Completed" : "Pending"}`,
   );
 }
