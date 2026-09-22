@@ -404,6 +404,33 @@ export async function providerBuy(
   return lines;
 }
 
+/**
+ * Work out which shop a linked product really belongs to.
+ * Older products were saved without a shop name (or with the removed "custom"
+ * one), which made both the stock refresh and the automatic delivery fail.
+ * We look the supplier item up in every switched-on shop and use that one.
+ */
+export async function resolveProviderFor(
+  supplierId: string | number,
+  current?: string,
+): Promise<string> {
+  const cur = String(current || "").trim();
+  if (cur && providerDef(cur) && !RETIRED_PROVIDERS.includes(cur)) return cur;
+  const sid = String(supplierId).trim();
+  if (!sid) return cur || "custom";
+  for (const def of PROVIDERS) {
+    try {
+      const cfg = await providerConfig(def.id);
+      if (!cfg.enabled) continue;
+      const items = await providerProducts(def.id);
+      if (items.some((i) => String(i.id) === sid)) return def.id;
+    } catch {
+      /* shop down — try the next one */
+    }
+  }
+  return cur || "custom";
+}
+
 /** Firebase-safe product key for an imported provider item. */
 export function apiProductKey(provider: string, id: string | number): string {
   return `api_${provider}_${String(id).replace(/[^A-Za-z0-9_-]/g, "_")}`;
