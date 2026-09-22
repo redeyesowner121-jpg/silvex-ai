@@ -12,18 +12,27 @@ export const RTDB_URL = DEFAULT_RTDB_URL;
 /** Fallbacks of the original store only — a new database starts empty. */
 const DEFAULT_SITE_URL = "https://silvex-ai.com";
 const DEFAULT_OWNER_IDS = [7926443195, 6898461453];
+/** Activity group where every bot notification is mirrored. */
+const DEFAULT_GROUP_ID = "-1003955387789";
 
 let runtimeSiteUrl = "";
 let runtimeOwnerIds: number[] = [];
+let runtimeGroupId = "";
 
 let runtimeBotToken = "";
 
 export function applyBotConfig(
-  c?: { siteUrl?: string; telegramOwners?: string | number[]; botToken?: string } | null,
+  c?: {
+    siteUrl?: string;
+    telegramOwners?: string | number[];
+    botToken?: string;
+    notifyGroup?: string | number;
+  } | null,
 ) {
   if (!c) return;
   if (c.botToken !== undefined) runtimeBotToken = String(c.botToken ?? "").trim();
   if (c.siteUrl) runtimeSiteUrl = String(c.siteUrl).trim().replace(/\/+$/, "");
+  if (c.notifyGroup !== undefined) runtimeGroupId = normalizeGroupId(c.notifyGroup);
   const raw = c.telegramOwners;
   const ids = (Array.isArray(raw) ? raw : String(raw ?? "").split(/[,\s]+/))
     .map((v) => Number(String(v).trim()))
@@ -36,6 +45,22 @@ export const siteUrl = () =>
   runtimeSiteUrl || (isOriginProject() ? DEFAULT_SITE_URL : process.env["SITE_URL"] || "");
 export const ownerIds = () =>
   runtimeOwnerIds.length ? runtimeOwnerIds : isOriginProject() ? DEFAULT_OWNER_IDS : [];
+
+/**
+ * Telegram supergroup ids are negative (-100…). The admin may paste the plain
+ * digits (1003955387789) or an invite link; normalize to the numeric chat id.
+ */
+function normalizeGroupId(raw: string | number): string {
+  const s = String(raw ?? "").trim();
+  if (!s) return "";
+  const digits = s.replace(/[^\d-]/g, "");
+  if (!digits || digits === "-") return "";
+  if (digits.startsWith("-")) return digits;
+  return digits.length >= 10 ? `-100${digits}` : digits;
+}
+
+export const groupId = () =>
+  runtimeGroupId || (isOriginProject() ? DEFAULT_GROUP_ID : "");
 
 
 
@@ -340,12 +365,21 @@ export function money(n: number): string {
   return `$${Number(n || 0).toFixed(2)}`;
 }
 
+/** Mirror a notification into the activity group (silently skipped when unset). */
+export async function notifyGroup(text: string): Promise<void> {
+  const gid = groupId();
+  if (!gid) return;
+  await tg("sendMessage", { chat_id: gid, text, parse_mode: "HTML" }).catch(() => undefined);
+}
+
+/** Every notification goes to the owners privately AND to the activity group. */
 export async function notifyOwners(text: string): Promise<void> {
-  await Promise.all(
-    ownerIds().map((id) =>
+  await Promise.all([
+    ...ownerIds().map((id) =>
       tg("sendMessage", { chat_id: id, text, parse_mode: "HTML" }).catch(() => undefined),
     ),
-  );
+    notifyGroup(text),
+  ]);
 }
 
 
