@@ -33,5 +33,8 @@ export async function supplierBuy(
   requestId: string,
   provider = "custom",
 ): Promise<string[]> {
-  return providerBuy(provider, supplierId, qty, requestId);
+  const { resolveProviderFor } = await import("./providers.server");
+  // Products saved without a shop name would otherwise never deliver.
+  const shop = await resolveProviderFor(supplierId, provider);
+  return providerBuy(shop, supplierId, qty, requestId);
 }
