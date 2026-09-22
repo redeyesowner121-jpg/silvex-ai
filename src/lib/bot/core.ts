@@ -39,6 +39,7 @@ export type Cfg = {
   razorpayKeyId?: string;
   inrPerDollar?: number | string;
   telegramOwners?: string | number[];
+  notifyGroup?: string | number;
   messageEffect?: string;
 };
 
