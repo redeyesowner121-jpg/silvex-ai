@@ -145,7 +145,7 @@ export async function sendProduct(chatId: number, id: string) {
         : p.delivery === "repeat"
           ? `${em("norm.box")} Stock: <b>Unlimited</b>`
           : `${em("norm.clock")} Manual delivery`;
-  const availability = (p as any).soldOut
+  const availability = isOutOfStock(p)
     ? `\n${em("norm.box")} <b>Out of stock</b>`
     : p.delivery === "manual"
       ? ""
