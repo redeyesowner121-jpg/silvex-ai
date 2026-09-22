@@ -88,7 +88,7 @@ export function ProductModal() {
     <Sheet onClose={closeModal}>
       {product.logo ? (
         <img
-          src={product.logo}
+          src={productImageSrc(product.id, product.logo)}
           alt={product.title}
           className="mx-auto mb-4 aspect-video w-full rounded-xl object-cover"
         />
