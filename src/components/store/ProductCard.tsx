@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { Folder } from "lucide-react";
 
 import { useStore, type Product } from "@/context/StoreContext";
+import { productImageSrc } from "@/lib/product-image";
 import { Emo } from "@/components/store/Emo";
 import { EmoText } from "@/components/store/EmoText";
 import { EmojiArt } from "@/components/store/EmojiArt";
