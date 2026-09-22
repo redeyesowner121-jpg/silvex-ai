@@ -92,7 +92,7 @@ export function FolderCard({ name, slug, items }: { name: string; slug: string; 
         )}
       </Link>
       <div className="flex flex-1 flex-col p-3">
-        <span className="mb-1 flex w-fit items-center gap-1 rounded bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase text-primary">
+        <span className="mb-1 flex w-fit items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary">
           <Folder className="h-3 w-3" aria-hidden="true" /> {items.length} plans
         </span>
         <h3 className="line-clamp-2 text-sm font-bold leading-tight">{name}</h3>
