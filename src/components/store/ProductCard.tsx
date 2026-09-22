@@ -97,11 +97,11 @@ export function FolderCard({ name, slug, items }: { name: string; slug: string; 
         </span>
         <h3 className="line-clamp-2 text-sm font-bold leading-tight">{name}</h3>
         <div className="mt-auto flex items-center justify-between pt-3">
-          <span className="text-lg font-black">from ${from}</span>
+          <span className="font-display text-gradient text-lg font-black">from ${from}</span>
           <Link
             to="/products"
             search={{ group: slug }}
-            className="btn-grad rounded-lg px-3 py-1.5 text-xs font-bold"
+            className="btn-grad rounded-xl px-4 py-1.5 text-xs font-bold"
           >
             VIEW
           </Link>
