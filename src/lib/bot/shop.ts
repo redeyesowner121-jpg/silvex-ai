@@ -68,11 +68,43 @@ function listButton(id: string, p: Product) {
   return button;
 }
 
-export async function sendProducts(chatId: number) {
-  const entries = await visibleProducts();
-  if (!entries.length) return say(chatId, "No products available right now.", backHome);
+const PAGE_SIZE = 8;
 
-  // Products sharing a folder name are shown once as a folder of variations.
+type Entry =
+  | { kind: "folder"; slug: string; name: string; items: [string, Product][] }
+  | { kind: "product"; id: string; p: Product };
+
+const norm = (s: string) => String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+
+/** Loose match so "cap" finds "CapCut" and "gemni" still finds "Gemini". */
+function matches(haystack: string, query: string) {
+  const h = norm(haystack);
+  const q = norm(query);
+  if (!q) return true;
+  return q.split(" ").every((term) => {
+    if (!term) return true;
+    if (h.includes(term)) return true;
+    return h.split(" ").some((word) => {
+      if (word.startsWith(term) || term.startsWith(word)) return true;
+      if (term.length < 4) return false;
+      // allow one typo
+      let diff = 0;
+      const len = Math.max(word.length, term.length);
+      if (Math.abs(word.length - term.length) > 1) return false;
+      for (let i = 0, j = 0; i < len; i++, j++) {
+        if (word[i] === term[j]) continue;
+        if (++diff > 1) return false;
+        if (word.length > term.length) j--;
+        else if (term.length > word.length) i--;
+      }
+      return true;
+    });
+  });
+}
+
+/** Folders + single products, optionally filtered by a search term. */
+async function catalog(query = ""): Promise<Entry[]> {
+  const entries = await visibleProducts();
   const folders = new Map<string, { name: string; items: [string, Product][] }>();
   const singles: [string, Product][] = [];
   for (const entry of entries) {
@@ -87,29 +119,92 @@ export async function sendProducts(chatId: number) {
     else folders.set(slug, { name, items: [entry] });
   }
 
-  const folderList = [...folders.entries()];
-  const list = singles.slice(0, Math.max(0, 40 - folderList.length));
+  const out: Entry[] = [];
+  for (const [slug, f] of folders) {
+    const hit =
+      matches(f.name, query) || f.items.some(([, p]) => matches(String(p.title || ""), query));
+    if (hit) out.push({ kind: "folder", slug, name: f.name, items: f.items });
+  }
+  for (const [id, p] of singles) {
+    if (matches(`${p.title || ""} ${(p as any).type || ""}`, query))
+      out.push({ kind: "product", id, p });
+  }
+  return out;
+}
+
+const searchButton = { text: "🔍 Search products", callback_data: "psearch" };
+
+export async function sendProducts(chatId: number, page = 0, query = "") {
+  const q = String(query || "").slice(0, 30);
+  const entries = await catalog(q);
+
+  if (!entries.length) {
+    if (q) {
+      // Nobody found anything for this search — let the owners and the log group know.
+      void notifyOwners(
+        `🔍 <b>Search with no result</b>\nUser: <code>${chatId}</code>\nSearched: <b>${q.replace(/</g, "&lt;")}</b>`,
+      ).catch(() => undefined);
+      return say(
+        chatId,
+        `🔍 Nothing found for <b>${q.replace(/</g, "&lt;")}</b>.\n\nWe told the store owner — they will add it or reply to you soon.`,
+        {
+          inline_keyboard: [
+            [searchButton],
+            [{ text: "⬅️ Back to Products", callback_data: "products" }],
+          ],
+        },
+      );
+    }
+    return say(chatId, "No products available right now.", backHome);
+  }
+
+  const pages = Math.max(1, Math.ceil(entries.length / PAGE_SIZE));
+  const current = Math.min(Math.max(0, Math.floor(page)), pages - 1);
+  const slice = entries.slice(current * PAGE_SIZE, current * PAGE_SIZE + PAGE_SIZE);
+  const move = (n: number) => (q ? `sq:${n}:${q}` : `pg:${n}`);
 
   // Premium (custom) emoji only render inside message text, never on buttons,
   // so the list itself carries them and the buttons stay plain.
-  const lines = [
-    ...folderList.map(
-      ([, f]) =>
-        `📁 <b>${f.name}</b> — ${f.items.length} plans from ${money(
-          Math.min(...f.items.map(([, p]) => Number(p.price) || 0)),
-        )}`,
-    ),
-    ...list.map(([id, p]) => `${productEmoji(id)} <b>${p.title}</b> — ${money(p.price || 0)}`),
-  ].join("\n");
+  const lines = slice
+    .map((entry) =>
+      entry.kind === "folder"
+        ? `📁 <b>${entry.name}</b> — ${entry.items.length} plans from ${money(
+            Math.min(...entry.items.map(([, p]) => Number(p.price) || 0)),
+          )}`
+        : `${productEmoji(entry.id)} <b>${entry.p.title}</b> — ${money(entry.p.price || 0)}`,
+    )
+    .join("\n");
 
-  await say(chatId, `${em("btn.products")} <b>Products</b>\n\n${lines}\n\nTap any item below to see details.`, {
-    inline_keyboard: [
-      ...folderList.map(([slug, f]) => [
-        { text: `📁 ${f.name} — ${f.items.length} plans`, callback_data: `g:${slug}` },
-      ]),
-      ...list.map(([id, p]) => [listButton(id, p)]),
-      [{ text: "⬅️ Back to Shop", callback_data: "home" }],
-    ],
+  const nav: { text: string; callback_data: string }[] = [];
+  if (current > 0) nav.push({ text: "⬅️ Previous Page", callback_data: move(current - 1) });
+  if (current < pages - 1) nav.push({ text: "Next Page ➡️", callback_data: move(current + 1) });
+
+  const header = q ? `🔍 <b>Results for “${q.replace(/</g, "&lt;")}”</b>` : `${em("btn.products")} <b>Products</b>`;
+
+  await say(
+    chatId,
+    `${header}\n\n${lines}\n\nPage <b>${current + 1}</b> of <b>${pages}</b> — tap any item below to see details.`,
+    {
+      inline_keyboard: [
+        ...slice.map((entry) =>
+          entry.kind === "folder"
+            ? [{ text: `📁 ${entry.name} — ${entry.items.length} plans`, callback_data: `g:${entry.slug}` }]
+            : [listButton(entry.id, entry.p)],
+        ),
+        ...(nav.length ? [nav] : []),
+        [searchButton],
+        [{ text: "⬅️ Back to Shop", callback_data: "home" }],
+      ],
+    },
+  );
+}
+
+/** Asks the shopper what they are looking for. */
+export async function askProductSearch(chatId: number) {
+  const { setState } = await import("./core");
+  await setState(chatId, { k: "prod_search" });
+  return say(chatId, "🔍 Send what you are looking for (for example <code>cap</code> for CapCut).", {
+    inline_keyboard: [[{ text: "⬅️ Back to Products", callback_data: "products" }]],
   });
 }
 
