@@ -55,15 +55,15 @@ export function ProductCard({ product }: { product: Product }) {
           <EmoText text={product.title || ""} />
         </h3>
         <div className="mt-auto flex items-center justify-between pt-3">
-          <span className="text-lg font-black">${product.price}</span>
+          <span className="font-display text-gradient text-lg font-black">${product.price}</span>
           {product.soldOut ? (
-            <span className="rounded-lg bg-muted px-3 py-1.5 text-[10px] font-bold uppercase text-muted-foreground">
+            <span className="rounded-xl bg-muted px-3 py-1.5 text-[10px] font-bold uppercase text-muted-foreground">
               Out of stock
             </span>
           ) : (
             <button
               onClick={() => addToCart(product)}
-              className="btn-grad rounded-lg px-3 py-1.5 text-xs font-bold"
+              className="btn-grad rounded-xl px-4 py-1.5 text-xs font-bold"
             >
               ADD
             </button>
