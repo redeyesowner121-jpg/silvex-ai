@@ -5,7 +5,7 @@ import logoUrl from "@/assets/silvex-logo.jpg";
 
 export function Header() {
   const { user, profile, isAdmin, notices, openModal, siteName } = useStore();
-  const balance = Number(profile?.balance ?? 0);
+  const balance = Number(profile?.wallet ?? 0);
 
   return (
     <header className="glass sticky top-0 z-50">
