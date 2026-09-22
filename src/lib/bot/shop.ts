@@ -43,6 +43,31 @@ async function visibleProducts() {
   ) as [string, Product][];
 }
 
+/** Live stock count by delivery mode (matches the detail view). */
+function stockCount(p: Product): number | null {
+  const anyP = p as unknown as { delivery?: string; supplierStock?: number; soldOut?: boolean };
+  if (anyP.soldOut) return 0;
+  if (anyP.delivery === "auto") return Array.isArray(p.stock) ? p.stock.filter(Boolean).length : 0;
+  if (anyP.delivery === "supplier") return Number(anyP.supplierStock || 0);
+  if (anyP.delivery === "manual") return null; // no countable stock
+  return Infinity; // repeat = unlimited
+}
+
+const isOutOfStock = (p: Product) => stockCount(p) === 0;
+
+/** Button label: emoji + name + price + stock, red when unavailable. */
+function listButton(id: string, p: Product) {
+  const stock = stockCount(p);
+  const stockPart =
+    stock === null ? "" : stock === Infinity ? " | ♾️" : ` | 📦 ${stock}`;
+  const button: Record<string, unknown> = {
+    text: `${productEmojiChar(id)} ${p.title} | ${money(p.price || 0)}${stockPart}`,
+    callback_data: `p:${id}`,
+  };
+  if (isOutOfStock(p)) button.style = "danger";
+  return button;
+}
+
 export async function sendProducts(chatId: number) {
   const entries = await visibleProducts();
   if (!entries.length) return say(chatId, "No products available right now.", backHome);
@@ -82,10 +107,7 @@ export async function sendProducts(chatId: number) {
       ...folderList.map(([slug, f]) => [
         { text: `📁 ${f.name} — ${f.items.length} plans`, callback_data: `g:${slug}` },
       ]),
-      ...list.map(([id, p]) => [
-        { text: `${productEmojiChar(id)} ${p.title} — ${money(p.price || 0)}`, callback_data: `p:${id}` },
-      ]),
-      [{ text: `🔵 ${be("btn.back")} Menu`, callback_data: "home" }],
+      ...list.map(([id, p]) => [listButton(id, p)]),
     ],
   });
 }
