@@ -41,22 +41,11 @@ export async function registerAdminCommands(chatId: number) {
   }).catch(() => undefined);
 }
 
-/** Persistent quick-reply keyboard shown under the message box. */
-export const QUICK_MENU = {
-  keyboard: [
-    [{ text: "🛍 Products" }, { text: "💬 Support" }],
-    [{ text: "👛 Wallet" }, { text: "🔗 API" }],
-  ],
-  resize_keyboard: true,
-  is_persistent: true,
-  input_field_placeholder: "Choose a quick menu below",
-};
-
-/** Attaches the quick menu to a chat (uses a tiny message as the carrier). */
+/** The quick-reply keyboard was removed permanently; hide it in existing chats. */
 export async function showQuickMenu(chatId: number) {
   await tg("sendMessage", {
     chat_id: chatId,
-    text: "⌨️ Quick menu is ready below.",
-    reply_markup: QUICK_MENU,
+    text: "⌨️ Menu removed. Use /start or the Menu button anytime.",
+    reply_markup: { remove_keyboard: true },
   }).catch(() => undefined);
 }
