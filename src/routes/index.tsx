@@ -165,6 +165,13 @@ function Home() {
           ))}
         </div>
       )}
+
+      <button
+        onClick={() => navigate({ to: "/products" })}
+        className="mt-5 w-full rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 px-5 py-3 text-sm font-bold text-white shadow-lg active:scale-[0.98]"
+      >
+        View All Products
+      </button>
     </div>
   );
 }
