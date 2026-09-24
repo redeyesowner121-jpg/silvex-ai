@@ -102,16 +102,18 @@ function refreshColors(): Promise<void> {
   return colorsRefreshing;
 }
 
+let emojisLoadedAt = 0;
 export async function loadBotPresentation(): Promise<void> {
-  const stale = Date.now() - colorsLoadedAt >= BOT_CACHE_MS;
-  if (cachedButtonColors) {
-    if (stale) void refreshColors();
-    // Webhook requests can be handled by different Railway workers. Always
-    // fetch the current emoji registry so a save on one worker applies to the
-    // very next message or inline keyboard rendered by another worker.
-    await loadEmojis(true).catch(() => undefined);
+  if (cachedButtonColors && emojisLoadedAt) {
+    // Serve from memory; refresh in the background so taps never wait on the database.
+    if (Date.now() - colorsLoadedAt >= BOT_CACHE_MS) void refreshColors();
+    if (Date.now() - emojisLoadedAt >= 5_000) {
+      emojisLoadedAt = Date.now();
+      void loadEmojis(true).catch(() => undefined);
+    }
   } else {
     await Promise.all([loadEmojis(true).catch(() => undefined), refreshColors()]);
+    emojisLoadedAt = Date.now();
   }
   setButtonColors(cachedButtonColors);
 }
