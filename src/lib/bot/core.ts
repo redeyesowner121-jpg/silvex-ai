@@ -483,6 +483,7 @@ export async function saveEmail(chatId: number, email: string) {
     // Same email already used on the website — join the two accounts.
     const [target] = hit;
     await dbPut(`telegramLinks/${chatId}`, target);
+    linkCache.set(chatId, target);
     await dbPatch(`users/${target}`, { telegramChatId: chatId });
     await setState(chatId, null);
     invalidateUsers();
