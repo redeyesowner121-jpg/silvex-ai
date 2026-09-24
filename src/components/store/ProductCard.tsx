@@ -43,17 +43,18 @@ export function ProductCard({ product }: { product: Product }) {
         <h3 className="line-clamp-2 text-sm font-bold leading-tight">
           <button onClick={() => openProduct(product.id)} className="text-left">
             {pe.img ? (
-            <img
-              src={pe.img}
-              alt=""
-              aria-hidden
-              loading="lazy"
-              className="mr-1 inline-block h-[1.15em] w-[1.15em] align-[-0.2em] object-contain"
-            />
-          ) : pe.char ? (
-            <span className="mr-1">{pe.char}</span>
-          ) : null}
-          <EmoText text={product.title || ""} />
+              <img
+                src={pe.img}
+                alt=""
+                aria-hidden
+                loading="lazy"
+                className="mr-1 inline-block h-[1.15em] w-[1.15em] align-[-0.2em] object-contain"
+              />
+            ) : pe.char ? (
+              <span className="mr-1">{pe.char}</span>
+            ) : null}
+            <EmoText text={product.title || ""} />
+          </button>
         </h3>
         <div className="mt-auto flex items-center justify-between pt-3">
           <span className="font-display text-gradient text-lg font-black">${product.price}</span>
