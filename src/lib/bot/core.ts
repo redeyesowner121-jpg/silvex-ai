@@ -422,8 +422,16 @@ export async function welcome(chatId: number) {
 
 /* ---------------- users ---------------- */
 
+const linkCache = new Map<number, string>();
 export async function linkedUid(chatId: number): Promise<string | null> {
-  return await dbGet<string>(`telegramLinks/${chatId}`);
+  const hit = linkCache.get(chatId);
+  if (hit) return hit;
+  const v = await dbGet<string>(`telegramLinks/${chatId}`);
+  if (v) linkCache.set(chatId, v);
+  return v;
+}
+export function forgetLink(chatId: number) {
+  linkCache.delete(chatId);
 }
 
 /** Every Telegram user gets a store account keyed by their numeric Telegram id. */
@@ -475,6 +483,7 @@ export async function saveEmail(chatId: number, email: string) {
     // Same email already used on the website — join the two accounts.
     const [target] = hit;
     await dbPut(`telegramLinks/${chatId}`, target);
+    linkCache.set(chatId, target);
     await dbPatch(`users/${target}`, { telegramChatId: chatId });
     await setState(chatId, null);
     invalidateUsers();

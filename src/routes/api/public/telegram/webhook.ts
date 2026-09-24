@@ -4,6 +4,52 @@ import { editTarget, loadBotPresentation, rememberName } from "@/lib/bot/core";
 import { handleCallback } from "@/lib/bot/route-callback";
 import { handleText } from "@/lib/bot/route-text";
 
+const chatQueues = new Map<string, Promise<void>>();
+
+async function processUpdate(update: any) {
+  await loadBotPresentation().catch(() => undefined);
+  if (update?.business_connection) {
+    const { handleBusinessConnection } = await import("@/lib/bot/business");
+    await handleBusinessConnection(update.business_connection);
+  } else if (update?.business_message || update?.edited_business_message) {
+    const { handleBusinessMessage } = await import("@/lib/bot/business");
+    await handleBusinessMessage(update.business_message ?? update.edited_business_message);
+  } else if (update?.callback_query) {
+    const cq = update.callback_query;
+    void tg("answerCallbackQuery", { callback_query_id: cq.id }).catch(() => undefined);
+    const chatId = cq.message?.chat?.id;
+    const messageId = cq.message?.message_id;
+    if (chatId) {
+      rememberName(Number(chatId), cq.from?.first_name || cq.from?.username);
+      rememberUsername(Number(chatId), cq.from?.username);
+      if (messageId) editTarget.set(Number(chatId), Number(messageId));
+      try {
+        await handleCallback(Number(chatId), String(cq.data || ""));
+      } finally {
+        editTarget.delete(Number(chatId));
+      }
+    }
+  } else {
+    const msg = update?.message ?? update?.edited_message;
+    const chatId = msg?.chat?.id;
+    if (chatId) {
+      rememberName(Number(chatId), msg?.from?.first_name || msg?.from?.username);
+      rememberUsername(Number(chatId), msg?.from?.username);
+      await handleText(
+        Number(chatId),
+        String(msg.text ?? msg.caption ?? ""),
+        msg.entities ?? msg.caption_entities,
+        msg.sticker,
+        msg.reply_to_message?.message_id,
+        msg.from,
+      );
+    }
+  }
+  void import("@/lib/providers-import.server")
+    .then(({ syncAllProviders }) => syncAllProviders(false))
+    .catch(() => undefined);
+}
+
 export const Route = createFileRoute("/api/public/telegram/webhook")({
   server: {
     handlers: {
@@ -19,63 +65,29 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
           hasLovableKey: Boolean(process.env["LOVABLE_API_KEY"]),
         }),
       POST: async ({ request }) => {
-
-        // Settings, styling and the update body load together instead of one by one.
-        const [, , update] = await Promise.all([
-          loadBotRuntime().catch(() => undefined),
-          loadBotPresentation().catch(() => undefined),
-          request.json().catch(() => null),
-        ]);
         const actual = request.headers.get("X-Telegram-Bot-Api-Secret-Token") ?? "";
+        const [update] = await Promise.all([
+          request.json().catch(() => null),
+          loadBotRuntime().catch(() => undefined),
+        ]);
         if (!telegramWebhookOk(actual)) return new Response("Unauthorized", { status: 401 });
 
-        try {
-          if (update?.business_connection) {
-            const { handleBusinessConnection } = await import("@/lib/bot/business");
-            await handleBusinessConnection(update.business_connection);
-          } else if (update?.business_message || update?.edited_business_message) {
-            const { handleBusinessMessage } = await import("@/lib/bot/business");
-            await handleBusinessMessage(update.business_message ?? update.edited_business_message);
-          } else if (update?.callback_query) {
-            const cq = update.callback_query;
-            // Stop the button spinner right away; don't wait for Telegram.
-            void tg("answerCallbackQuery", { callback_query_id: cq.id }).catch(() => undefined);
-            const chatId = cq.message?.chat?.id;
-            const messageId = cq.message?.message_id;
-            if (chatId) rememberName(Number(chatId), cq.from?.first_name || cq.from?.username);
-            if (chatId) rememberUsername(Number(chatId), cq.from?.username);
-            if (chatId && messageId) editTarget.set(Number(chatId), Number(messageId));
-            if (chatId) {
-              try {
-                await handleCallback(Number(chatId), String(cq.data || ""));
-              } finally {
-                editTarget.delete(Number(chatId));
-              }
-            }
-          } else {
-            const msg = update?.message ?? update?.edited_message;
-            const chatId = msg?.chat?.id;
-            if (chatId) rememberName(Number(chatId), msg?.from?.first_name || msg?.from?.username);
-            if (chatId) rememberUsername(Number(chatId), msg?.from?.username);
-            if (chatId)
-              await handleText(
-                Number(chatId),
-                String(msg.text ?? msg.caption ?? ""),
-                msg.entities ?? msg.caption_entities,
-                msg.sticker,
-                msg.reply_to_message?.message_id,
-                msg.from,
-              );
-          }
-        } catch (err) {
+        // Answer Telegram immediately so it sends the next update without waiting.
+        // Work continues in the background, queued per chat to keep order.
+        const key = String(
+          update?.callback_query?.message?.chat?.id ??
+            update?.message?.chat?.id ??
+            update?.edited_message?.chat?.id ??
+            "misc",
+        );
+        const prev = chatQueues.get(key) ?? Promise.resolve();
+        const next = prev.then(() => processUpdate(update)).catch((err) => {
           console.error("telegram webhook error", err);
-        }
-        // Keep supplier prices and stock fresh in the background (at most once a
-        // minute). Never block the reply: Telegram queues the next update until
-        // this response returns.
-        void import("@/lib/providers-import.server")
-          .then(({ syncAllProviders }) => syncAllProviders(false))
-          .catch(() => undefined);
+        });
+        chatQueues.set(key, next);
+        void next.finally(() => {
+          if (chatQueues.get(key) === next) chatQueues.delete(key);
+        });
         return Response.json({ ok: true });
       },
     },
