@@ -41,7 +41,8 @@ export function ProductCard({ product }: { product: Product }) {
           </span>
         ) : null}
         <h3 className="line-clamp-2 text-sm font-bold leading-tight">
-          {pe.img ? (
+          <button onClick={() => openProduct(product.id)} className="text-left">
+            {pe.img ? (
             <img
               src={pe.img}
               alt=""
