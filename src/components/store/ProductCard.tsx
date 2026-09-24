@@ -41,18 +41,20 @@ export function ProductCard({ product }: { product: Product }) {
           </span>
         ) : null}
         <h3 className="line-clamp-2 text-sm font-bold leading-tight">
-          {pe.img ? (
-            <img
-              src={pe.img}
-              alt=""
-              aria-hidden
-              loading="lazy"
-              className="mr-1 inline-block h-[1.15em] w-[1.15em] align-[-0.2em] object-contain"
-            />
-          ) : pe.char ? (
-            <span className="mr-1">{pe.char}</span>
-          ) : null}
-          <EmoText text={product.title || ""} />
+          <button onClick={() => openProduct(product.id)} className="text-left">
+            {pe.img ? (
+              <img
+                src={pe.img}
+                alt=""
+                aria-hidden
+                loading="lazy"
+                className="mr-1 inline-block h-[1.15em] w-[1.15em] align-[-0.2em] object-contain"
+              />
+            ) : pe.char ? (
+              <span className="mr-1">{pe.char}</span>
+            ) : null}
+            <EmoText text={product.title || ""} />
+          </button>
         </h3>
         <div className="mt-auto flex items-center justify-between pt-3">
           <span className="font-display text-gradient text-lg font-black">${product.price}</span>
@@ -95,7 +97,9 @@ export function FolderCard({ name, slug, items }: { name: string; slug: string; 
         <span className="mb-1 flex w-fit items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary">
           <Folder className="h-3 w-3" aria-hidden="true" /> {items.length} plans
         </span>
-        <h3 className="line-clamp-2 text-sm font-bold leading-tight">{name}</h3>
+        <h3 className="line-clamp-2 text-sm font-bold leading-tight">
+          <Link to="/products" search={{ group: slug }}>{name}</Link>
+        </h3>
         <div className="mt-auto flex items-center justify-between pt-3">
           <span className="font-display text-gradient text-lg font-black">from ${from}</span>
           <Link
