@@ -5,10 +5,10 @@ import { dbGet, dbPatch, dbPut } from "./telegram.server";
  * Every value here is only a fallback — the admin panel can change the name,
  * base URL, key, profit % and whether a provider is on, in site_settings/providers.
  */
-export type ProviderId = "qamify" | "safwan" | "mmostore" | "w2premium" | "eklas" | "canboso" | "custom";
+export type ProviderId = "qamify" | "safwan" | "mmostore" | "w2premium" | "eklas" | "elite" | "canboso" | "custom";
 
 /** Shops that were removed — their imported products get cleaned up. */
-export const RETIRED_PROVIDERS = ["elite", "canboso", "custom"];
+export const RETIRED_PROVIDERS = ["canboso", "custom"];
 
 export type ProviderShape = {
   productsPath: string;
@@ -93,6 +93,21 @@ export const PROVIDERS: ProviderDef[] = [
       orderPath: "orders",
       qtyField: "quantity",
       refField: "client_order_id",
+    },
+  },
+  {
+    id: "elite",
+    name: "Elite Digital Emporium",
+    url: "https://shop.elitedigitalemporium.com/api/telegram-buyer",
+    key: "tgb_5080983459740b92116a018d8736175068d812d9cd73bbad",
+    docs: "https://shop.elitedigitalemporium.com/api/swagger",
+    markup: 130,
+    shape: {
+      productsPath: "products",
+      balancePath: "balance",
+      orderPath: "purchase",
+      qtyField: "quantity",
+      refField: "idempotency_key",
     },
   },
   {
