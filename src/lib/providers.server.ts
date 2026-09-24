@@ -196,7 +196,7 @@ export async function saveProviderConfig(
  * Admin can override the list in site_settings/providers/{id}/keep (array of words).
  */
 export const PROVIDER_KEEP: Record<string, string[]> = {
-  qamify: ["gemini", "capcut", "duolingo", "leonardo"],
+  qamify: ["gemini", "capcut", "duolingo", "leonardo", "lovable pro"],
   // MMO Store: only Gemini and Outlook accounts.
   mmostore: ["gemini", "outlook"],
   // Safwan Tiger: keep the whole catalogue (admin can hide or delete items).
