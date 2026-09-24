@@ -70,17 +70,12 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
         } catch (err) {
           console.error("telegram webhook error", err);
         }
-        // Keep supplier prices and stock fresh for bot shoppers too
-        // (runs at most once a minute, and never blocks for long).
-        try {
-          const { syncAllProviders } = await import("@/lib/providers-import.server");
-          await Promise.race([
-            syncAllProviders(false),
-            new Promise((r) => setTimeout(r, 6000)),
-          ]);
-        } catch {
-          /* ignore */
-        }
+        // Keep supplier prices and stock fresh in the background (at most once a
+        // minute). Never block the reply: Telegram queues the next update until
+        // this response returns.
+        void import("@/lib/providers-import.server")
+          .then(({ syncAllProviders }) => syncAllProviders(false))
+          .catch(() => undefined);
         return Response.json({ ok: true });
       },
     },
