@@ -30,6 +30,7 @@ Phase 1 — core
 
 Phase 2 — UX
 - [x] Paginated picker: button / normal / website places and products
+- [x] Show saved premium emoji icons inside /setemoji lists and picker screens
 - [x] Capture state + cancel, reset one place, reset everything
 - [x] On/off switch for premium emojis (strips markup when off)
 - [ ] Admin web toggle for the same switch
