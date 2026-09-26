@@ -477,7 +477,7 @@ export async function buy(chatId: number, productId: string, qty = 1) {
       [{ text: "🛍 Buy more", callback_data: "products" }],
     ],
   });
-  if (complete) await sendDeliveryFiles(chatId, orderId, delivered);
+  // Delivery receipt files removed — the message above already carries the content.
   if (!user.email) {
     await askEmail(chatId, "Add your email to also receive this order and its delivery details by mail.");
   }
