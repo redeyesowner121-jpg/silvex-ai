@@ -81,21 +81,6 @@ export const PROVIDERS: ProviderDef[] = [
     },
   },
   {
-    id: "elite",
-    name: "Elite Digital Emporium",
-    url: "https://shop.elitedigitalemporium.com/api/telegram-buyer",
-    key: "tgb_5080983459740b92116a018d8736175068d812d9cd73bbad",
-    docs: "https://shop.elitedigitalemporium.com/api/swagger",
-    markup: 130,
-    shape: {
-      productsPath: "products",
-      balancePath: "balance",
-      orderPath: "purchase",
-      qtyField: "quantity",
-      refField: "idempotency_key",
-    },
-  },
-  {
     id: "safwan",
     name: "Safwan Tiger",
     url: "https://safwantigershopbot-production.up.railway.app/api",
@@ -181,7 +166,8 @@ export async function saveProviderConfig(
  * Admin can override the list in site_settings/providers/{id}/keep (array of words).
  */
 export const PROVIDER_KEEP: Record<string, string[]> = {
-  qamify: ["gemini", "capcut", "duolingo", "leonardo", "lovable pro"],
+  // Qamify: keep the whole catalogue (admin can hide or delete items).
+  qamify: [],
   // MMO Store: only Gemini and Outlook accounts.
   mmostore: ["gemini", "outlook"],
   // Safwan Tiger: keep the whole catalogue (admin can hide or delete items).
