@@ -204,7 +204,19 @@ export async function syncAllProviders(force = true): Promise<{
         }
       }
     }
-    if (!sp) continue;
+    if (!sp) {
+      // Shop answered but no longer sells this item: show it as out of stock
+      // instead of keeping old stock that can never be delivered.
+      if (catalogues.has(pid) && (Number(p.supplierStock ?? 0) > 0 || !p.soldOut)) {
+        await dbPatch(`products/${id}`, {
+          supplierStock: 0,
+          soldOut: true,
+          supplierSyncedAt: new Date().toISOString(),
+        });
+        updated.push({ id, title: String(p.title || sid), price: Number(p.price) || 0, stock: 0 });
+      }
+      continue;
+    }
     const price = sellPrice(sp.price, Number(p.markup) || 130);
     const stock = sp.unlimited ? 9999 : Math.max(0, sp.stock);
     const wasOut = Number(p.supplierStock ?? 0) <= 0;
