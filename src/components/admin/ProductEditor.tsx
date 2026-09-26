@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Eye, EyeOff, Megaphone, PackagePlus, PackageX, Save, Trash2 } from "lucide-react";
-import { get, ref, remove, set, update } from "firebase/database";
+import { get, push, ref, remove, set, update } from "firebase/database";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useStore, type Product } from "@/context/StoreContext";
 import { broadcastProductEvent } from "@/lib/broadcast.functions";
@@ -18,7 +18,7 @@ export function ProductEditor({ product }: { product: Product }) {
   const [form, setForm] = useState<Form>({ title: product.title, group: product.group ?? "", desc: product.desc ?? "", type: product.type ?? categories[0]?.label ?? "Service", price: String(product.price), logo: product.logo ?? "", link: product.link ?? "", delivery: product.delivery ?? "manual", supplierId: product.supplierId == null ? "" : String(product.supplierId), markup: String(product.markup ?? 130), botPrice: product.botPrice ? String(product.botPrice) : "" });
 
   useEffect(() => {
-    if (!db) return;
+    if (!db || product.id === "new") return;
     get(ref(db, `usedStock/${product.id}`)).then((snap) => setUsedStock(snap.val() || {})).catch(() => undefined);
   }, [db, product.id]);
 
@@ -38,17 +38,23 @@ export function ProductEditor({ product }: { product: Product }) {
     if (!form.title.trim() || !(Number(form.price) > 0)) return notify("Name and a valid price are required");
     if (form.delivery === "supplier" && !form.supplierId.trim()) return notify("Supplier product ID is required");
     setSaving(true);
+    const data = {
+      title: form.title.trim(), group: form.group.trim() || null, desc: form.desc.trim(), type: form.type,
+      price: form.delivery === "supplier" ? Number(sellingPrice.toFixed(2)) : Number(form.price),
+      logo: form.logo, link: form.delivery === "supplier" ? null : form.link.trim(), delivery: form.delivery,
+      supplierId: form.delivery === "supplier" ? (/^\d+$/.test(form.supplierId) ? Number(form.supplierId) : form.supplierId.trim()) : null,
+      markup: form.delivery === "supplier" ? Number(form.markup) || 130 : null,
+      botPrice: Number(form.botPrice) > 0 ? Number(form.botPrice) : null,
+    };
     try {
-      await update(ref(db, `products/${product.id}`), {
-        title: form.title.trim(), group: form.group.trim() || null, desc: form.desc.trim(), type: form.type,
-        price: form.delivery === "supplier" ? Number(sellingPrice.toFixed(2)) : Number(form.price),
-        logo: form.logo, link: form.delivery === "supplier" ? null : form.link.trim(), delivery: form.delivery,
-        supplierId: form.delivery === "supplier" ? (/^\d+$/.test(form.supplierId) ? Number(form.supplierId) : form.supplierId.trim()) : null,
-        markup: form.delivery === "supplier" ? Number(form.markup) || 130 : null,
-        botPrice: Number(form.botPrice) > 0 ? Number(form.botPrice) : null,
-      });
-      if (form.delivery === "supplier") await syncSupplier().catch(() => undefined);
-      notify("Product updated");
+      if (product.id === "new") {
+        await push(ref(db, "products"), { ...data, salesCount: 0, announced: true });
+        notify("Product added");
+      } else {
+        await update(ref(db, `products/${product.id}`), data);
+        if (form.delivery === "supplier") await syncSupplier().catch(() => undefined);
+        notify("Product updated");
+      }
       await navigate({ to: "/admin/products" });
     } catch {
       notify("Product could not be saved. Please try again.");
@@ -56,7 +62,7 @@ export function ProductEditor({ product }: { product: Product }) {
   }
 
   async function addStock() {
-    if (!db) return;
+    if (!db || product.id === "new") return notify("Save the product first, then add stock");
     const lines = bulk.split("\n").map((line) => line.trim()).filter(Boolean);
     if (!lines.length) return notify("Paste at least one stock item");
     await set(ref(db, `products/${product.id}/stock`), [...available, ...lines]);
@@ -89,7 +95,7 @@ export function ProductEditor({ product }: { product: Product }) {
 
   return <div className="fade-in mx-auto max-w-3xl space-y-5">
     <div className="flex items-center justify-between gap-3"><Link to="/admin/products" className="flex items-center gap-2 text-sm font-bold text-muted-foreground"><ArrowLeft className="h-4 w-4" /> Products</Link><div className="flex items-center gap-2">{product.soldOut ? <span className="rounded-lg bg-destructive/10 px-2.5 py-1 text-[11px] font-bold text-destructive">Out of stock</span> : null}<span className={`rounded-lg px-2.5 py-1 text-[11px] font-bold ${product.hidden ? "bg-muted text-muted-foreground" : "bg-emerald-500/10 text-emerald-600"}`}>{product.hidden ? "Hidden" : "Visible"}</span></div></div>
-    <div><p className="text-xs font-bold text-primary">PRODUCT EDITOR</p><h1 className="break-words text-2xl font-black">{product.title}</h1><p className="mt-1 text-xs text-muted-foreground">ID: {product.id}{product.locked ? " · API product" : ""}</p></div>
+    <div><p className="text-xs font-bold text-primary">PRODUCT EDITOR</p><h1 className="break-words text-2xl font-black">{product.id === "new" ? "New product" : product.title}</h1>{product.id === "new" ? null : <p className="mt-1 text-xs text-muted-foreground">ID: {product.id}{product.locked ? " · API product" : ""}</p>}</div>
     <section className="grid gap-5 md:grid-cols-[minmax(0,1fr)_minmax(260px,0.75fr)]">
       <div className="space-y-4">
         <div className="space-y-3 rounded-2xl border border-border bg-card p-4"><h2 className="text-sm font-black">Product details</h2>
@@ -105,8 +111,8 @@ export function ProductEditor({ product }: { product: Product }) {
         </div>
       </div>
       <div className="space-y-4"><div className="rounded-2xl border border-border bg-card p-4"><ImageField label="Product photo" value={form.logo} onChange={(logo) => setForm({ ...form, logo })} productImage /></div>
-        {form.delivery === "auto" ? <div className="space-y-3 rounded-2xl border border-border bg-card p-4"><div className="flex justify-between"><h2 className="text-sm font-black">Stock</h2><span className="text-xs font-bold text-primary">{available.length} available</span></div><textarea className={`${input} min-h-28 resize-y font-mono`} value={bulk} onChange={(e) => setBulk(e.target.value)} placeholder="Add stock, one item per line" /><button type="button" onClick={addStock} className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-500/10 py-2.5 text-xs font-bold text-emerald-600"><PackagePlus className="h-4 w-4" /> Add stock</button>{available.length ? <button type="button" onClick={async () => { if (db && confirm("Clear all available stock?")) await set(ref(db, `products/${product.id}/stock`), null); }} className="w-full text-xs font-bold text-destructive">Clear available stock</button> : null}<div className="max-h-48 space-y-1 overflow-auto">{available.map((item, index) => <p key={index} className="break-all rounded-lg bg-muted p-2 font-mono text-[10px]">{item}</p>)}</div><p className="border-t border-border pt-3 text-xs font-black">Used stock ({used.length})</p><div className="max-h-48 space-y-1 overflow-auto">{used.map((item, index) => <div key={index} className="rounded-lg bg-muted p-2"><p className="break-all font-mono text-[10px]">{item.content}</p><p className="text-[9px] text-muted-foreground">{item.email || "—"} · {item.orderId || ""}</p></div>)}</div></div> : null}
-        <div className="space-y-2 rounded-2xl border border-border bg-card p-4"><button type="button" onClick={saveProduct} disabled={saving} className="btn-grad flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold disabled:opacity-60"><Save className="h-4 w-4" />{saving ? "Saving…" : "Save changes"}</button><div className="grid grid-cols-2 gap-2"><button type="button" onClick={toggleVisibility} className="flex items-center justify-center gap-2 rounded-xl bg-muted py-2.5 text-xs font-bold">{product.hidden ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}{product.hidden ? "Show" : "Hide"}</button><button type="button" onClick={announce} className="flex items-center justify-center gap-2 rounded-xl bg-amber-500/10 py-2.5 text-xs font-bold text-amber-600"><Megaphone className="h-4 w-4" /> Announce</button></div><div className="grid grid-cols-2 gap-2"><button type="button" onClick={() => toggleChannel("hideWeb")} className={`rounded-xl py-2.5 text-xs font-bold ${product.hideWeb ? "bg-muted text-muted-foreground" : "bg-emerald-500/10 text-emerald-600"}`}>Website: {product.hideWeb ? "Hidden" : "Visible"}</button><button type="button" onClick={() => toggleChannel("hideBot")} className={`rounded-xl py-2.5 text-xs font-bold ${product.hideBot ? "bg-muted text-muted-foreground" : "bg-emerald-500/10 text-emerald-600"}`}>Bot: {product.hideBot ? "Hidden" : "Visible"}</button></div><button type="button" onClick={toggleSoldOut} className={`flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold ${product.soldOut ? "bg-emerald-500/10 text-emerald-600" : "bg-destructive/10 text-destructive"}`}><PackageX className="h-4 w-4" /> {product.soldOut ? "Mark back in stock" : "Mark out of stock"}</button><button type="button" onClick={deleteProduct} className="flex w-full items-center justify-center gap-2 rounded-xl bg-destructive/10 py-2.5 text-xs font-bold text-destructive"><Trash2 className="h-4 w-4" /> Delete product</button></div>
+        {form.delivery === "auto" && product.id !== "new" ? <div className="space-y-3 rounded-2xl border border-border bg-card p-4"><div className="flex justify-between"><h2 className="text-sm font-black">Stock</h2><span className="text-xs font-bold text-primary">{available.length} available</span></div><textarea className={`${input} min-h-28 resize-y font-mono`} value={bulk} onChange={(e) => setBulk(e.target.value)} placeholder="Add stock, one item per line" /><button type="button" onClick={addStock} className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-500/10 py-2.5 text-xs font-bold text-emerald-600"><PackagePlus className="h-4 w-4" /> Add stock</button>{available.length ? <button type="button" onClick={async () => { if (db && confirm("Clear all available stock?")) await set(ref(db, `products/${product.id}/stock`), null); }} className="w-full text-xs font-bold text-destructive">Clear available stock</button> : null}<div className="max-h-48 space-y-1 overflow-auto">{available.map((item, index) => <p key={index} className="break-all rounded-lg bg-muted p-2 font-mono text-[10px]">{item}</p>)}</div><p className="border-t border-border pt-3 text-xs font-black">Used stock ({used.length})</p><div className="max-h-48 space-y-1 overflow-auto">{used.map((item, index) => <div key={index} className="rounded-lg bg-muted p-2"><p className="break-all font-mono text-[10px]">{item.content}</p><p className="text-[9px] text-muted-foreground">{item.email || "—"} · {item.orderId || ""}</p></div>)}</div></div> : null}
+        <div className="space-y-2 rounded-2xl border border-border bg-card p-4"><button type="button" onClick={saveProduct} disabled={saving} className="btn-grad flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold disabled:opacity-60"><Save className="h-4 w-4" />{saving ? "Saving…" : product.id === "new" ? "Save product" : "Save changes"}</button>{product.id === "new" ? null : <div><div className="grid grid-cols-2 gap-2"><button type="button" onClick={toggleVisibility} className="flex items-center justify-center gap-2 rounded-xl bg-muted py-2.5 text-xs font-bold">{product.hidden ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}{product.hidden ? "Show" : "Hide"}</button><button type="button" onClick={announce} className="flex items-center justify-center gap-2 rounded-xl bg-amber-500/10 py-2.5 text-xs font-bold text-amber-600"><Megaphone className="h-4 w-4" /> Announce</button></div><div className="mt-2 grid grid-cols-2 gap-2"><button type="button" onClick={() => toggleChannel("hideWeb")} className={`rounded-xl py-2.5 text-xs font-bold ${product.hideWeb ? "bg-muted text-muted-foreground" : "bg-emerald-500/10 text-emerald-600"}`}>Website: {product.hideWeb ? "Hidden" : "Visible"}</button><button type="button" onClick={() => toggleChannel("hideBot")} className={`rounded-xl py-2.5 text-xs font-bold ${product.hideBot ? "bg-muted text-muted-foreground" : "bg-emerald-500/10 text-emerald-600"}`}>Bot: {product.hideBot ? "Hidden" : "Visible"}</button></div><button type="button" onClick={toggleSoldOut} className={`mt-2 flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold ${product.soldOut ? "bg-emerald-500/10 text-emerald-600" : "bg-destructive/10 text-destructive"}`}><PackageX className="h-4 w-4" /> {product.soldOut ? "Mark back in stock" : "Mark out of stock"}</button><button type="button" onClick={deleteProduct} className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-destructive/10 py-2.5 text-xs font-bold text-destructive"><Trash2 className="h-4 w-4" /> Delete product</button></div>}</div>
       </div>
     </section>
   </div>;
