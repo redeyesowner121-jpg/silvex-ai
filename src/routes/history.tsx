@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { onValue, ref } from "firebase/database";
+import { equalTo, get, onValue, orderByChild, query, ref } from "firebase/database";
+import { buildStatementCsv, downloadCsv } from "@/lib/statement";
 import { useStore } from "@/context/StoreContext";
 
 export const Route = createFileRoute("/history")({
@@ -41,6 +42,16 @@ function HistoryPage() {
     });
   }, [db, user]);
 
+  async function downloadStatement() {
+    if (!db || !user) return;
+    const [o, u] = await Promise.all([
+      get(query(ref(db, "orders"), orderByChild("uid"), equalTo(user.uid))),
+      get(ref(db, `users/${user.uid}`)),
+    ]);
+    const me = { uid: user.uid, ...(u.val() || {}) };
+    downloadCsv(buildStatementCsv([me], Object.values(o.val() || {}), `Statement for ${me.email || user.uid}`), `statement-${new Date().toISOString().slice(0, 10)}.csv`);
+  }
+
   if (!user) {
     return (
       <div className="mx-auto w-full max-w-md px-4 py-16 text-center md:max-w-3xl">
@@ -62,6 +73,9 @@ function HistoryPage() {
       <p className="mb-4 text-xs text-muted-foreground">
         Current balance: <span className="font-bold text-foreground">${wallet}</span>
       </p>
+      <button onClick={downloadStatement} className="mb-4 w-full rounded-xl bg-primary py-2.5 text-xs font-bold text-primary-foreground">
+        Download full statement (orders + wallet)
+      </button>
 
       {items.length === 0 ? (
         <p className="py-10 text-center text-sm text-muted-foreground">No transactions yet.</p>
