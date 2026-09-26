@@ -132,7 +132,7 @@ async function catalog(query = ""): Promise<Entry[]> {
   return out;
 }
 
-const searchButton = { text: "🔍 Search products", callback_data: "psearch" };
+const searchButton = () => ({ text: `${be("btn.search")} Search products`, callback_data: "psearch" });
 
 export async function sendProducts(chatId: number, page = 0, query = "") {
   const q = String(query || "").slice(0, 30);
