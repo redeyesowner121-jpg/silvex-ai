@@ -20,7 +20,9 @@ function EditProductPage() {
   const { products, ready, user, isAdmin } = useStore();
   if (!ready) return <p className="py-20 text-center text-sm text-muted-foreground">Loading…</p>;
   if (!user || !isAdmin) return <div className="rounded-2xl bg-card p-8 text-center"><h1 className="text-lg font-black">Admin only</h1><p className="mt-2 text-sm text-muted-foreground">Sign in with an admin account to edit products.</p></div>;
-  const product = products.find((item) => item.id === productId);
+  const product = productId === "new"
+    ? { id: "new", title: "", price: 0, delivery: "manual" as const, stock: [] }
+    : products.find((item) => item.id === productId);
   if (!product) return <div className="rounded-2xl bg-card p-8 text-center"><h1 className="text-lg font-black">Product not found</h1><Link to="/admin/products" className="mt-4 inline-block text-sm font-bold text-primary">Back to products</Link></div>;
   return <ProductEditor product={product} />;
 }
