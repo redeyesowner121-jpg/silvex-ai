@@ -381,7 +381,10 @@ export function decorateKeyboard(markup: any): any {
       row.map((btn: any) => {
         if (!btn || typeof btn.text !== "string") return btn;
         const entry = store.enabled ? buttonEmojiEntry(btn) : undefined;
-        const premiumId = entry?.id && VALID_EMOJI_ID.test(entry.id) ? entry.id : undefined;
+        const explicitId = btn.icon_custom_emoji_id;
+        const premiumId = store.enabled && explicitId && VALID_EMOJI_ID.test(String(explicitId))
+          ? String(explicitId)
+          : entry?.id && VALID_EMOJI_ID.test(entry.id) ? entry.id : undefined;
         let text = stripPremiumEmojiTags(btn.text.replace(MARKERS, ""));
         // Telegram renders icon_custom_emoji_id before the label. Strip any
         // leading emoji chars from the text so the icon never doubles them.
