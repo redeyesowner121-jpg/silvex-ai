@@ -2,7 +2,7 @@
 import { defaultDepositAddress } from "@/lib/deposit.server";
 import { formatDescription } from "@/lib/format-desc";
 
-import { dbGet, dbPush, dbPut, money, notifyOwners, sendDeliveryFiles, siteUrl, tg, tgSendPhoto, tgTag } from "@/lib/telegram.server";
+import { dbGet, dbPush, dbPut, money, notifyOwners, siteUrl, tg, tgSendPhoto, tgTag } from "@/lib/telegram.server";
 import { be, e as em, productEmoji, productEmojiChar } from "@/lib/emoji.server";
 import { allProducts, askEmail, backHome, cfg, editTarget, ensureUser, invalidateProducts, invalidateUsers, say, type Product } from "./core";
 import { payReferralCommission } from "./wallet";
