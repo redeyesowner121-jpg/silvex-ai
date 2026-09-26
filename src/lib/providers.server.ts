@@ -8,7 +8,7 @@ import { dbGet, dbPatch, dbPut } from "./telegram.server";
 export type ProviderId = "qamify" | "safwan" | "mmostore" | "w2premium" | "eklas" | "elite" | "canboso" | "custom";
 
 /** Shops that were removed — their imported products get cleaned up. */
-export const RETIRED_PROVIDERS = ["canboso", "custom"];
+export const RETIRED_PROVIDERS = ["canboso", "custom", "elite", "w2premium"];
 
 export type ProviderShape = {
   productsPath: string;
@@ -63,21 +63,6 @@ export const PROVIDERS: ProviderDef[] = [
       orderPath: "api/v1/orders",
       qtyField: "quantity",
       refField: "client_order_id",
-    },
-  },
-  {
-    id: "w2premium",
-    name: "W2 Premium",
-    url: "https://bot.w2premium.com/api/public/v1",
-    key: "mk_c804a1f1cb33b7252ee91e82a6e1b4b699c5dd089ee7d754",
-    docs: "https://bot.w2premium.com/api-docs",
-    markup: 130,
-    shape: {
-      productsPath: "products",
-      balancePath: "balance",
-      orderPath: "purchase",
-      qtyField: "quantity",
-      refField: "",
     },
   },
   {
