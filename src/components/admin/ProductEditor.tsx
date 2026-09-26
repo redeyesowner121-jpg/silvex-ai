@@ -18,7 +18,7 @@ export function ProductEditor({ product }: { product: Product }) {
   const [form, setForm] = useState<Form>({ title: product.title, group: product.group ?? "", desc: product.desc ?? "", type: product.type ?? categories[0]?.label ?? "Service", price: String(product.price), logo: product.logo ?? "", link: product.link ?? "", delivery: product.delivery ?? "manual", supplierId: product.supplierId == null ? "" : String(product.supplierId), markup: String(product.markup ?? 130), botPrice: product.botPrice ? String(product.botPrice) : "" });
 
   useEffect(() => {
-    if (!db) return;
+    if (!db || product.id === "new") return;
     get(ref(db, `usedStock/${product.id}`)).then((snap) => setUsedStock(snap.val() || {})).catch(() => undefined);
   }, [db, product.id]);
 
@@ -38,17 +38,23 @@ export function ProductEditor({ product }: { product: Product }) {
     if (!form.title.trim() || !(Number(form.price) > 0)) return notify("Name and a valid price are required");
     if (form.delivery === "supplier" && !form.supplierId.trim()) return notify("Supplier product ID is required");
     setSaving(true);
+    const data = {
+      title: form.title.trim(), group: form.group.trim() || null, desc: form.desc.trim(), type: form.type,
+      price: form.delivery === "supplier" ? Number(sellingPrice.toFixed(2)) : Number(form.price),
+      logo: form.logo, link: form.delivery === "supplier" ? null : form.link.trim(), delivery: form.delivery,
+      supplierId: form.delivery === "supplier" ? (/^\d+$/.test(form.supplierId) ? Number(form.supplierId) : form.supplierId.trim()) : null,
+      markup: form.delivery === "supplier" ? Number(form.markup) || 130 : null,
+      botPrice: Number(form.botPrice) > 0 ? Number(form.botPrice) : null,
+    };
     try {
-      await update(ref(db, `products/${product.id}`), {
-        title: form.title.trim(), group: form.group.trim() || null, desc: form.desc.trim(), type: form.type,
-        price: form.delivery === "supplier" ? Number(sellingPrice.toFixed(2)) : Number(form.price),
-        logo: form.logo, link: form.delivery === "supplier" ? null : form.link.trim(), delivery: form.delivery,
-        supplierId: form.delivery === "supplier" ? (/^\d+$/.test(form.supplierId) ? Number(form.supplierId) : form.supplierId.trim()) : null,
-        markup: form.delivery === "supplier" ? Number(form.markup) || 130 : null,
-        botPrice: Number(form.botPrice) > 0 ? Number(form.botPrice) : null,
-      });
-      if (form.delivery === "supplier") await syncSupplier().catch(() => undefined);
-      notify("Product updated");
+      if (product.id === "new") {
+        await push(ref(db, "products"), { ...data, salesCount: 0, announced: true });
+        notify("Product added");
+      } else {
+        await update(ref(db, `products/${product.id}`), data);
+        if (form.delivery === "supplier") await syncSupplier().catch(() => undefined);
+        notify("Product updated");
+      }
       await navigate({ to: "/admin/products" });
     } catch {
       notify("Product could not be saved. Please try again.");
@@ -56,7 +62,7 @@ export function ProductEditor({ product }: { product: Product }) {
   }
 
   async function addStock() {
-    if (!db) return;
+    if (!db || product.id === "new") return notify("Save the product first, then add stock");
     const lines = bulk.split("\n").map((line) => line.trim()).filter(Boolean);
     if (!lines.length) return notify("Paste at least one stock item");
     await set(ref(db, `products/${product.id}/stock`), [...available, ...lines]);
@@ -89,7 +95,7 @@ export function ProductEditor({ product }: { product: Product }) {
 
   return <div className="fade-in mx-auto max-w-3xl space-y-5">
     <div className="flex items-center justify-between gap-3"><Link to="/admin/products" className="flex items-center gap-2 text-sm font-bold text-muted-foreground"><ArrowLeft className="h-4 w-4" /> Products</Link><div className="flex items-center gap-2">{product.soldOut ? <span className="rounded-lg bg-destructive/10 px-2.5 py-1 text-[11px] font-bold text-destructive">Out of stock</span> : null}<span className={`rounded-lg px-2.5 py-1 text-[11px] font-bold ${product.hidden ? "bg-muted text-muted-foreground" : "bg-emerald-500/10 text-emerald-600"}`}>{product.hidden ? "Hidden" : "Visible"}</span></div></div>
-    <div><p className="text-xs font-bold text-primary">PRODUCT EDITOR</p><h1 className="break-words text-2xl font-black">{product.title}</h1><p className="mt-1 text-xs text-muted-foreground">ID: {product.id}{product.locked ? " · API product" : ""}</p></div>
+    <div><p className="text-xs font-bold text-primary">PRODUCT EDITOR</p><h1 className="break-words text-2xl font-black">{product.id === "new" ? "New product" : product.title}</h1>{product.id === "new" ? null : <p className="mt-1 text-xs text-muted-foreground">ID: {product.id}{product.locked ? " · API product" : ""}</p>}</div>
     <section className="grid gap-5 md:grid-cols-[minmax(0,1fr)_minmax(260px,0.75fr)]">
       <div className="space-y-4">
         <div className="space-y-3 rounded-2xl border border-border bg-card p-4"><h2 className="text-sm font-black">Product details</h2>
