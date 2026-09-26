@@ -7,19 +7,31 @@ import {
   listSlotOverrides,
   premiumEnabled,
   productEmojiChar,
+  productEmojiEntry,
   productEmojiStats,
   readEmoji,
   saveSlotImage,
   setPremiumEnabled,
   setProductEmoji,
   setSlotEmoji,
+  slotEntry,
   slotStats,
   verifyEntry,
   EMOJI_SLOTS,
 } from "@/lib/emoji.server";
+import { VALID_EMOJI_ID } from "@/lib/telegram-entities";
 import { allProducts, say, setState } from "./core";
 
 const EM_PAGE = 12;
+
+/** Show the saved custom emoji on setup buttons, not just in the shop. */
+function emojiButton(text: string, callback_data: string, id?: string) {
+  return {
+    text,
+    callback_data,
+    ...(premiumEnabled() && id && VALID_EMOJI_ID.test(id) ? { icon_custom_emoji_id: id } : {}),
+  };
+}
 
 function emPager(prefix: string, page: number, total: number) {
   const pages = Math.max(1, Math.ceil(total / EM_PAGE));
@@ -78,7 +90,7 @@ export async function emojiGroup(chatId: number, group: string, page = 0) {
     `${GROUP_TITLE[group] || "Emojis"}\nTap one, then send the emoji you want to use instead.`,
     {
       inline_keyboard: [
-        ...slice.map(([key, v]) => [{ text: `${be(key)} ${v.label}`, callback_data: `a:emk:${key}` }]),
+        ...slice.map(([key, v]) => [emojiButton(`${be(key)} ${v.label}`, `a:emk:${key}`, slotEntry(key)?.id)]),
         ...emPager(`a:emg:${group}:`, page, slots.length),
         [{ text: "⬅️ Back to Emoji Setup", callback_data: "a:em" }],
       ],
@@ -93,7 +105,7 @@ export async function emojiSlotPick(chatId: number, slotKey: string) {
   await setState(chatId, { k: "em_to", a: slotKey });
   return say(
     chatId,
-    `Send the new emoji for <b>${slot.label}</b> (now ${be(slotKey)}).\nPremium (custom) emojis work too.`,
+    `Send the new emoji for <b>${slot.label}</b> (now ${premiumEnabled() && slotEntry(slotKey)?.id ? `<tg-emoji emoji-id="${slotEntry(slotKey)?.id}">${be(slotKey)}</tg-emoji>` : be(slotKey)}).\nPremium (custom) emojis work too.`,
     {
       inline_keyboard: [
         [{ text: "♻️ Use the default", callback_data: `a:emd:${slotKey}` }],
@@ -113,10 +125,7 @@ export async function emojiList(chatId: number, page = 0) {
   await say(chatId, "📋 <b>Saved emojis</b>\nTap one to put the default back.", {
     inline_keyboard: [
       ...slice.map((r) => [
-        {
-          text: `${EMOJI_SLOTS[r.slot]?.label || r.slot} ➜ ${r.char}${r.id ? " ✨" : ""}`,
-          callback_data: `a:emd:${r.slot}`,
-        },
+        emojiButton(`${r.char} ${EMOJI_SLOTS[r.slot]?.label || r.slot}${r.id ? " ✨" : ""}`, `a:emd:${r.slot}`, r.id),
       ]),
       ...emPager("a:emL:", page, saved.length),
       [{ text: "⬅️ Back to Emoji Setup", callback_data: "a:em" }],
@@ -135,7 +144,7 @@ export async function emojiProducts(chatId: number, page = 0) {
   await say(chatId, "🛍 <b>Product emojis</b>\nChoose a product, then send the emoji.", {
     inline_keyboard: [
       ...slice.map(([id, p]) => [
-        { text: `${productEmojiChar(id)} ${p.title || "Item"}`, callback_data: `a:emp:${id}` },
+        emojiButton(`${productEmojiChar(id)} ${p.title || "Item"}`, `a:emp:${id}`, productEmojiEntry(id).id),
       ]),
       ...emPager("a:emP:", page, entries.length),
       [{ text: "⬅️ Back to Emoji Setup", callback_data: "a:em" }],
@@ -199,7 +208,7 @@ export async function emojiProductMessage(
     if (img) await setProductEmoji(productId, { ...value, img });
   }
   await setState(chatId, null);
-  await say(chatId, `✅ Product emoji saved: ${value.char}${value.id ? " (premium ✨)" : ""}`);
+  await say(chatId, `✅ Product emoji saved: ${value.id ? `<tg-emoji emoji-id="${value.id}">${value.char}</tg-emoji> (premium ✨)` : value.char}`);
   return emojiProducts(chatId);
 }
 
