@@ -46,7 +46,7 @@ function Products() {
   const list = useMemo(() => {
     const normalizedFilter = filter.toLowerCase();
     return products.filter((p) => {
-      if (p.hidden) return false;
+      if (p.hidden || p.hideWeb) return false;
       if (group && groupSlug(p.group || "") !== group) return false;
       const matchesText = p.title.toLowerCase().includes(normalizedFilter);
       const matchesCat = !category || p.type === category;

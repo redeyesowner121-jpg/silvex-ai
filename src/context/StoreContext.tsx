@@ -43,6 +43,12 @@ export type Product = {
   providerName?: string;
   /** Hidden products are only visible in the admin panel */
   hidden?: boolean;
+  /** Hidden on the website only */
+  hideWeb?: boolean;
+  /** Hidden in the Telegram bot only */
+  hideBot?: boolean;
+  /** Optional different price used in the Telegram bot */
+  botPrice?: number;
   /** Out of stock products stay listed but cannot be bought */
   soldOut?: boolean;
   /** Imported API products cannot be deleted, only hidden */

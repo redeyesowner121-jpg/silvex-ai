@@ -131,7 +131,14 @@ let userLoading: Promise<void> | null = null;
 function pullProducts(): Promise<void> {
   productLoading ||= dbGet<Record<string, Product>>("products")
     .then((v) => {
-      productCache = { at: Date.now(), v: v || {} };
+      const out: Record<string, Product> = {};
+      for (const [id, raw] of Object.entries(v || {})) {
+        const p = raw as any;
+        if (!p) continue;
+        const bp = Number(p.botPrice);
+        out[id] = { ...p, price: bp > 0 ? bp : p.price, hidden: p.hidden === true || p.hideBot === true };
+      }
+      productCache = { at: Date.now(), v: out };
     })
     .catch(() => undefined)
     .finally(() => {
