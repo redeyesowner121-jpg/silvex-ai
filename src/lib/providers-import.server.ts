@@ -150,6 +150,13 @@ export async function syncAllProviders(force = true): Promise<{
       delete (products as any)[id];
     }
   }
+  // Products from removed shops are deleted, not just left stale.
+  for (const [id, p] of Object.entries(products)) {
+    if (p && p.delivery === "supplier" && RETIRED_PROVIDERS.includes(String(p.provider || ""))) {
+      await dbPut(`products/${id}`, null);
+      delete (products as any)[id];
+    }
+  }
   const linked = Object.entries(products).filter(
     ([id, p]) =>
       p &&

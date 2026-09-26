@@ -8,7 +8,7 @@ import { dbGet, dbPatch, dbPut } from "./telegram.server";
 export type ProviderId = "qamify" | "safwan" | "mmostore" | "w2premium" | "eklas" | "elite" | "canboso" | "custom";
 
 /** Shops that were removed — their imported products get cleaned up. */
-export const RETIRED_PROVIDERS = ["canboso", "custom"];
+export const RETIRED_PROVIDERS = ["canboso", "custom", "elite", "w2premium"];
 
 export type ProviderShape = {
   productsPath: string;
@@ -66,21 +66,6 @@ export const PROVIDERS: ProviderDef[] = [
     },
   },
   {
-    id: "w2premium",
-    name: "W2 Premium",
-    url: "https://bot.w2premium.com/api/public/v1",
-    key: "mk_c804a1f1cb33b7252ee91e82a6e1b4b699c5dd089ee7d754",
-    docs: "https://bot.w2premium.com/api-docs",
-    markup: 130,
-    shape: {
-      productsPath: "products",
-      balancePath: "balance",
-      orderPath: "purchase",
-      qtyField: "quantity",
-      refField: "",
-    },
-  },
-  {
     id: "eklas",
     name: "Eklas Store",
     url: "https://api-esb.eklas.dev/v1",
@@ -93,21 +78,6 @@ export const PROVIDERS: ProviderDef[] = [
       orderPath: "orders",
       qtyField: "quantity",
       refField: "client_order_id",
-    },
-  },
-  {
-    id: "elite",
-    name: "Elite Digital Emporium",
-    url: "https://shop.elitedigitalemporium.com/api/telegram-buyer",
-    key: "tgb_5080983459740b92116a018d8736175068d812d9cd73bbad",
-    docs: "https://shop.elitedigitalemporium.com/api/swagger",
-    markup: 130,
-    shape: {
-      productsPath: "products",
-      balancePath: "balance",
-      orderPath: "purchase",
-      qtyField: "quantity",
-      refField: "idempotency_key",
     },
   },
   {
@@ -196,7 +166,8 @@ export async function saveProviderConfig(
  * Admin can override the list in site_settings/providers/{id}/keep (array of words).
  */
 export const PROVIDER_KEEP: Record<string, string[]> = {
-  qamify: ["gemini", "capcut", "duolingo", "leonardo", "lovable pro"],
+  // Qamify: keep the whole catalogue (admin can hide or delete items).
+  qamify: [],
   // MMO Store: only Gemini and Outlook accounts.
   mmostore: ["gemini", "outlook"],
   // Safwan Tiger: keep the whole catalogue (admin can hide or delete items).
