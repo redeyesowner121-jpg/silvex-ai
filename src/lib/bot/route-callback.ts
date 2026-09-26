@@ -71,6 +71,10 @@ export async function handleCallback(chatId: number, data: string) {
       return adminProducts(chatId);
     }
     if (key === "users") return adminUsers(chatId);
+    if (key === "stmt" || key === "ust") {
+      const { sendStatement } = await import("@/lib/bot/wallet");
+      return sendStatement(chatId, key === "ust" ? arg : undefined);
+    }
     if (key === "u") return adminUser(chatId, arg!);
     if (key === "uw") {
       await setState(chatId, { k: "u_wallet", a: arg! });
@@ -175,6 +179,10 @@ export async function handleCallback(chatId: number, data: string) {
   }
   if (data === "wallet") return sendWallet(chatId);
   if (data === "whist") return walletHistory(chatId);
+  if (data === "stmt") {
+    const { sendMyStatement } = await import("@/lib/bot/wallet");
+    return sendMyStatement(chatId);
+  }
   if (data === "dep") return startDeposit(chatId);
   if (data === "depcard") return startCardDeposit(chatId);
   if (data === "wd") return startWithdraw(chatId);

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { onValue, ref, update } from "firebase/database";
+import { get, onValue, ref, update } from "firebase/database";
+import { buildStatementCsv, downloadCsv } from "@/lib/statement";
 import { useStore } from "@/context/StoreContext";
 import { deliveryBlock, emailShell, sendMail } from "@/lib/mailer";
 import { notifyTelegramOrder } from "@/lib/telegram.functions";
@@ -38,6 +39,13 @@ export function OrdersAdmin({ orders }: { orders: OrderRow[] }) {
   function deliveryOf(item: { id?: string; title: string }) {
     const product = products.find((entry) => entry.id === item.id || entry.title === item.title);
     return product?.delivery === "auto" ? "Auto stock" : product?.delivery === "repeat" ? "Repeated" : "Manual";
+  }
+
+  async function downloadFullStatement() {
+    if (!db) return;
+    const [u, o] = await Promise.all([get(ref(db, "users")), get(ref(db, "orders"))]);
+    const users = Object.entries(u.val() || {}).map(([uid, v]) => ({ uid, ...(v as object) }));
+    downloadCsv(buildStatementCsv(users, Object.values(o.val() || {}), `${config.siteName || "Store"} — full statement`), `full-statement-${new Date().toISOString().slice(0, 10)}.csv`);
   }
 
   function exportRows(): ExportRow[] { return exportFilteredRows(); }
@@ -87,6 +95,7 @@ export function OrdersAdmin({ orders }: { orders: OrderRow[] }) {
       <button onClick={() => exportOrdersCsv(exportFilteredRows(), `orders-${Date.now()}.csv`)} className="rounded-xl bg-card py-2.5 text-xs font-bold shadow-sm">Download CSV</button>
       <button onClick={() => exportOrdersPdf(exportFilteredRows(), `${config.siteName || "Store"} — orders report`, `orders-${Date.now()}.pdf`)} className="rounded-xl bg-card py-2.5 text-xs font-bold shadow-sm">Download PDF</button>
     </div>
+    <button onClick={downloadFullStatement} className="w-full rounded-xl bg-primary py-2.5 text-xs font-bold text-primary-foreground">Download full statement (all orders + all wallet changes)</button>
     {filtered.map((order) => <div key={order.orderId} className="rounded-2xl border border-border bg-card p-4">
       <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 text-xs font-bold"><span className="truncate">#{order.orderId.slice(-6)}</span><span>{order.status}</span></div>
       <p className="mt-1 break-words text-xs text-muted-foreground">{userNames[order.uid] ? `${userNames[order.uid]} · ` : ""}{order.email} · {order.phone}</p>

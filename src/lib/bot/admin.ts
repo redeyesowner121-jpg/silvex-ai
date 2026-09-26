@@ -42,6 +42,9 @@ export async function adminHome(chatId: number) {
       ],
       [
         { text: "👥 Users", callback_data: "a:users" },
+      ],
+      [
+        { text: "📥 Full statement", callback_data: "a:stmt" },
         { text: "📣 Broadcast", callback_data: "a:bc" },
       ],
       [
@@ -319,6 +322,7 @@ export async function adminUser(chatId: number, uid: string) {
       inline_keyboard: [
         [{ text: "💵 Set wallet balance", callback_data: `a:uw:${uid}` }],
         [{ text: u.isAdmin ? "🚫 Remove admin" : "🛠 Make admin", callback_data: `a:ua:${uid}` }],
+        [{ text: "📥 User statement", callback_data: `a:ust:${uid}` }],
         [{ text: "⬅️ Back to Admin Panel", callback_data: "a:home" }],
       ],
     },
