@@ -3,7 +3,7 @@
 import { dbGet, dbPatch, dbPut } from "@/lib/telegram.server";
 import { resetAllEmojis, syncEmojiImages } from "@/lib/emoji.server";
 import { adminBack, askEmail, cfg, forceJoinBlocked, invalidateProducts, isBotAdmin, say, saveConfig, setState, welcome } from "@/lib/bot/core";
-import { askPayMethod, askProductSearch, askQty, buy, checkCardPayment, payProductByCard, confirmWalletPay, sendApiDocsFile, sendApiKey, sendOrders, sendGroup, sendProduct, sendProducts, sendProfile, sendRefer, sendReviews, sendSupport, sendWallet, startCardDeposit, startDeposit, startWithdraw, walletHistory } from "@/lib/bot/shop";
+import { askPayMethod, askProductSearch, askQty, buy, checkCardPayment, payProductByCard, confirmWalletPay, sendApiDocsFile, sendApiKey, sendOrders, sendProduct, sendProducts, sendProfile, sendRefer, sendReviews, sendSupport, sendWallet, startCardDeposit, startDeposit, startWithdraw, walletHistory } from "@/lib/bot/shop";
 import { adminAskDelivery, adminCancelOrder, adminDecideRequest, adminHome, adminOrder, adminOrders, adminProduct, adminProducts, adminRequests, adminSettings, adminStats, adminUser, adminUsers, broadcast } from "@/lib/bot/admin";
 import { clearProductEmoji, emojiGroup, emojiHome, emojiList, emojiProducts, emojiSlotPick, emojiSlotReset, emojiToggle } from "@/lib/bot/emoji-ui";
 
@@ -173,7 +173,6 @@ export async function handleCallback(chatId: number, data: string) {
     const cut = rest.indexOf(":");
     return sendProducts(chatId, Number(rest.slice(0, cut)) || 0, rest.slice(cut + 1));
   }
-  if (data.startsWith("g:")) return sendGroup(chatId, data.slice(2));
   if (data === "wallet") return sendWallet(chatId);
   if (data === "whist") return walletHistory(chatId);
   if (data === "dep") return startDeposit(chatId);

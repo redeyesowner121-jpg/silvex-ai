@@ -29,13 +29,6 @@ export {
   sendSupport,
 } from "./wallet";
 
-const slugOf = (name: string) =>
-  String(name || "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, 40);
-
 async function visibleProducts() {
   const all = await allProducts();
   return Object.entries(all).filter(
@@ -70,9 +63,7 @@ function listButton(id: string, p: Product) {
 
 const PAGE_SIZE = 10;
 
-type Entry =
-  | { kind: "folder"; slug: string; name: string; items: [string, Product][] }
-  | { kind: "product"; id: string; p: Product };
+type Entry = { kind: "product"; id: string; p: Product };
 
 const norm = (s: string) => String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 
