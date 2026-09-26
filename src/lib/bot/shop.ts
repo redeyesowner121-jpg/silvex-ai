@@ -29,13 +29,6 @@ export {
   sendSupport,
 } from "./wallet";
 
-const slugOf = (name: string) =>
-  String(name || "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, 40);
-
 async function visibleProducts() {
   const all = await allProducts();
   return Object.entries(all).filter(
@@ -70,9 +63,7 @@ function listButton(id: string, p: Product) {
 
 const PAGE_SIZE = 10;
 
-type Entry =
-  | { kind: "folder"; slug: string; name: string; items: [string, Product][] }
-  | { kind: "product"; id: string; p: Product };
+type Entry = { kind: "product"; id: string; p: Product };
 
 const norm = (s: string) => String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 
@@ -102,30 +93,11 @@ function matches(haystack: string, query: string) {
   });
 }
 
-/** Folders + single products, optionally filtered by a search term. */
+/** All visible products, optionally filtered by a search term. */
 async function catalog(query = ""): Promise<Entry[]> {
   const entries = await visibleProducts();
-  const folders = new Map<string, { name: string; items: [string, Product][] }>();
-  const singles: [string, Product][] = [];
-  for (const entry of entries) {
-    const name = String((entry[1] as any).group || "").trim();
-    if (!name) {
-      singles.push(entry);
-      continue;
-    }
-    const slug = slugOf(name);
-    const found = folders.get(slug);
-    if (found) found.items.push(entry);
-    else folders.set(slug, { name, items: [entry] });
-  }
-
   const out: Entry[] = [];
-  for (const [slug, f] of folders) {
-    const hit =
-      matches(f.name, query) || f.items.some(([, p]) => matches(String(p.title || ""), query));
-    if (hit) out.push({ kind: "folder", slug, name: f.name, items: f.items });
-  }
-  for (const [id, p] of singles) {
+  for (const [id, p] of entries) {
     if (matches(`${p.title || ""} ${(p as any).type || ""}`, query))
       out.push({ kind: "product", id, p });
   }
@@ -166,13 +138,7 @@ export async function sendProducts(chatId: number, page = 0, query = "") {
   // Premium (custom) emoji only render inside message text, never on buttons,
   // so the list itself carries them and the buttons stay plain.
   const lines = slice
-    .map((entry) =>
-      entry.kind === "folder"
-        ? `📁 <b>${entry.name}</b> — ${entry.items.length} plans from ${money(
-            Math.min(...entry.items.map(([, p]) => Number(p.price) || 0)),
-          )}`
-        : `${productEmoji(entry.id)} <b>${entry.p.title}</b> — ${money(entry.p.price || 0)}`,
-    )
+    .map((entry) => `${productEmoji(entry.id)} <b>${entry.p.title}</b> — ${money(entry.p.price || 0)}`)
     .join("\n");
 
   const nav: { text: string; callback_data: string }[] = [];
@@ -186,11 +152,7 @@ export async function sendProducts(chatId: number, page = 0, query = "") {
     `${header}\n\n${lines}\n\nPage <b>${current + 1}</b> of <b>${pages}</b> — tap any item below to see details.`,
     {
       inline_keyboard: [
-        ...slice.map((entry) =>
-          entry.kind === "folder"
-            ? [{ text: `📁 ${entry.name} — ${entry.items.length} plans`, callback_data: `g:${entry.slug}` }]
-            : [listButton(entry.id, entry.p)],
-        ),
+        ...slice.map((entry) => [listButton(entry.id, entry.p)]),
         ...(nav.length ? [nav] : []),
         [searchButton()],
         [{ text: "⬅️ Back to Shop", callback_data: "home" }],
@@ -205,26 +167,6 @@ export async function askProductSearch(chatId: number) {
   await setState(chatId, { k: "prod_search" });
   return say(chatId, "🔍 Send what you are looking for (for example <code>cap</code> for CapCut).", {
     inline_keyboard: [[{ text: "⬅️ Back to Products", callback_data: "products" }]],
-  });
-}
-
-/** Opens one folder and lists every plan variation inside it. */
-export async function sendGroup(chatId: number, slug: string) {
-  const entries = (await visibleProducts()).filter(
-    ([, p]) => slugOf(String((p as any).group || "")) === slug,
-  );
-  if (!entries.length) return sendProducts(chatId);
-  const name = String((entries[0]![1] as any).group || "Plans").trim();
-  const list = entries.slice(0, 40);
-  const lines = list
-    .map(([id, p]) => `${productEmoji(id)} <b>${p.title}</b> — ${money(p.price || 0)}`)
-    .join("\n");
-
-  await say(chatId, `📁 <b>${name}</b>\n\n${lines}\n\nPick the plan you want.`, {
-    inline_keyboard: [
-      ...list.map(([id, p]) => [listButton(id, p)]),
-      [{ text: `🔵 ${be("btn.back")} Back to Products`, callback_data: "products" }],
-    ],
   });
 }
 

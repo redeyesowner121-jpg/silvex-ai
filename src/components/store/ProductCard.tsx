@@ -1,6 +1,3 @@
-import { Link } from "@tanstack/react-router";
-import { Folder } from "lucide-react";
-
 import { useStore, type Product } from "@/context/StoreContext";
 import { productImageSrc } from "@/lib/product-image";
 import { Emo } from "@/components/store/Emo";
@@ -70,45 +67,6 @@ export function ProductCard({ product }: { product: Product }) {
               ADD
             </button>
           )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/** One card standing for a folder of product variations (e.g. all LinkedIn plans). */
-export function FolderCard({ name, slug, items }: { name: string; slug: string; items: Product[] }) {
-  const coverItem = items.find((p) => p.logo);
-  const cover = coverItem ? productImageSrc(coverItem.id, coverItem.logo) : undefined;
-  const from = Math.min(...items.map((p) => Number(p.price) || 0));
-
-  return (
-    <div className="card-hover shadow-card flex flex-col overflow-hidden rounded-3xl border border-border/60 bg-card">
-      <Link to="/products" search={{ group: slug }} className="block aspect-video w-full bg-muted">
-        {cover ? (
-          <img src={cover} alt={name} loading="lazy" decoding="async" className="h-full w-full object-cover" />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center">
-            <Folder className="h-8 w-8 text-primary" aria-hidden="true" />
-          </div>
-        )}
-      </Link>
-      <div className="flex flex-1 flex-col p-3">
-        <span className="mb-1 flex w-fit items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary">
-          <Folder className="h-3 w-3" aria-hidden="true" /> {items.length} plans
-        </span>
-        <h3 className="line-clamp-2 text-sm font-bold leading-tight">
-          <Link to="/products" search={{ group: slug }}>{name}</Link>
-        </h3>
-        <div className="mt-auto flex items-center justify-between pt-3">
-          <span className="font-display text-gradient text-lg font-black">from ${from}</span>
-          <Link
-            to="/products"
-            search={{ group: slug }}
-            className="btn-grad rounded-xl px-4 py-1.5 text-xs font-bold"
-          >
-            VIEW
-          </Link>
         </div>
       </div>
     </div>
