@@ -106,6 +106,8 @@ export const BOT_EMOJI_SLOTS: Record<string, { label: string; char: string; grou
   "btn.confirm": { label: "Confirm button", char: "✅", group: "button" },
   "btn.refresh": { label: "Refresh button", char: "🔄", group: "button" },
   "btn.next": { label: "Next button", char: "➡️", group: "button" },
+  "btn.prev": { label: "Previous button", char: "⬅️", group: "button" },
+  "btn.search": { label: "Search button", char: "🔍", group: "button" },
   "btn.copy": { label: "Copy button", char: "📋", group: "button" },
   "btn.channel": { label: "Channel button", char: "📣", group: "button" },
   "btn.emoji": { label: "Emoji button", char: "😍", group: "button" },
