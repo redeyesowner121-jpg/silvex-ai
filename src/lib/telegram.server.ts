@@ -238,8 +238,10 @@ export async function tg(method: string, body: Record<string, unknown>): Promise
       // Custom-emoji entities are what the server refused — drop them as well.
       delete retry["entities"];
       delete retry["caption_entities"];
-      if (retry["reply_markup"])
-        retry["reply_markup"] = stripUnsupportedButtonDecorations(retry["reply_markup"]);
+      // Retry from the original keyboard so its ordinary emoji remains visible
+      // when Telegram refuses custom button icons.
+      if (body["reply_markup"])
+        retry["reply_markup"] = stripUnsupportedButtonDecorations(body["reply_markup"]);
       return await call(retry);
     }
     throw err;
