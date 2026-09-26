@@ -44,11 +44,12 @@ function Products() {
   const base = `${(config.siteUrl || websiteUrl()).replace(/\/+$/, "")}/api/public/reseller`;
 
   const list = useMemo(() => {
-    const normalizedFilter = filter.toLowerCase();
+    const normalizedFilter = (filter || "").toLowerCase();
     return products.filter((p) => {
+      if (!p || !p.title) return false;
       if (p.hidden || p.hideWeb) return false;
       if (group && groupSlug(p.group || "") !== group) return false;
-      const matchesText = p.title.toLowerCase().includes(normalizedFilter);
+      const matchesText = String(p.title).toLowerCase().includes(normalizedFilter);
       const matchesCat = !category || p.type === category;
       return matchesText && matchesCat;
     });
