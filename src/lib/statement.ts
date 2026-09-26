@@ -1,6 +1,7 @@
 /** Builds a full CSV statement of orders + wallet changes. Works in browser and server. */
 
-type AnyRec = Record<string, any>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyRec = any;
 export type StatementUser = { uid: string; name?: string; email?: string; wallet?: number; history?: AnyRec };
 
 const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
