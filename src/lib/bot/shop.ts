@@ -2,7 +2,7 @@
 import { defaultDepositAddress } from "@/lib/deposit.server";
 import { formatDescription } from "@/lib/format-desc";
 
-import { dbGet, dbPush, dbPut, money, notifyOwners, sendDeliveryFiles, siteUrl, tg, tgSendPhoto, tgTag } from "@/lib/telegram.server";
+import { dbGet, dbPush, dbPut, money, notifyOwners, siteUrl, tg, tgSendPhoto, tgTag } from "@/lib/telegram.server";
 import { be, e as em, productEmoji, productEmojiChar } from "@/lib/emoji.server";
 import { allProducts, askEmail, backHome, cfg, editTarget, ensureUser, invalidateProducts, invalidateUsers, say, type Product } from "./core";
 import { payReferralCommission } from "./wallet";
@@ -68,7 +68,7 @@ function listButton(id: string, p: Product) {
   return button;
 }
 
-const PAGE_SIZE = 8;
+const PAGE_SIZE = 10;
 
 type Entry =
   | { kind: "folder"; slug: string; name: string; items: [string, Product][] }
@@ -477,7 +477,7 @@ export async function buy(chatId: number, productId: string, qty = 1) {
       [{ text: "🛍 Buy more", callback_data: "products" }],
     ],
   });
-  if (complete) await sendDeliveryFiles(chatId, orderId, delivered);
+  // Delivery receipt files removed — the message above already carries the content.
   if (!user.email) {
     await askEmail(chatId, "Add your email to also receive this order and its delivery details by mail.");
   }
