@@ -342,8 +342,12 @@ function buttonEmojiEntry(btn: any): EmojiEntry | undefined {
   const data = String(btn?.callback_data || "");
   const label = String(btn?.text || "");
   let slot = BUTTON_SLOT_BY_ACTION[data];
+  if (!slot && data === "psearch") slot = "btn.search";
 
   // Back / Continue / Cancel navigation buttons never wear a product's emoji.
+  if (!slot && /\bprevious\b/i.test(label)) slot = "btn.prev";
+  if (!slot && /\bnext\b/i.test(label)) slot = "btn.next";
+  if (!slot && /\bsearch\b/i.test(label)) slot = "btn.search";
   if (!slot && /\bback\b|\bmenu\b/i.test(label)) slot = "btn.back";
   if (!slot && /\bcancel\b/i.test(label)) slot = "btn.cancel";
   if (!slot && /\bcontinue\b/i.test(label)) slot = "btn.confirm";
