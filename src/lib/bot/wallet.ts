@@ -25,6 +25,7 @@ export async function sendWallet(chatId: number) {
         { text: "➖ Withdraw", callback_data: "wd" },
       ],
       [{ text: "📜 History", callback_data: "whist" }],
+      [{ text: "📥 Download full statement", callback_data: "stmt" }],
       [{ text: "⬅️ Back to Shop", callback_data: "home" }],
     ],
   });
@@ -42,7 +43,9 @@ export async function walletHistory(chatId: number) {
         )
         .join("\n")
     : "No transactions yet.";
-  await say(chatId, `📜 <b>Wallet history</b>\n\n${text}`, backHome);
+  await say(chatId, `📜 <b>Wallet history</b>\n\n${text}`, {
+    inline_keyboard: [[{ text: "📥 Download full statement", callback_data: "stmt" }], ...backHome.inline_keyboard],
+  });
 }
 
 export async function startDeposit(chatId: number) {
@@ -306,7 +309,7 @@ export async function sendOrders(chatId: number) {
     })
     .join("\n\n");
   await say(chatId, text, {
-    inline_keyboard: [[{ text: "⬅️ Back to Shop", callback_data: "home" }]],
+    inline_keyboard: [[{ text: "📥 Download full statement", callback_data: "stmt" }], [{ text: "⬅️ Back to Shop", callback_data: "home" }]],
   });
 }
 
@@ -459,3 +462,29 @@ export async function sendSupport(chatId: number) {
 /* ---------------- buying ---------------- */
 
 /** How many copies of a product can be bought right now. */
+
+/** Sends a CSV statement. uid = one user; uid omitted = whole store (admin). */
+export async function sendStatement(chatId: number, uid?: string) {
+  const { buildStatementCsv } = await import("@/lib/statement");
+  const target = uid ?? null;
+  const allOrders = Object.values((await dbGet<Record<string, any>>("orders")) || {});
+  let users: any[];
+  if (target) {
+    const u = (await dbGet<any>(`users/${target}`)) || {};
+    users = [{ uid: target, ...u }];
+  } else {
+    const all = (await dbGet<Record<string, any>>("users")) || {};
+    users = Object.entries(all).map(([id, u]) => ({ uid: id, ...(u || {}) }));
+  }
+  const orders = target ? allOrders.filter((o: any) => o?.uid === target) : allOrders;
+  const csv = buildStatementCsv(users, orders, target ? `Statement for ${users[0].email || target}` : "Full store statement");
+  const bytes = new TextEncoder().encode("\ufeff" + csv);
+  await tgSendDocument(chatId, `statement-${target ? "account" : "store"}-${new Date().toISOString().slice(0, 10)}.csv`, bytes, "text/csv;charset=utf-8",
+    `📥 <b>${target ? "Your full statement" : "Full store statement"}</b>\nAll orders and wallet changes.`);
+}
+
+export async function sendMyStatement(chatId: number) {
+  const uid = await ensureUser(chatId);
+  if (!uid) return;
+  await sendStatement(chatId, uid);
+}
