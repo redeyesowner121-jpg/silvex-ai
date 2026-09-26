@@ -68,7 +68,7 @@ function listButton(id: string, p: Product) {
   return button;
 }
 
-const PAGE_SIZE = 8;
+const PAGE_SIZE = 10;
 
 type Entry =
   | { kind: "folder"; slug: string; name: string; items: [string, Product][] }
