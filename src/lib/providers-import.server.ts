@@ -190,9 +190,15 @@ export async function syncAllProviders(force = true): Promise<{
   const updated: { id: string; title: string; price: number; stock: number }[] = [];
   for (const [id, p] of linked) {
     const sid = String(p.supplierId);
-    let pid = String(p.provider || "");
+    // The product key (api_<shop>_<id>) is the truth for which shop it belongs to.
+    const keyShop = PROVIDERS.find((d) => id.startsWith(`api_${d.id}_`))?.id;
+    let pid = keyShop || String(p.provider || "");
+    if (keyShop && p.provider !== keyShop) await dbPatch(`products/${id}`, { provider: keyShop });
     let sp = catalogues.get(pid)?.get(sid);
-    if (!sp) {
+    // Only guess another shop when this item has no valid shop at all —
+    // shops reuse the same item numbers, so guessing would swap products.
+    const known = PROVIDERS.some((d) => d.id === pid);
+    if (!sp && !known) {
       // Find the shop this item actually comes from and remember it.
       for (const [otherId, cat] of catalogues) {
         const hit = cat.get(sid);

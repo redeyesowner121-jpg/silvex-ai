@@ -8,7 +8,7 @@ import { dbGet, dbPatch, dbPut } from "./telegram.server";
 export type ProviderId = "qamify" | "safwan" | "mmostore" | "w2premium" | "eklas" | "elite" | "canboso" | "custom";
 
 /** Shops that were removed — their imported products get cleaned up. */
-export const RETIRED_PROVIDERS = ["canboso", "custom", "elite", "w2premium"];
+export const RETIRED_PROVIDERS = ["canboso", "custom", "elite", "w2premium", "safwan", "eklas"];
 
 export type ProviderShape = {
   productsPath: string;
@@ -63,36 +63,6 @@ export const PROVIDERS: ProviderDef[] = [
       orderPath: "api/v1/orders",
       qtyField: "quantity",
       refField: "client_order_id",
-    },
-  },
-  {
-    id: "eklas",
-    name: "Eklas Store",
-    url: "https://api-esb.eklas.dev/v1",
-    key: "tgb_O0aZZYoosD_gMgAo8DCGcNJyVO7YwrnkpAeRMd4z21z8kXEQ",
-    docs: "https://api-esb.eklas.dev/docs",
-    markup: 130,
-    shape: {
-      productsPath: "products",
-      balancePath: "balance",
-      orderPath: "orders",
-      qtyField: "quantity",
-      refField: "client_order_id",
-    },
-  },
-  {
-    id: "safwan",
-    name: "Safwan Tiger",
-    url: "https://safwantigershopbot-production.up.railway.app/api",
-    key: "stapi_5419b4f3926ffc00701e8a03cc9036fbf5d221838ce5a3e9b609b2e155fb1579",
-    docs: "",
-    markup: 130,
-    shape: {
-      productsPath: "products",
-      balancePath: "balance",
-      orderPath: "order",
-      qtyField: "quantity",
-      refField: "request_id",
     },
   },
 ];
@@ -170,10 +140,6 @@ export const PROVIDER_KEEP: Record<string, string[]> = {
   qamify: [],
   // MMO Store: only Gemini and Outlook accounts.
   mmostore: ["gemini", "outlook"],
-  // Safwan Tiger: keep the whole catalogue (admin can hide or delete items).
-  safwan: [],
-  // Eklas Store: keep the whole catalogue (admin can hide or delete items).
-  eklas: [],
 };
 
 /** Admin-editable keep list for a provider (empty list = keep everything). */
