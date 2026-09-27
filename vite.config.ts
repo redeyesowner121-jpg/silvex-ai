@@ -11,7 +11,7 @@ const nodeBuild = nitroPreset.length > 0;
 
 export default defineConfig({
   // Outside Lovable (e.g. Railway/CI) honour NITRO_PRESET, otherwise keep defaults.
-  ...(nodeBuild ? { nitro: { preset: nitroPreset, compressPublicAssets: { gzip: true, brotli: true } } } : {}),
+  ...(nodeBuild ? { nitro: { preset: nitroPreset } } : {}),
   // Cloudflare-only mailer swapped for a nodemailer-backed shim on Node hosts.
   ...(nodeBuild
     ? {
