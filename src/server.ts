@@ -44,12 +44,33 @@ function isH3SwallowedErrorBody(body: string): boolean {
   }
 }
 
+// Railway has no CDN in front: gzip text responses (HTML, JSON, server data) so
+// pages are ~5-8x smaller and the server handles far more visitors.
+const COMPRESSIBLE = /text\/|application\/(json|javascript|xml)|image\/svg/;
+function compress(request: Request, response: Response): Response {
+  if (typeof CompressionStream === "undefined" || !response.body) return response;
+  if (response.headers.has("content-encoding")) return response;
+  if (!COMPRESSIBLE.test(response.headers.get("content-type") ?? "")) return response;
+  if (!/\bgzip\b/.test(request.headers.get("accept-encoding") ?? "")) return response;
+  if (request.headers.get("upgrade") || response.status === 204 || response.status === 304) return response;
+  const headers = new Headers(response.headers);
+  headers.set("content-encoding", "gzip");
+  headers.delete("content-length");
+  headers.append("vary", "Accept-Encoding");
+  return new Response(response.body.pipeThrough(new CompressionStream("gzip")), {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
-      return await normalizeCatastrophicSsrResponse(response);
+      const normalized = await normalizeCatastrophicSsrResponse(response);
+      return compress(request, normalized);
     } catch (error) {
       console.error(error);
       return new Response(renderErrorPage(), {
