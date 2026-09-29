@@ -469,6 +469,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         toast("This product is out of stock");
         return;
       }
+      if (
+        flashPrice == null &&
+        flashSale?.pid === product.id &&
+        flashSale.endTime &&
+        flashSale.endTime > Date.now() &&
+        Number(flashSale.price) > 0
+      ) {
+        flashPrice = Number(flashSale.price);
+      }
       const price = flashPrice != null ? Number(flashPrice) : Number(product.price);
       setCart((prev) => {
         const existing = prev.find((i) => i.id === product.id);
