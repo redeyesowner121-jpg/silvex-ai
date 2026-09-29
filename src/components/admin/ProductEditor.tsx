@@ -23,7 +23,11 @@ export function ProductEditor({ product }: { product: Product }) {
   }, [db, product.id]);
 
   const folderNames = useMemo(() => [...new Set(products.map((p) => String(p.group || "").trim()).filter(Boolean))].sort(), [products]);
-  const available = useMemo(() => (product.stock || []).filter(Boolean), [product.stock]);
+  const available = useMemo(() => {
+    const raw = product.stock as unknown;
+    const list = Array.isArray(raw) ? raw : raw && typeof raw === "object" ? Object.values(raw as Record<string, unknown>) : [];
+    return list.map((s) => String(s ?? "").trim()).filter(Boolean);
+  }, [product.stock]);
   const used = useMemo(() => [...Object.values(product.usedStock || {}), ...Object.values(usedStock)], [product.usedStock, usedStock]);
   const sellingPrice = form.delivery === "supplier" && product.supplierPrice != null ? Number(product.supplierPrice) * (Number(form.markup) || 130) / 100 : Number(form.price) || 0;
 
@@ -65,8 +69,21 @@ export function ProductEditor({ product }: { product: Product }) {
     if (!db || product.id === "new") return notify("Save the product first, then add stock");
     const lines = bulk.split("\n").map((line) => line.trim()).filter(Boolean);
     if (!lines.length) return notify("Paste at least one stock item");
-    await set(ref(db, `products/${product.id}/stock`), [...available, ...lines]);
-    setBulk(""); notify(`${lines.length} stock item(s) added`);
+    try {
+      // Read the live stock so nothing added elsewhere (bot, other admin) is overwritten.
+      const snap = await get(ref(db, `products/${product.id}/stock`));
+      const raw = snap.val();
+      const current = (Array.isArray(raw) ? raw : raw && typeof raw === "object" ? Object.values(raw) : [])
+        .map((s) => String(s ?? "").trim()).filter(Boolean);
+      await update(ref(db, `products/${product.id}`), {
+        stock: [...current, ...lines],
+        delivery: "auto",
+        soldOut: false,
+      });
+      setBulk(""); notify(`${lines.length} stock item(s) added`);
+    } catch {
+      notify("Stock could not be added. Please try again.");
+    }
   }
 
   async function deleteProduct() {
