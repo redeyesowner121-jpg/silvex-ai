@@ -378,13 +378,9 @@ async function sendOne(id: number, text: string): Promise<boolean> {
   return false;
 }
 
-async function broadcastInBatches(chatId: number, ids: number[], text: string) {
-  let sent = 0;
-  for (let i = 0; i < ids.length; i += BROADCAST_BATCH) {
-    const group = ids.slice(i, i + BROADCAST_BATCH);
-    const results = await Promise.all(group.map((id) => sendOne(id, text)));
-    sent += results.filter(Boolean).length;
-    if (i + BROADCAST_BATCH < ids.length) await sleep(BROADCAST_DELAY_MS);
-  }
+async function broadcastAll(chatId: number, ids: number[], text: string) {
+  // Fire every message at once; sendOne retries any that Telegram rate-limits.
+  const results = await Promise.all(ids.map((id) => sendOne(id, text)));
+  const sent = results.filter(Boolean).length;
   await say(chatId, `📣 Broadcast sent to ${sent}/${ids.length} users.`, adminBack).catch(() => {});
 }
