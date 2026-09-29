@@ -8,3 +8,6 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+- Telegram browsing screens use the short-lived in-memory catalogue cache; final purchases always re-read product and user data for correctness and safety.
+- Supplier refreshes triggered by Telegram are single-flight and locally limited to once per minute to prevent interaction traffic from creating overlapping sync work.

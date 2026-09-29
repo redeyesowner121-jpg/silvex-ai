@@ -21,7 +21,7 @@ import {
 } from "@/lib/bot/shop";
 import { adminDeliver, adminFindUser, adminHome, adminProduct, adminUser, broadcast } from "@/lib/bot/admin";
 import { emojiHome, emojiProductMessage, emojiToMessage } from "@/lib/bot/emoji-ui";
-import { ADMIN_COMMANDS, USER_COMMANDS, registerAdminCommands, registerBotCommands, showQuickMenu } from "@/lib/bot/commands";
+import { ADMIN_COMMANDS, USER_COMMANDS, registerAdminCommands, registerBotCommands } from "@/lib/bot/commands";
 
 export async function handleText(
   chatId: number,
@@ -47,23 +47,27 @@ export async function handleText(
     if (await forceJoinBlocked(chatId)) return;
     // Every /start goes to the activity group right away.
     if (t.startsWith("/start")) {
-      const isNew = !(await dbGet<string>(`telegramLinks/${chatId}`));
       const fullName = [fromUser?.first_name, fromUser?.last_name].filter(Boolean).join(" ").trim();
       const tag = fromUser?.username
         ? `@${fromUser.username}`
         : `user <code>${fromUser?.id ?? chatId}</code>`;
-      void notifyGroup(
-        `🚀 <b>${isNew ? "NEW BOT START" : "BOT START"}</b>\n\n` +
-          `👤 Name: ${fullName || "-"}\n` +
-          `🆔 ID: <code>${fromUser?.id ?? chatId}</code>\n` +
-          `🔗 Username: ${tag}`,
-      ).catch(() => undefined);
+      // Logging must never delay the greeting. Resolve new/returning status and
+      // notify the activity group entirely in the background.
+      void dbGet<string>(`telegramLinks/${chatId}`)
+        .then((linked) =>
+          notifyGroup(
+            `🚀 <b>${linked ? "BOT START" : "NEW BOT START"}</b>\n\n` +
+              `👤 Name: ${fullName || "-"}\n` +
+              `🆔 ID: <code>${fromUser?.id ?? chatId}</code>\n` +
+              `🔗 Username: ${tag}`,
+          ),
+        )
+        .catch(() => undefined);
     }
     if (t.startsWith("/start ")) {
       const uid = await ensureUser(chatId);
       await applyStartReferral(uid, t.slice(7));
     }
-    void showQuickMenu(chatId).catch(() => undefined);
     return welcome(chatId);
   }
   if (await forceJoinBlocked(chatId)) return;
