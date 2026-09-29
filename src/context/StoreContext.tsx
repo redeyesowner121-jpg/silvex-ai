@@ -506,7 +506,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       });
       setSuccess({ title: "Added", desc: "Item added to your cart." });
     },
-    [user],
+    [user, flashSale],
   );
 
   const setQty = useCallback((id: string, qty: number) => {
