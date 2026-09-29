@@ -361,15 +361,21 @@ export async function broadcast(chatId: number, text: string) {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+function retryAfterMs(e: unknown): number {
+  // tg() throws an Error whose message embeds Telegram's JSON body.
+  const m = /"retry_after"\s*:\s*(\d+)/.exec(String((e as Error)?.message || ""));
+  return m ? Number(m[1]) * 1000 + 200 : 0;
+}
+
 async function sendOne(id: number, text: string): Promise<boolean> {
-  for (let attempt = 0; attempt < 3; attempt++) {
+  for (let attempt = 0; attempt < 4; attempt++) {
     try {
       await tg("sendMessage", { chat_id: id, text, parse_mode: "HTML" });
       return true;
-    } catch (e: any) {
-      const retryAfter = Number(e?.retry_after ?? e?.parameters?.retry_after);
-      if (retryAfter > 0 && attempt < 2) {
-        await sleep(retryAfter * 1000 + 200);
+    } catch (e) {
+      const wait = retryAfterMs(e);
+      if (wait > 0 && attempt < 3) {
+        await sleep(wait);
         continue;
       }
       return false;
@@ -379,8 +385,20 @@ async function sendOne(id: number, text: string): Promise<boolean> {
 }
 
 async function broadcastAll(chatId: number, ids: number[], text: string) {
+  // ids come from unique database keys, so nobody can get the message twice.
   // Fire every message at once; sendOne retries any that Telegram rate-limits.
-  const results = await Promise.all(ids.map((id) => sendOne(id, text)));
+  let results = await Promise.all(ids.map((id) => sendOne(id, text)));
+  // One catch-up pass for anyone still missing (e.g. a brief network error),
+  // so nobody is left out of the broadcast.
+  const missed = ids.filter((_, i) => !results[i]);
+  if (missed.length) {
+    results = await Promise.all(ids.map((id, i) => (results[i] ? Promise.resolve(true) : sendOne(id, text))));
+  }
   const sent = results.filter(Boolean).length;
-  await say(chatId, `📣 Broadcast sent to ${sent}/${ids.length} users.`, adminBack).catch(() => {});
+  const failed = ids.length - sent;
+  await say(
+    chatId,
+    `📣 Broadcast sent to ${sent}/${ids.length} users.${failed ? `\n⚠️ ${failed} could not be reached (they may have blocked the bot).` : ""}`,
+    adminBack,
+  ).catch(() => {});
 }
