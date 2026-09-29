@@ -129,14 +129,19 @@ let productLoading: Promise<void> | null = null;
 let userLoading: Promise<void> | null = null;
 
 function pullProducts(): Promise<void> {
-  productLoading ||= dbGet<Record<string, Product>>("products")
-    .then((v) => {
+  productLoading ||= Promise.all([
+    dbGet<Record<string, Product>>("products"),
+    dbGet<{ pid?: string; price?: number; endTime?: number }>("site_settings/flash_sale").catch(() => null),
+  ])
+    .then(([v, fs]) => {
+      const flashOn = !!fs?.pid && Number(fs.endTime) > Date.now() && Number(fs.price) > 0;
       const out: Record<string, Product> = {};
       for (const [id, raw] of Object.entries(v || {})) {
         const p = raw as any;
         if (!p) continue;
         const bp = Number(p.botPrice);
-        out[id] = { ...p, price: bp > 0 ? bp : p.price, hidden: p.hidden === true || p.hideBot === true };
+        const base = bp > 0 ? bp : p.price;
+        out[id] = { ...p, price: flashOn && fs!.pid === id ? Number(fs!.price) : base, hidden: p.hidden === true || p.hideBot === true };
       }
       productCache = { at: Date.now(), v: out };
     })
