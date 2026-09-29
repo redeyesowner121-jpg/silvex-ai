@@ -390,8 +390,7 @@ async function broadcastAll(chatId: number, ids: number[], text: string) {
   let results = await Promise.all(ids.map((id) => sendOne(id, text)));
   // One catch-up pass for anyone still missing (e.g. a brief network error),
   // so nobody is left out of the broadcast.
-  const missed = ids.filter((_, i) => !results[i]);
-  if (missed.length) {
+  if (results.some((r) => !r)) {
     results = await Promise.all(ids.map((id, i) => (results[i] ? Promise.resolve(true) : sendOne(id, text))));
   }
   const sent = results.filter(Boolean).length;
