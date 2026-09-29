@@ -5,6 +5,28 @@ import { handleCallback } from "@/lib/bot/route-callback";
 import { handleText } from "@/lib/bot/route-text";
 
 const chatQueues = new Map<string, Promise<void>>();
+const SUPPLIER_SYNC_INTERVAL_MS = 60_000;
+let supplierSyncStartedAt = 0;
+let supplierSyncing: Promise<unknown> | null = null;
+
+function refreshSuppliersInBackground() {
+  const now = Date.now();
+  if (supplierSyncing || now - supplierSyncStartedAt < SUPPLIER_SYNC_INTERVAL_MS) return;
+  supplierSyncStartedAt = now;
+  supplierSyncing = import("@/lib/providers-import.server")
+    .then(({ syncAllProviders }) => syncAllProviders(false))
+    .catch(() => undefined)
+    .finally(() => {
+      supplierSyncing = null;
+    });
+}
+
+// Warm the shared caches before the first customer interaction reaches this worker.
+void Promise.all([
+  loadBotRuntime().catch(() => undefined),
+  loadBotPresentation().catch(() => undefined),
+  import("@/lib/bot/core").then(({ allProducts }) => allProducts()).catch(() => undefined),
+]);
 
 async function processUpdate(update: any) {
   await loadBotPresentation().catch(() => undefined);
@@ -45,9 +67,7 @@ async function processUpdate(update: any) {
       );
     }
   }
-  void import("@/lib/providers-import.server")
-    .then(({ syncAllProviders }) => syncAllProviders(false))
-    .catch(() => undefined);
+  refreshSuppliersInBackground();
 }
 
 export const Route = createFileRoute("/api/public/telegram/webhook")({

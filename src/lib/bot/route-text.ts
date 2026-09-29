@@ -21,7 +21,7 @@ import {
 } from "@/lib/bot/shop";
 import { adminDeliver, adminFindUser, adminHome, adminProduct, adminUser, broadcast } from "@/lib/bot/admin";
 import { emojiHome, emojiProductMessage, emojiToMessage } from "@/lib/bot/emoji-ui";
-import { ADMIN_COMMANDS, USER_COMMANDS, registerAdminCommands, registerBotCommands, showQuickMenu } from "@/lib/bot/commands";
+import { ADMIN_COMMANDS, USER_COMMANDS, registerAdminCommands, registerBotCommands } from "@/lib/bot/commands";
 
 export async function handleText(
   chatId: number,
@@ -63,7 +63,6 @@ export async function handleText(
       const uid = await ensureUser(chatId);
       await applyStartReferral(uid, t.slice(7));
     }
-    void showQuickMenu(chatId).catch(() => undefined);
     return welcome(chatId);
   }
   if (await forceJoinBlocked(chatId)) return;

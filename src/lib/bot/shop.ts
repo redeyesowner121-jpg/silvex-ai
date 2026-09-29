@@ -4,7 +4,7 @@ import { formatDescription } from "@/lib/format-desc";
 
 import { dbGet, dbPush, dbPut, money, notifyOwners, siteUrl, tg, tgSendPhoto, tgTag } from "@/lib/telegram.server";
 import { be, e as em, productEmoji, productEmojiChar } from "@/lib/emoji.server";
-import { allProducts, askEmail, backHome, cfg, editTarget, ensureUser, invalidateProducts, invalidateUsers, say, type Product } from "./core";
+import { allProducts, askEmail, backHome, cfg, editTarget, ensureUser, invalidateProducts, invalidateUsers, productById, say, type Product } from "./core";
 import { payReferralCommission } from "./wallet";
 
 export { defaultDepositAddress };
@@ -171,7 +171,7 @@ export async function askProductSearch(chatId: number) {
 }
 
 export async function sendProduct(chatId: number, id: string) {
-  const p = await dbGet<Product>(`products/${id}`);
+  const p = await productById(id);
   if (!p) return say(chatId, "Product not found.", backHome);
 
   const stock = Array.isArray(p.stock) ? p.stock.filter(Boolean).length : 0;
@@ -236,7 +236,7 @@ async function maxQty(p: Product) {
 
 /** Asks how many copies the buyer wants. Buttons hold numbers only; the price is in the text. */
 export async function askQty(chatId: number, productId: string, qty = 1) {
-  const p = await dbGet<Product>(`products/${productId}`);
+  const p = await productById(productId);
   if (!p) return say(chatId, "Product not found.", backHome);
   if (isOutOfStock(p))
     return say(chatId, "This product is out of stock right now.", backHome);
@@ -269,7 +269,7 @@ export async function askQty(chatId: number, productId: string, qty = 1) {
 
 /** Shows how the buyer can pay for the chosen quantity. */
 export async function askPayMethod(chatId: number, productId: string, qty: number) {
-  const p = await dbGet<Product>(`products/${productId}`);
+  const p = await productById(productId);
   if (!p) return say(chatId, "Product not found.", backHome);
   if (isOutOfStock(p))
     return say(chatId, "This product is out of stock right now.", backHome);
@@ -298,7 +298,7 @@ export async function askPayMethod(chatId: number, productId: string, qty: numbe
 
 /** Final confirmation, only needed when paying from the wallet. */
 export async function confirmWalletPay(chatId: number, productId: string, qty: number) {
-  const p = await dbGet<Product>(`products/${productId}`);
+  const p = await productById(productId);
   if (!p) return say(chatId, "Product not found.", backHome);
   if (isOutOfStock(p))
     return say(chatId, "This product is out of stock right now.", backHome);

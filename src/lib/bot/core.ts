@@ -156,6 +156,13 @@ export async function allProducts(): Promise<Record<string, Product>> {
   const loaded = productCache as ProductCache;
   return loaded?.v || {};
 }
+
+/** Fast product lookup for browsing screens; the short-lived catalogue cache
+ * keeps consecutive taps from making the same database request repeatedly. */
+export async function productById(id: string): Promise<Product | null> {
+  const products = await allProducts();
+  return products[id] || null;
+}
 export function invalidateProducts() {
   productCache = null;
 }
