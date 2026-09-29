@@ -354,13 +354,10 @@ export async function broadcast(chatId: number, text: string) {
     `📣 Broadcasting to ${ids.length} users… I'll report back when it's done.`,
     adminBack,
   );
-  // Run in the background so the admin isn't stuck waiting; send 50 at a
-  // time in parallel, then pause ~1.5s to stay under Telegram's rate limits.
-  void broadcastInBatches(chatId, ids, text).catch(() => {});
+  // Run in the background so the admin isn't stuck waiting; fire every
+  // message at once — rate-limit retries handle any Telegram slowdowns.
+  void broadcastAll(chatId, ids, text).catch(() => {});
 }
-
-const BROADCAST_BATCH = 50;
-const BROADCAST_DELAY_MS = 1500;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
