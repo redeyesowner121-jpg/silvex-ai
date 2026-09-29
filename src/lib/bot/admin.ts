@@ -348,19 +348,46 @@ export async function adminSettings(chatId: number) {
 export async function broadcast(chatId: number, text: string) {
   const users = (await dbGet<Record<string, boolean>>("telegramUsers")) || {};
   const ids = Object.keys(users).map(Number).filter(Boolean);
-  let sent = 0;
-  // Send in small parallel groups so a big list doesn't take minutes.
-  for (let i = 0; i < ids.length; i += 20) {
-    const group = ids.slice(i, i + 20);
-    const results = await Promise.all(
-      group.map((id) =>
-        tg("sendMessage", { chat_id: id, text, parse_mode: "HTML" })
-          .then(() => true)
-          .catch(() => false),
-      ),
-    );
-    sent += results.filter(Boolean).length;
-  }
   await setState(chatId, null);
-  await say(chatId, `📣 Broadcast sent to ${sent}/${ids.length} users.`, adminBack);
+  await say(
+    chatId,
+    `📣 Broadcasting to ${ids.length} users… I'll report back when it's done.`,
+    adminBack,
+  );
+  // Run in the background so the admin isn't stuck waiting; send 50 at a
+  // time in parallel, then pause ~1.5s to stay under Telegram's rate limits.
+  void broadcastInBatches(chatId, ids, text).catch(() => {});
+}
+
+const BROADCAST_BATCH = 50;
+const BROADCAST_DELAY_MS = 1500;
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+async function sendOne(id: number, text: string): Promise<boolean> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      await tg("sendMessage", { chat_id: id, text, parse_mode: "HTML" });
+      return true;
+    } catch (e: any) {
+      const retryAfter = Number(e?.retry_after ?? e?.parameters?.retry_after);
+      if (retryAfter > 0 && attempt < 2) {
+        await sleep(retryAfter * 1000 + 200);
+        continue;
+      }
+      return false;
+    }
+  }
+  return false;
+}
+
+async function broadcastInBatches(chatId: number, ids: number[], text: string) {
+  let sent = 0;
+  for (let i = 0; i < ids.length; i += BROADCAST_BATCH) {
+    const group = ids.slice(i, i + BROADCAST_BATCH);
+    const results = await Promise.all(group.map((id) => sendOne(id, text)));
+    sent += results.filter(Boolean).length;
+    if (i + BROADCAST_BATCH < ids.length) await sleep(BROADCAST_DELAY_MS);
+  }
+  await say(chatId, `📣 Broadcast sent to ${sent}/${ids.length} users.`, adminBack).catch(() => {});
 }
