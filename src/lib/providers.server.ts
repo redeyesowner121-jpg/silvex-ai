@@ -5,7 +5,7 @@ import { dbGet, dbPatch, dbPut } from "./telegram.server";
  * Every value here is only a fallback — the admin panel can change the name,
  * base URL, key, profit % and whether a provider is on, in site_settings/providers.
  */
-export type ProviderId = "qamify" | "safwan" | "mmostore" | "w2premium" | "eklas" | "elite" | "canboso" | "custom";
+export type ProviderId = "qamify" | "safwan" | "mmostore" | "w2premium" | "eklas" | "elite" | "canboso" | "pandora" | "custom";
 
 /** Shops that were removed — their imported products get cleaned up. */
 export const RETIRED_PROVIDERS = ["canboso", "custom", "elite", "w2premium", "safwan", "eklas"];
@@ -16,7 +16,9 @@ export type ProviderShape = {
   orderPath: string;
   /** how the order body names its fields */
   qtyField: "qty" | "quantity";
-  refField: "idempotency_key" | "client_order_id" | "request_id" | "";
+  refField: "idempotency_key" | "client_order_id" | "request_id" | "client_order_reference" | "";
+  /** provider requires product_id as a string (no numeric conversion) */
+  stringProductId?: boolean;
   /** provider needs the Idempotency-Key header instead of a body field */
   idempotencyHeader?: boolean;
   /** extra fields always sent with an order (e.g. currency) */
