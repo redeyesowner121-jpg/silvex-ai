@@ -208,7 +208,7 @@ export async function settleBinanceDeposit(uid: string, txId: string): Promise<B
   });
 
   void import("./push.server").then(({ pushUser }) =>
-    pushUser(uid, { title: "✅ Deposit done", body: `${money(found.amount)} added. New balance ${money(balance)}`, url: "/wallet" }),
+    pushUser(uid, { title: "✅ Deposit done", body: `${money(found.amount)} added. New balance ${money(balance)}`, url: "/history" }),
   ).catch(() => undefined);
   const tgId = Number(uid.startsWith("tg_") ? uid.slice(3) : 0);
   if (tgId > 0) {
@@ -321,7 +321,7 @@ export async function settleBinancePay(uid: string, ref: string): Promise<Binanc
   });
 
   void import("./push.server").then(({ pushUser }) =>
-    pushUser(uid, { title: "✅ Deposit done", body: `${money(found.amount)} added. New balance ${money(balance)}`, url: "/wallet" }),
+    pushUser(uid, { title: "✅ Deposit done", body: `${money(found.amount)} added. New balance ${money(balance)}`, url: "/history" }),
   ).catch(() => undefined);
   const tgId = Number(uid.startsWith("tg_") ? uid.slice(3) : 0);
   if (tgId > 0) {
