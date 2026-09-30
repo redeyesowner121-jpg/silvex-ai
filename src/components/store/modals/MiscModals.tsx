@@ -25,17 +25,32 @@ import { useStore } from "@/context/StoreContext";
 import { checkDeposit, fallbackDepositAddress } from "@/lib/deposit.functions";
 import { Emo } from "@/components/store/Emo";
 import { Sheet, inputCls } from "./ui";
+import { markNoticesRead, useReadNotices } from "@/lib/notice-read";
 
 export function NotificationsModal() {
   const { notices, closeModal } = useStore();
+  const read = useReadNotices();
+  const unread = notices.filter((n) => !read.has(n.id)).length;
   return (
     <Sheet onClose={closeModal} title="Notifications">
       <div className="space-y-3 text-sm">
+        {notices.length > 0 ? (
+          <button
+            disabled={unread === 0}
+            onClick={() => markNoticesRead(notices.map((n) => n.id))}
+            className="btn-grad w-full rounded-xl py-2.5 text-xs font-bold disabled:opacity-50"
+          >
+            {unread > 0 ? `Mark all as read (${unread})` : "All read"}
+          </button>
+        ) : null}
         {notices.length === 0 ? (
           <p className="py-6 text-center text-xs text-muted-foreground">Nothing new right now.</p>
         ) : (
           notices.map((n) => (
-            <div key={n.id} className="rounded-xl border border-border p-3">
+            <div
+              key={n.id}
+              className={`rounded-xl border p-3 ${read.has(n.id) ? "border-border opacity-60" : "border-primary/40 bg-primary/5"}`}
+            >
               <p className="font-medium">{n.msg}</p>
               {n.date ? (
                 <p className="mt-1 text-[11px] text-muted-foreground">
