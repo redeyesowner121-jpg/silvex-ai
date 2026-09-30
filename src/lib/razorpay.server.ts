@@ -286,6 +286,9 @@ export async function creditDeposit(opts: {
       text: `✅ <b>Deposit done</b>\n${money(opts.usd)} added by card/UPI (₹${opts.inr.toFixed(0)}).\nNew balance: <b>${money(balance)}</b>`,
     }).catch(() => undefined);
   }
+  void import("./push.server").then(({ pushUser }) =>
+    pushUser(opts.uid, { title: "✅ Deposit done", body: `${money(opts.usd)} added. New balance ${money(balance)}`, url: "/wallet" }),
+  ).catch(() => undefined);
   await notifyOwners(
     `💳 Deposit credited\nUser: ${opts.uid}\nAmount: ${money(opts.usd)} (₹${opts.inr.toFixed(0)})\nPayment: ${opts.paymentId}`,
   ).catch(() => undefined);

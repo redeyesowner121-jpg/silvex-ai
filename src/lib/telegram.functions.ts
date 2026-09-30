@@ -38,6 +38,12 @@ export const notifyTelegramOrder = createServerFn({ method: "POST" })
         `🛒 <b>New website order</b>\n${lines}\nBuyer: ${data.email || "-"}\nTotal: ${money(data.total)}\nOrder: ${data.orderId}\nStatus: ${data.status}`,
       );
       if (data.uid) {
+        const { pushUser } = await import("./push.server");
+        void pushUser(data.uid, {
+          title: `🧾 Order ${data.status}`,
+          body: `${data.items.map((i) => `${i.title} x${i.qty}`).join(", ")} — ${money(data.total)}`,
+          url: "/orders",
+        });
         const chatId = await dbGet<number>(`users/${data.uid}/telegramChatId`);
         if (chatId) {
           const delivered = data.delivered?.length

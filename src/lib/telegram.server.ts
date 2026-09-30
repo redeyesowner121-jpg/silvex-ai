@@ -406,6 +406,13 @@ export async function notifyOwners(text: string): Promise<void> {
       tg("sendMessage", { chat_id: id, text, parse_mode: "HTML" }).catch(() => undefined),
     ),
     notifyGroup(text),
+    import("./push.server")
+      .then(({ pushAdmins, plain }) => {
+        const t = plain(text);
+        const [title, ...rest] = t.split("\n");
+        return pushAdmins({ title: title || "Store alert", body: rest.join("\n") || t, url: "/admin" });
+      })
+      .catch(() => undefined),
   ]);
 }
 
