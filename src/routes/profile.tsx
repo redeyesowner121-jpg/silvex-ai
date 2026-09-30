@@ -228,7 +228,7 @@ function ProfilePage() {
           notify("Logged out");
           navigate({ to: "/" });
         }}
-        className="mt-6 w-full rounded-xl bg-destructive/10 py-3.5 text-sm font-bold text-destructive"
+        className="mt-2 w-full rounded-xl bg-destructive/10 py-3.5 text-sm font-bold text-destructive"
       >
         Log out
       </button>
