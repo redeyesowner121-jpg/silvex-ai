@@ -45,6 +45,7 @@ export const WEB_EMOJI_SLOTS: Record<string, { label: string; char: string }> = 
   "web.info": { label: "Info notice", char: "ℹ️" },
   "web.mail": { label: "Email", char: "📧" },
   "web.phone": { label: "Phone / WhatsApp", char: "📱" },
+  "web.download": { label: "Download app", char: "📲" },
   "web.crown": { label: "Owner badge", char: "👑" },
   "web.chart": { label: "Dashboard / stats", char: "📈" },
   "web.receipt": { label: "Order receipt", char: "🧾" },
