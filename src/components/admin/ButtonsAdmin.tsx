@@ -206,7 +206,7 @@ export function ButtonsAdmin() {
                   </div>
                   <div className="flex items-center justify-between gap-2">
                     <ColourPicker value={setting.color || "blue"} onChange={(color) => setProductButtons((current) => ({ ...current, [product.id]: { ...setting, color } }))} />
-                    <button type="button" onClick={async () => { await saveMapValue("site_settings/product_buttons", product.id, { name: setting.name?.trim() || undefined, color: setting.color || "blue" }); await saveProductEmoji(product.id, productEmojis[emojiKey]?.char || ""); }} className="flex h-9 items-center gap-1 rounded-lg bg-primary px-3 text-xs font-bold text-primary-foreground"><Bot className="h-3.5 w-3.5" /> Save</button>
+                    <button type="button" onClick={async () => { const name = setting.name?.trim(); await saveMapValue("site_settings/product_buttons", product.id, { ...(name ? { name } : {}), color: setting.color || "blue" }); await saveProductEmoji(product.id, productEmojis[emojiKey]?.char || ""); }} className="flex h-9 items-center gap-1 rounded-lg bg-primary px-3 text-xs font-bold text-primary-foreground"><Bot className="h-3.5 w-3.5" /> Save</button>
                   </div>
                 </div>
               );
