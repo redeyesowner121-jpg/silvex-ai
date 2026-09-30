@@ -11,6 +11,7 @@ import {
   referralEarnings,
   websiteReferralLink,
 } from "@/lib/referral";
+import { isAppInstalled, startAppInstall } from "@/lib/pwa-install";
 
 export const Route = createFileRoute("/profile")({
   head: () => ({
@@ -202,11 +203,32 @@ function ProfilePage() {
 
       <button
         onClick={async () => {
+          const result = await startAppInstall();
+          if (result === "installed") {
+            notify("App is already installed");
+          } else if (result === "prompted") {
+            notify("Installing app…");
+          } else {
+            notify(
+              isAppInstalled()
+                ? "App is already installed"
+                : "Open your browser menu and tap 'Add to Home screen' to install the app",
+            );
+          }
+        }}
+        className="mt-6 flex w-full justify-between rounded-xl border border-border p-3.5 text-sm font-bold"
+      >
+        <span><Emo k="web.download" /> Download app</span>
+        <span>›</span>
+      </button>
+
+      <button
+        onClick={async () => {
           if (auth) await signOut(auth);
           notify("Logged out");
           navigate({ to: "/" });
         }}
-        className="mt-6 w-full rounded-xl bg-destructive/10 py-3.5 text-sm font-bold text-destructive"
+        className="mt-2 w-full rounded-xl bg-destructive/10 py-3.5 text-sm font-bold text-destructive"
       >
         Log out
       </button>
