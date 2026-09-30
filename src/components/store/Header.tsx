@@ -2,10 +2,13 @@ import { Link } from "@tanstack/react-router";
 import { Bell, ShieldCheck } from "lucide-react";
 import { useStore } from "@/context/StoreContext";
 import logoUrl from "@/assets/silvex-logo.jpg";
+import { useReadNotices } from "@/lib/notice-read";
 
 export function Header() {
   const { user, profile, isAdmin, notices, openModal, siteName } = useStore();
   const balance = Number(profile?.wallet ?? 0);
+  const read = useReadNotices();
+  const unread = notices.filter((n) => !read.has(n.id)).length;
 
   return (
     <header className="glass sticky top-0 z-50">
@@ -38,9 +41,9 @@ export function Header() {
             className="relative grid h-10 w-10 place-items-center rounded-2xl bg-muted/60 text-muted-foreground transition hover:text-foreground active:scale-95"
           >
             <Bell className="h-5 w-5" />
-            {notices.length > 0 ? (
+            {unread > 0 ? (
               <span className="gradient-accent absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold text-accent-foreground">
-                {notices.length}
+                {unread}
               </span>
             ) : null}
           </button>
