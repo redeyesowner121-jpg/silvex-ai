@@ -63,6 +63,12 @@ export async function announce(
   if (p.hidden && kind !== "flash") return { ok: false, sent: 0, total: 0, error: "product hidden" };
 
   const text = body(kind, p, extra);
+  void import("./push.server")
+    .then(({ pushEveryone, plain }) => {
+      const [title, ...rest] = plain(text).split("\n");
+      return pushEveryone({ title: title || "SILENT SELLER", body: rest.join("\n").trim(), url: "/products" });
+    })
+    .catch(() => undefined);
   const site = siteUrl();
   const keyboard = {
     inline_keyboard: [

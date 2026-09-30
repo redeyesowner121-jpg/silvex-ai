@@ -207,6 +207,9 @@ export async function settleBinanceDeposit(uid: string, txId: string): Promise<B
     date,
   });
 
+  void import("./push.server").then(({ pushUser }) =>
+    pushUser(uid, { title: "✅ Deposit done", body: `${money(found.amount)} added. New balance ${money(balance)}`, url: "/history" }),
+  ).catch(() => undefined);
   const tgId = Number(uid.startsWith("tg_") ? uid.slice(3) : 0);
   if (tgId > 0) {
     await tg("sendMessage", {
@@ -317,6 +320,9 @@ export async function settleBinancePay(uid: string, ref: string): Promise<Binanc
     date,
   });
 
+  void import("./push.server").then(({ pushUser }) =>
+    pushUser(uid, { title: "✅ Deposit done", body: `${money(found.amount)} added. New balance ${money(balance)}`, url: "/history" }),
+  ).catch(() => undefined);
   const tgId = Number(uid.startsWith("tg_") ? uid.slice(3) : 0);
   if (tgId > 0) {
     await tg("sendMessage", {

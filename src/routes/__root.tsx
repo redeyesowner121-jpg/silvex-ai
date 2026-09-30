@@ -14,6 +14,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { StoreProvider } from "@/context/StoreContext";
 import { AppShell } from "@/components/store/AppShell";
 import { Toaster } from "@/components/ui/sonner";
+import { PushPrompt } from "@/components/store/PushPrompt";
 import { getFirebaseConfig } from "@/lib/firebase.functions";
 import { getStoreSnapshot } from "@/lib/store-snapshot.functions";
 import { primeFirebaseConfig } from "@/lib/firebase";
@@ -84,6 +85,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "theme-color", content: "#6366f1" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
       { title: "SILENT SELLER" },
       { name: "description", content: "Premium digital products at the cheapest rates." },
       { property: "og:title", content: "SILENT SELLER" },
@@ -100,6 +103,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap",
       },
       { rel: "icon", href: "/favicon.png", type: "image/png" },
+      { rel: "manifest", href: "/manifest.webmanifest" },
+      { rel: "apple-touch-icon", href: "/favicon.png" },
       { rel: "preconnect", href: "https://silvex-ai-default-rtdb.firebaseio.com" },
       { rel: "preconnect", href: "https://identitytoolkit.googleapis.com" },
     ],
@@ -145,6 +150,7 @@ function RootComponent() {
           {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
           <Outlet />
         </AppShell>
+        <PushPrompt />
         <Toaster position="top-center" />
       </StoreProvider>
     </QueryClientProvider>

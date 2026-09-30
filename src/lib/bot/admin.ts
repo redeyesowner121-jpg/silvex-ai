@@ -357,6 +357,9 @@ export async function broadcast(chatId: number, text: string) {
   // Run in the background so the admin isn't stuck waiting; fire every
   // message at once — rate-limit retries handle any Telegram slowdowns.
   void broadcastAll(chatId, ids, text).catch(() => {});
+  void import("@/lib/push.server")
+    .then(({ pushEveryone }) => pushEveryone({ title: "📣 SILENT SELLER", body: text }))
+    .catch(() => undefined);
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
