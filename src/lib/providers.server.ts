@@ -5,7 +5,7 @@ import { dbGet, dbPatch, dbPut } from "./telegram.server";
  * Every value here is only a fallback — the admin panel can change the name,
  * base URL, key, profit % and whether a provider is on, in site_settings/providers.
  */
-export type ProviderId = "qamify" | "safwan" | "mmostore" | "w2premium" | "eklas" | "elite" | "canboso" | "custom";
+export type ProviderId = "qamify" | "safwan" | "mmostore" | "w2premium" | "eklas" | "elite" | "canboso" | "pandora" | "custom";
 
 /** Shops that were removed — their imported products get cleaned up. */
 export const RETIRED_PROVIDERS = ["canboso", "custom", "elite", "w2premium", "safwan", "eklas"];
@@ -16,7 +16,9 @@ export type ProviderShape = {
   orderPath: string;
   /** how the order body names its fields */
   qtyField: "qty" | "quantity";
-  refField: "idempotency_key" | "client_order_id" | "request_id" | "";
+  refField: "idempotency_key" | "client_order_id" | "request_id" | "client_order_reference" | "";
+  /** provider requires product_id as a string (no numeric conversion) */
+  stringProductId?: boolean;
   /** provider needs the Idempotency-Key header instead of a body field */
   idempotencyHeader?: boolean;
   /** extra fields always sent with an order (e.g. currency) */
@@ -63,6 +65,23 @@ export const PROVIDERS: ProviderDef[] = [
       orderPath: "api/v1/orders",
       qtyField: "quantity",
       refField: "client_order_id",
+    },
+  },
+  {
+    id: "pandora",
+    name: "Pandora Digital",
+    url: "https://api.pandoradigital.shop/api/v1",
+    key: "sk_live_9278786fa87d6ec8_WR2sb7BwrEb2MOFREaLcGxjg7Maa-w2JdzOvS2Jzxz8",
+    docs: "https://api.pandoradigital.shop/docs",
+    markup: 130,
+    shape: {
+      productsPath: "products",
+      balancePath: "balance",
+      orderPath: "orders",
+      qtyField: "quantity",
+      refField: "client_order_reference",
+      idempotencyHeader: true,
+      stringProductId: true,
     },
   },
 ];
@@ -140,6 +159,8 @@ export const PROVIDER_KEEP: Record<string, string[]> = {
   qamify: [],
   // MMO Store: only Gemini and Outlook accounts.
   mmostore: ["gemini", "outlook"],
+  // Pandora Digital: keep the whole catalogue.
+  pandora: [],
 };
 
 /** Admin-editable keep list for a provider (empty list = keep everything). */
@@ -286,11 +307,13 @@ export async function providerBalance(
   const balance =
     w?.balance != null
       ? num(w.balance)
-      : w?.balance_usd != null
-        ? num(w.balance_usd)
-        : w?.balance_cents != null
-          ? num(w.balance_cents) / 100
-          : 0;
+      : w?.available_balance != null
+        ? num(w.available_balance)
+        : w?.balance_usd != null
+          ? num(w.balance_usd)
+          : w?.balance_cents != null
+            ? num(w.balance_cents) / 100
+            : 0;
   return { balance, currency: String(w?.currency || body?.currency || "USD") };
 }
 
@@ -337,7 +360,8 @@ export async function providerBuy(
   const cfg = await providerConfig(id);
   if (!cfg.enabled) throw new Error(`${cfg.name} is turned off`);
   const raw = String(productId);
-  const pid = /^\d+$/.test(raw) ? Number(raw) : raw;
+  const pid =
+    cfg.shape.stringProductId || !/^\d+$/.test(raw) ? raw : Number(raw);
   const body: Record<string, unknown> = {
     product_id: pid,
     // some shops name it productId — harmless extra field for the others
