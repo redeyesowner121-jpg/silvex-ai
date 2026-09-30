@@ -74,6 +74,9 @@ export const BUTTON_CATALOG: ButtonDef[] = [
 ];
 
 export type ButtonColorMap = Partial<Record<string, ButtonColor>>;
+export type ButtonNameMap = Partial<Record<string, string>>;
+export type ProductButtonSetting = { name?: string; color?: ButtonColor };
+export type ProductButtonMap = Partial<Record<string, ProductButtonSetting>>;
 
 /** Find which catalog entry a button belongs to. */
 export function buttonKeyFor(btn: { callback_data?: string; url?: string }): string | undefined {

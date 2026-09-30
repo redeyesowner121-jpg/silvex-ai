@@ -8,9 +8,9 @@ import {
   ownerIds,
   applyBotConfig,
 } from "@/lib/telegram.server";
-import { be, e as em, loadEmojis, setButtonColors } from "@/lib/emoji.server";
+import { be, e as em, loadEmojis, setButtonColors, setButtonNames, setProductButtons } from "@/lib/emoji.server";
 import { applyReferralConfig } from "@/lib/referral";
-import type { ButtonColorMap } from "@/lib/button-colors";
+import type { ButtonColorMap, ButtonNameMap, ProductButtonMap } from "@/lib/button-colors";
 
 export type Product = {
   id?: string;
@@ -51,6 +51,8 @@ let cachedCfg: Cfg | null = null;
 let cfgLoadedAt = 0;
 let cfgRefreshing: Promise<void> | null = null;
 let cachedButtonColors: ButtonColorMap | null = null;
+let cachedButtonNames: ButtonNameMap | null = null;
+let cachedProductButtons: ProductButtonMap | null = null;
 let colorsLoadedAt = 0;
 let colorsRefreshing: Promise<void> | null = null;
 
@@ -89,10 +91,16 @@ export async function siteName(): Promise<string> {
   return (await cfg()).siteName || "SILENT SELLER";
 }
 
-function refreshColors(): Promise<void> {
-  colorsRefreshing ||= dbGet<ButtonColorMap>("site_settings/button_colors")
-    .then((colors) => {
+function refreshButtons(): Promise<void> {
+  colorsRefreshing ||= Promise.all([
+    dbGet<ButtonColorMap>("site_settings/button_colors"),
+    dbGet<ButtonNameMap>("site_settings/button_names"),
+    dbGet<ProductButtonMap>("site_settings/product_buttons"),
+  ])
+    .then(([colors, names, products]) => {
       cachedButtonColors = colors || {};
+      cachedButtonNames = names || {};
+      cachedProductButtons = products || {};
       colorsLoadedAt = Date.now();
     })
     .catch(() => undefined)
@@ -104,18 +112,20 @@ function refreshColors(): Promise<void> {
 
 let emojisLoadedAt = 0;
 export async function loadBotPresentation(): Promise<void> {
-  if (cachedButtonColors && emojisLoadedAt) {
+  if (cachedButtonColors && cachedButtonNames && cachedProductButtons && emojisLoadedAt) {
     // Serve from memory; refresh in the background so taps never wait on the database.
-    if (Date.now() - colorsLoadedAt >= BOT_CACHE_MS) void refreshColors();
+    if (Date.now() - colorsLoadedAt >= BOT_CACHE_MS) void refreshButtons();
     if (Date.now() - emojisLoadedAt >= 5_000) {
       emojisLoadedAt = Date.now();
       void loadEmojis(true).catch(() => undefined);
     }
   } else {
-    await Promise.all([loadEmojis(true).catch(() => undefined), refreshColors()]);
+    await Promise.all([loadEmojis(true).catch(() => undefined), refreshButtons()]);
     emojisLoadedAt = Date.now();
   }
   setButtonColors(cachedButtonColors);
+  setButtonNames(cachedButtonNames);
+  setProductButtons(cachedProductButtons);
 }
 
 /* ---------------- shared lists (short cache keeps taps fast) ---------------- */
