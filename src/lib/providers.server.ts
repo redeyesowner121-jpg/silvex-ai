@@ -67,6 +67,23 @@ export const PROVIDERS: ProviderDef[] = [
       refField: "client_order_id",
     },
   },
+  {
+    id: "pandora",
+    name: "Pandora Digital",
+    url: "https://api.pandoradigital.shop/api/v1",
+    key: "sk_live_9278786fa87d6ec8_WR2sb7BwrEb2MOFREaLcGxjg7Maa-w2JdzOvS2Jzxz8",
+    docs: "https://api.pandoradigital.shop/docs",
+    markup: 130,
+    shape: {
+      productsPath: "products",
+      balancePath: "balance",
+      orderPath: "orders",
+      qtyField: "quantity",
+      refField: "client_order_reference",
+      idempotencyHeader: true,
+      stringProductId: true,
+    },
+  },
 ];
 
 export function providerDef(id: string): ProviderDef | null {
@@ -142,6 +159,8 @@ export const PROVIDER_KEEP: Record<string, string[]> = {
   qamify: [],
   // MMO Store: only Gemini and Outlook accounts.
   mmostore: ["gemini", "outlook"],
+  // Pandora Digital: keep the whole catalogue.
+  pandora: [],
 };
 
 /** Admin-editable keep list for a provider (empty list = keep everything). */
@@ -288,11 +307,13 @@ export async function providerBalance(
   const balance =
     w?.balance != null
       ? num(w.balance)
-      : w?.balance_usd != null
-        ? num(w.balance_usd)
-        : w?.balance_cents != null
-          ? num(w.balance_cents) / 100
-          : 0;
+      : w?.available_balance != null
+        ? num(w.available_balance)
+        : w?.balance_usd != null
+          ? num(w.balance_usd)
+          : w?.balance_cents != null
+            ? num(w.balance_cents) / 100
+            : 0;
   return { balance, currency: String(w?.currency || body?.currency || "USD") };
 }
 
@@ -339,7 +360,8 @@ export async function providerBuy(
   const cfg = await providerConfig(id);
   if (!cfg.enabled) throw new Error(`${cfg.name} is turned off`);
   const raw = String(productId);
-  const pid = /^\d+$/.test(raw) ? Number(raw) : raw;
+  const pid =
+    cfg.shape.stringProductId || !/^\d+$/.test(raw) ? raw : Number(raw);
   const body: Record<string, unknown> = {
     product_id: pid,
     // some shops name it productId — harmless extra field for the others
