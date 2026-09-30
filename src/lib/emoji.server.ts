@@ -16,6 +16,8 @@ import {
   buttonKeyFor,
   styleForColor,
   type ButtonColorMap,
+  type ButtonNameMap,
+  type ProductButtonMap,
 } from "./button-colors";
 
 /** One saved override: a verified premium emoji id plus its unicode fallback. */
@@ -301,14 +303,29 @@ const DANGER = /(cancel|reject|remove|delete|refund|turn off|disable|block|withd
 const NEUTRAL = /^(menu|back|admin|orders|products|emojis|home)$/i;
 
 let buttonColors: ButtonColorMap = {};
+let buttonNames: ButtonNameMap = {};
+let productButtons: ProductButtonMap = {};
 
 export function setButtonColors(map: ButtonColorMap | null | undefined): void {
   buttonColors = map || {};
 }
 
+export function setButtonNames(map: ButtonNameMap | null | undefined): void {
+  buttonNames = map || {};
+}
+
+export function setProductButtons(map: ProductButtonMap | null | undefined): void {
+  productButtons = map || {};
+}
+
 function styleFromConfig(btn: any): "primary" | "success" | "danger" | undefined | false {
   const key = buttonKeyFor(btn);
   if (!key) return false;
+  const data = String(btn?.callback_data || "");
+  if (data.startsWith("p:")) {
+    const productColor = productButtons[data.slice(2)]?.color;
+    if (productColor) return styleForColor(productColor);
+  }
   const chosen = buttonColors[key];
   if (chosen) return styleForColor(chosen);
   const def = BUTTON_CATALOG.find((d) => d.key === key);
@@ -380,12 +397,16 @@ export function decorateKeyboard(markup: any): any {
     inline_keyboard: markup.inline_keyboard.map((row: any[]) =>
       row.map((btn: any) => {
         if (!btn || typeof btn.text !== "string") return btn;
+        const data = String(btn.callback_data || "");
+        const key = buttonKeyFor(btn);
         const entry = store.enabled ? buttonEmojiEntry(btn) : undefined;
         const explicitId = btn.icon_custom_emoji_id;
         const premiumId = store.enabled && explicitId && VALID_EMOJI_ID.test(String(explicitId))
           ? String(explicitId)
           : entry?.id && VALID_EMOJI_ID.test(entry.id) ? entry.id : undefined;
-        let text = stripPremiumEmojiTags(btn.text.replace(MARKERS, ""));
+        const productName = data.startsWith("p:") ? productButtons[data.slice(2)]?.name : undefined;
+        const configuredName = productName || (key ? buttonNames[key] : undefined);
+        let text = stripPremiumEmojiTags((configuredName || btn.text).replace(MARKERS, ""));
         // Telegram renders icon_custom_emoji_id before the label. Strip any
         // leading emoji chars from the text so the icon never doubles them.
         if (premiumId) {

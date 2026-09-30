@@ -5,6 +5,10 @@
 
 # Roadmap
 
+## Compact bot button editor
+- [x] Group colours, names, emojis, and product buttons into separate tabs
+- [x] Apply website-admin button settings to Telegram buttons
+
 ## Telegram navigation (done)
 - [x] Restore a Back to Shop button below the full product list
 - [x] Use complete destination labels for Back buttons throughout the bot
