@@ -45,7 +45,7 @@ async function testPopup(user: { getIdToken: () => Promise<string> } | null): Pr
     if (!r.configured) return toast.error("Pop-ups aren't set up on the server yet.");
     return toast.success(r.sent ? "Test sent — check your notification bar." : "Couldn't reach this device. Try again.");
   } catch {
-    toast.error("Couldn't turn on notifications on this device.");
+    return toast.error("Couldn't turn on notifications on this device.");
   }
 }
 
