@@ -58,5 +58,5 @@ Phase 4 — polish
 - [ ] Turn on Business Mode for the bot in BotFather
 
 ## Pending
-- [ ] Phone pop-up notifications (admin notice push + test button)
-- [ ] Add Safwan Tiger shop API (stapi key, /api/products, /api/balance, /api/order)
+- [x] Phone pop-up notifications (admin notice push + test button)
+- [x] Add Safwan Tiger shop API (stapi key, /api/products, /api/balance, /api/order)
