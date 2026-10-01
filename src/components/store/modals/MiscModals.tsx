@@ -30,7 +30,7 @@ import { subscribe as pushSubscribe } from "@/components/store/PushPrompt";
 import { sendTestPush } from "@/lib/push.functions";
 import { toast } from "sonner";
 
-async function testPopup(user: { getIdToken: () => Promise<string> } | null) {
+async function testPopup(user: { getIdToken: () => Promise<string> } | null): Promise<unknown> {
   if (!user) return toast.error("Log in first.");
   if (window.top !== window.self) return toast.error("Open the site in its own tab or the installed app.");
   if (!("serviceWorker" in navigator) || !("PushManager" in window))
@@ -43,7 +43,7 @@ async function testPopup(user: { getIdToken: () => Promise<string> } | null) {
     const r = await sendTestPush({ data: { idToken: await user.getIdToken() } });
     if (!r.ok) return toast.error(r.error);
     if (!r.configured) return toast.error("Pop-ups aren't set up on the server yet.");
-    toast.success(r.sent ? "Test sent — check your notification bar." : "Couldn't reach this device. Try again.");
+    return toast.success(r.sent ? "Test sent — check your notification bar." : "Couldn't reach this device. Try again.");
   } catch {
     toast.error("Couldn't turn on notifications on this device.");
   }
