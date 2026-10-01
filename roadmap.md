@@ -56,3 +56,7 @@ Phase 4 — polish
 - [ ] Redeploy on Railway so the live bot uses the new emoji system
 - [ ] DNS records for silvex-ai.com at Spaceship
 - [ ] Turn on Business Mode for the bot in BotFather
+
+## Pending
+- [ ] Phone pop-up notifications (admin notice push + test button)
+- [ ] Add Safwan Tiger shop API (stapi key, /api/products, /api/balance, /api/order)
