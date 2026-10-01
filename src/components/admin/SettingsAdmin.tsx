@@ -9,6 +9,7 @@ import { deliveryBlock, emailShell, sendMail } from "@/lib/mailer";
 import { notifyTelegramOrder } from "@/lib/telegram.functions";
 import { connectTelegramBot } from "@/lib/bot-setup.functions";
 import { broadcastProductEvent } from "@/lib/broadcast.functions";
+import { sendNoticePush } from "@/lib/push.functions";
 
 
 import { input, Stat, Empty, ImageField, type OrderRow } from "@/components/admin/shared";
@@ -56,7 +57,7 @@ export function SettingsAdmin({
   };
   banner: { title?: string; desc?: string; link?: string };
 }) {
-  const { db, products, notify, categories: liveCategories } = useStore();
+  const { db, user, products, notify, categories: liveCategories } = useStore();
   const [cfg, setCfg] = useState({
     qr: config.qr ?? "",
     fee: String(config.fee ?? 25),
@@ -637,8 +638,11 @@ export function SettingsAdmin({
           onClick={async () => {
             if (!db || !notice) return;
             await push(ref(db, "notifications"), { msg: notice, date: new Date().toISOString() });
+            const msg = notice;
             setNotice("");
-            notify("Notification sent");
+            const idToken = await user?.getIdToken().catch(() => "");
+            const r = idToken ? await sendNoticePush({ data: { idToken, msg } }).catch(() => null) : null;
+            notify(r && r.ok ? `Notification sent • pop-up on ${r.sent} device${r.sent === 1 ? "" : "s"}` : "Notification saved (pop-up not sent)");
           }}
           className="btn-grad w-full rounded-xl py-2.5 text-sm font-bold"
         >
