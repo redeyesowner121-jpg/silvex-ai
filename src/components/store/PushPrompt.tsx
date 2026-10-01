@@ -10,7 +10,7 @@ function toBytes(b64: string) {
   return Uint8Array.from(raw, (c) => c.charCodeAt(0));
 }
 
-async function subscribe(getToken: () => Promise<string>) {
+export async function subscribe(getToken: () => Promise<string>) {
   const reg = await navigator.serviceWorker.register("/push-sw.js");
   await navigator.serviceWorker.ready;
   const { key } = await getVapidKey();
