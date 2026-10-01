@@ -26,14 +26,42 @@ import { checkDeposit, fallbackDepositAddress } from "@/lib/deposit.functions";
 import { Emo } from "@/components/store/Emo";
 import { Sheet, inputCls } from "./ui";
 import { markNoticesRead, useReadNotices } from "@/lib/notice-read";
+import { subscribe as pushSubscribe } from "@/components/store/PushPrompt";
+import { sendTestPush } from "@/lib/push.functions";
+import { toast } from "sonner";
+
+async function testPopup(user: { getIdToken: () => Promise<string> } | null): Promise<unknown> {
+  if (!user) return toast.error("Log in first.");
+  if (window.top !== window.self) return toast.error("Open the site in its own tab or the installed app.");
+  if (!("serviceWorker" in navigator) || !("PushManager" in window))
+    return toast.error("This browser can't show pop-ups. On iPhone, add the site to your Home Screen and open it from there.");
+  try {
+    const perm = Notification.permission === "granted" ? "granted" : await Notification.requestPermission();
+    if (perm !== "granted") return toast.error("Notifications are blocked. Allow them in your browser's site settings.");
+    const s = await pushSubscribe(() => user.getIdToken());
+    if (!s.ok) return toast.error(s.error);
+    const r = await sendTestPush({ data: { idToken: await user.getIdToken() } });
+    if (!r.ok) return toast.error(r.error);
+    if (!r.configured) return toast.error("Pop-ups aren't set up on the server yet.");
+    return toast.success(r.sent ? "Test sent — check your notification bar." : "Couldn't reach this device. Try again.");
+  } catch {
+    return toast.error("Couldn't turn on notifications on this device.");
+  }
+}
 
 export function NotificationsModal() {
-  const { notices, closeModal } = useStore();
+  const { notices, closeModal, user } = useStore();
   const read = useReadNotices();
   const unread = notices.filter((n) => !read.has(n.id)).length;
   return (
     <Sheet onClose={closeModal} title="Notifications">
       <div className="space-y-3 text-sm">
+        <button
+          onClick={() => void testPopup(user)}
+          className="w-full rounded-xl border border-primary/40 py-2.5 text-xs font-bold text-primary"
+        >
+          Turn on / test phone pop-ups
+        </button>
         {notices.length > 0 ? (
           <button
             disabled={unread === 0}

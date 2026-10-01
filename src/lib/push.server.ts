@@ -34,20 +34,26 @@ export function plain(text: string): string {
     .trim();
 }
 
-async function sendTo(entries: Array<[string, string, Sub]>, payload: Payload) {
-  if (!setup() || !entries.length) return;
+type Result = { sent: number; failed: number; devices: number; configured: boolean };
+async function sendTo(entries: Array<[string, string, Sub]>, payload: Payload): Promise<Result> {
+  const r: Result = { sent: 0, failed: 0, devices: entries.length, configured: setup() };
+  if (!r.configured || !entries.length) return r;
   const data = JSON.stringify({ ...payload, body: plain(payload.body).slice(0, 400) });
   await Promise.all(
     entries.map(async ([uid, key, sub]) => {
       try {
-        await webpush.sendNotification(sub, data, { TTL: 86400 });
+        await webpush.sendNotification(sub, data, { TTL: 86400, urgency: "high" });
+        r.sent++;
       } catch (e: any) {
+        r.failed++;
+        console.error("push failed", e?.statusCode, e?.body || e?.message);
         // Phone uninstalled / permission revoked → forget this device.
         if (e?.statusCode === 404 || e?.statusCode === 410)
           await dbPut(`pushSubs/${uid}/${key}`, null).catch(() => undefined);
       }
     }),
   );
+  return r;
 }
 
 async function allSubs(): Promise<Array<[string, string, Sub]>> {
@@ -58,17 +64,18 @@ async function allSubs(): Promise<Array<[string, string, Sub]>> {
   return out;
 }
 
-export async function pushUser(uid: string | undefined, payload: Payload): Promise<void> {
-  if (!uid) return;
+const none: Result = { sent: 0, failed: 0, devices: 0, configured: false };
+export async function pushUser(uid: string | undefined, payload: Payload): Promise<Result> {
+  if (!uid) return none;
   const subs = (await dbGet<Record<string, Sub>>(`pushSubs/${uid}`).catch(() => null)) || {};
-  await sendTo(Object.entries(subs).map(([k, s]) => [uid, k, s]), payload).catch(() => undefined);
+  return sendTo(Object.entries(subs).map(([k, s]) => [uid, k, s] as [string, string, Sub]), payload).catch(() => none);
 }
 
-export async function pushAdmins(payload: Payload): Promise<void> {
+export async function pushAdmins(payload: Payload): Promise<Result> {
   const subs = (await allSubs()).filter(([, , s]) => s.admin === true);
-  await sendTo(subs, payload).catch(() => undefined);
+  return sendTo(subs, payload).catch(() => none);
 }
 
-export async function pushEveryone(payload: Payload): Promise<void> {
-  await sendTo(await allSubs(), payload).catch(() => undefined);
+export async function pushEveryone(payload: Payload): Promise<Result> {
+  return sendTo(await allSubs(), payload).catch(() => none);
 }

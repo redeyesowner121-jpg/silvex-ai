@@ -5,7 +5,7 @@ import { dbGet, dbPatch, dbPut } from "./telegram.server";
  * Every value here is only a fallback — the admin panel can change the name,
  * base URL, key, profit % and whether a provider is on, in site_settings/providers.
  */
-export type ProviderId = "qamify" | "safwan" | "mmostore" | "w2premium" | "eklas" | "elite" | "canboso" | "pandora" | "custom";
+export type ProviderId = "qamify" | "safwan" | "mmostore" | "w2premium" | "eklas" | "elite" | "canboso" | "pandora" | "safwantiger" | "custom";
 
 /** Shops that were removed — their imported products get cleaned up. */
 export const RETIRED_PROVIDERS = ["canboso", "custom", "elite", "w2premium", "safwan", "eklas"];
@@ -82,6 +82,21 @@ export const PROVIDERS: ProviderDef[] = [
       refField: "client_order_reference",
       idempotencyHeader: true,
       stringProductId: true,
+    },
+  },
+  {
+    id: "safwantiger",
+    name: "Safwan Tiger Shop",
+    url: "https://safwantigershopbot-production.up.railway.app/api",
+    key: "stapi_508629eb3341ea1c3cf011a83c12480e152e74a5b359115c4fc5fd721086a7a3",
+    docs: "https://safwantigershopbot-production.up.railway.app/api",
+    markup: 130,
+    shape: {
+      productsPath: "products",
+      balancePath: "balance",
+      orderPath: "order",
+      qtyField: "quantity",
+      refField: "",
     },
   },
 ];
