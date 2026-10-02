@@ -45,8 +45,6 @@ export function SettingsAdmin({
     razorpayKeySecret?: string;
     razorpayWebhookSecret?: string;
     inrPerDollar?: number;
-    razorpayFeePercent?: number;
-    razorpayVerifyFeePercent?: number;
     binanceApiKey?: string;
     binanceApiSecret?: string;
     binanceAddress?: string;
@@ -84,8 +82,6 @@ export function SettingsAdmin({
     razorpayKeySecret: config.razorpayKeySecret ?? "",
     razorpayWebhookSecret: config.razorpayWebhookSecret ?? "",
     inrPerDollar: String(config.inrPerDollar ?? 100),
-    razorpayFeePercent: String(config.razorpayFeePercent ?? 3),
-    razorpayVerifyFeePercent: String(config.razorpayVerifyFeePercent ?? 1),
     binanceApiKey: config.binanceApiKey ?? "",
     binanceApiSecret: config.binanceApiSecret ?? "",
     binanceAddress: config.binanceAddress ?? "",
@@ -148,8 +144,6 @@ export function SettingsAdmin({
       razorpayKeySecret: cfg.razorpayKeySecret.trim(),
       razorpayWebhookSecret: cfg.razorpayWebhookSecret.trim(),
       inrPerDollar: Number(cfg.inrPerDollar || 100),
-      razorpayFeePercent: Number(cfg.razorpayFeePercent || 0),
-      razorpayVerifyFeePercent: Number(cfg.razorpayVerifyFeePercent || 0),
       binanceApiKey: cfg.binanceApiKey.trim(),
       binanceApiSecret: cfg.binanceApiSecret.trim(),
     binanceAddress: cfg.binanceAddress.trim(),
@@ -245,18 +239,6 @@ export function SettingsAdmin({
           placeholder="Rupees per $1 (default 100)"
           value={cfg.inrPerDollar}
           onChange={(e) => setCfg({ ...cfg, inrPerDollar: e.target.value })}
-        />
-        <input
-          className={input}
-          placeholder="Razorpay + GST fee % (default 3)"
-          value={cfg.razorpayFeePercent}
-          onChange={(e) => setCfg({ ...cfg, razorpayFeePercent: e.target.value })}
-        />
-        <input
-          className={input}
-          placeholder="Auto verification fee % (default 1, a random decimal is added)"
-          value={cfg.razorpayVerifyFeePercent}
-          onChange={(e) => setCfg({ ...cfg, razorpayVerifyFeePercent: e.target.value })}
         />
 
         <div className="rounded-xl border border-dashed border-border bg-muted/50 p-3">
