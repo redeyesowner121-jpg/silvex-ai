@@ -90,15 +90,10 @@ export async function startCardDeposit(chatId: number) {
     return say(chatId, "Card / UPI payments are not switched on yet.", backHome);
   }
   const rate = Number(c.inrPerDollar) > 0 ? Number(c.inrPerDollar) : 100;
-  const feePct = Number((c as any).razorpayFeePercent);
-  const vPct = Number((c as any).razorpayVerifyFeePercent);
-  const base = Number.isFinite(feePct) && feePct >= 0 ? feePct : 3;
-  const verify = Number.isFinite(vPct) && vPct >= 0 ? vPct : 1;
-  const fee = `${base}% + ${verify}%`;
   await setState(chatId, { k: "dep_card" });
   await say(
     chatId,
-    `💳 <b>Card / UPI deposit</b>\n\n₹${rate} = $1, plus ${fee} fees (Razorpay + GST and auto verification).\nSend how many dollars you want to add (for example <code>5</code>).`,
+    `💳 <b>Card / UPI deposit</b>\n\n₹${rate} = $1, no extra fees.\nSend how many dollars you want to add (for example <code>5</code>).`,
     { inline_keyboard: [[{ text: "❌ Cancel", callback_data: "home" }]] },
   );
 }
@@ -122,7 +117,7 @@ export async function createCardLink(chatId: number, text: string) {
   await setState(chatId, null);
   return say(
     chatId,
-    `💳 <b>Payment link ready</b>\n\nFor: wallet top-up of ${money(usd)}\nAmount: ₹${res.baseInr.toFixed(2)}\nVerification fee (${res.feePercent}%): ₹${res.feeInr.toFixed(2)}\n<b>Total to pay: ₹${res.inr.toFixed(2)}</b>\n\nPay with any card, UPI or netbanking. Your balance is topped up on its own right after the payment.`,
+    `💳 <b>Payment link ready</b>\n\nFor: wallet top-up of ${money(usd)}\n<b>Total to pay: ₹${res.inr.toFixed(2)}</b> (no extra fees)\n\nPay with any card, UPI or netbanking. Your balance is topped up on its own right after the payment.`,
     {
       inline_keyboard: [
         [{ text: "💳 Pay now", url: res.url }],
@@ -169,7 +164,7 @@ export async function payProductByCard(chatId: number, productId: string, qty: n
   await setState(chatId, null);
   return say(
     chatId,
-    `💳 <b>Payment link ready</b>\n\nFor: ${p.title} × ${count}\nOrder total: ${money(total)}\nTo pay now: ${money(need)}\nAmount: ₹${res.baseInr.toFixed(2)}\nVerification fee (${res.feePercent}%): ₹${res.feeInr.toFixed(2)}\n<b>Total to pay: ₹${res.inr.toFixed(2)}</b>\n\nOnce the payment is confirmed, your order is delivered here automatically.`,
+    `💳 <b>Payment link ready</b>\n\nFor: ${p.title} × ${count}\nOrder total: ${money(total)}\nTo pay now: ${money(need)}\n<b>Total to pay: ₹${res.inr.toFixed(2)}</b> (no extra fees)\n\nOnce the payment is confirmed, your order is delivered here automatically.`,
     {
       inline_keyboard: [
         [{ text: "💳 Pay now", url: res.url }],

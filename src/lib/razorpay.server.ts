@@ -18,8 +18,6 @@ export type RazorpayConf = {
 /** Admin panel settings first, project secrets as fallback. */
 export async function razorpayConfig(): Promise<RazorpayConf> {
   const c = (await dbGet<any>("site_settings/config").catch(() => null)) || {};
-  const feeRaw = Number(c.razorpayFeePercent);
-  const verifyRaw = Number(c.razorpayVerifyFeePercent);
   return {
     keyId: String(c.razorpayKeyId || process.env["RAZORPAY_KEY_ID"] || "").trim(),
     keySecret: String(c.razorpayKeySecret || process.env["RAZORPAY_KEY_SECRET"] || "").trim(),
@@ -27,8 +25,9 @@ export async function razorpayConfig(): Promise<RazorpayConf> {
       c.razorpayWebhookSecret || process.env["RAZORPAY_WEBHOOK_SECRET"] || "",
     ).trim(),
     inrPerDollar: Number(c.inrPerDollar) > 0 ? Number(c.inrPerDollar) : 100,
-    feePercent: Number.isFinite(feeRaw) && feeRaw >= 0 ? feeRaw : 3,
-    verifyFeePercent: Number.isFinite(verifyRaw) && verifyRaw >= 0 ? verifyRaw : 1,
+    // Deposits have no fees anymore — the customer pays exactly the top-up amount.
+    feePercent: 0,
+    verifyFeePercent: 0,
     siteName: String(c.siteName || "").trim() || "Store",
   };
 }
@@ -64,17 +63,13 @@ export async function createPaymentLink(opts: {
   }
   const usd = Math.round(Number(opts.usd) * 100) / 100;
   if (!usd || usd <= 0) return { ok: false, error: "Enter a valid amount." };
-  // Work in paise so a 3% fee on ₹1 is really ₹0.03, not rounded away.
+  // No deposit fees: the customer pays exactly the top-up amount.
   const basePaise = Math.round(usd * conf.inrPerDollar * 100);
-  // Razorpay + GST charge, plus an auto verification fee of 1% with a random
-  // decimal (e.g. 1.37%) so each payment amount is unique and easy to match.
-  const verifyPct =
-    Math.round((conf.verifyFeePercent + Math.random() * 0.99) * 100) / 100;
-  const totalPct = Math.round((conf.feePercent + verifyPct) * 100) / 100;
-  const feePaise = Math.round((basePaise * totalPct) / 100);
-  const totalPaise = basePaise + feePaise;
+  const totalPct = 0;
+  const feePaise = 0;
+  const totalPaise = basePaise;
   const baseInr = Math.round(basePaise) / 100;
-  const feeInr = Math.round(feePaise) / 100;
+  const feeInr = 0;
   const inr = Math.round(totalPaise) / 100;
   if (totalPaise < 100) return { ok: false, error: "Amount is too small." };
 
@@ -90,7 +85,7 @@ export async function createPaymentLink(opts: {
     amount: totalPaise,
     currency: "INR",
     accept_partial: false,
-    description: `${conf.siteName}: $${usd.toFixed(2)} wallet top-up (incl ${totalPct}% fee)`.slice(0, 60),
+    description: `${conf.siteName}: $${usd.toFixed(2)} wallet top-up`.slice(0, 60),
     // Keep it unique but short: long user ids used to get cut off, which made
     // Razorpay reject every link after the first one.
     reference_id: `dep_${String(opts.uid).slice(-12)}_${Date.now().toString(36)}${Math.random()
