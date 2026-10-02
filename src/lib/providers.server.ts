@@ -8,7 +8,7 @@ import { dbGet, dbPatch, dbPut } from "./telegram.server";
 export type ProviderId = "qamify" | "safwan" | "mmostore" | "w2premium" | "eklas" | "elite" | "canboso" | "pandora" | "safwantiger" | "custom";
 
 /** Shops that were removed — their imported products get cleaned up. */
-export const RETIRED_PROVIDERS = ["canboso", "custom", "elite", "w2premium", "safwan", "eklas"];
+export const RETIRED_PROVIDERS = ["canboso", "custom", "elite", "w2premium", "safwan", "eklas", "pandora"];
 
 export type ProviderShape = {
   productsPath: string;
@@ -65,23 +65,6 @@ export const PROVIDERS: ProviderDef[] = [
       orderPath: "api/v1/orders",
       qtyField: "quantity",
       refField: "client_order_id",
-    },
-  },
-  {
-    id: "pandora",
-    name: "Pandora Digital",
-    url: "https://api.pandoradigital.shop/api/v1",
-    key: "sk_live_9278786fa87d6ec8_WR2sb7BwrEb2MOFREaLcGxjg7Maa-w2JdzOvS2Jzxz8",
-    docs: "https://api.pandoradigital.shop/docs",
-    markup: 130,
-    shape: {
-      productsPath: "products",
-      balancePath: "balance",
-      orderPath: "orders",
-      qtyField: "quantity",
-      refField: "client_order_reference",
-      idempotencyHeader: true,
-      stringProductId: true,
     },
   },
   {
@@ -174,8 +157,6 @@ export const PROVIDER_KEEP: Record<string, string[]> = {
   qamify: [],
   // MMO Store: only Gemini and Outlook accounts.
   mmostore: ["gemini", "outlook"],
-  // Pandora Digital: keep the whole catalogue.
-  pandora: [],
 };
 
 /** Admin-editable keep list for a provider (empty list = keep everything). */
