@@ -69,18 +69,8 @@ export function WalletModal() {
   const depositAddress = config.depositAddress || fallbackDepositAddress();
   const rate = Number(config.inrPerDollar) > 0 ? Number(config.inrPerDollar) : 100;
   const cardsOn = Boolean(config.razorpayKeyId);
-  const baseFeePct =
-    Number.isFinite(Number(config.razorpayFeePercent)) && Number(config.razorpayFeePercent) >= 0
-      ? Number(config.razorpayFeePercent)
-      : 3;
-  const verifyFeePct =
-    Number.isFinite(Number(config.razorpayVerifyFeePercent)) &&
-    Number(config.razorpayVerifyFeePercent) >= 0
-      ? Number(config.razorpayVerifyFeePercent)
-      : 1;
-  const payFee = Math.round((baseFeePct + verifyFeePct) * 100) / 100;
+  // Deposits have no fees: the customer pays exactly the top-up amount.
   const payBase = Math.round((Number(payAmount) || 0) * rate * 100) / 100;
-  const payFeeInr = Math.round(payBase * payFee) / 100;
 
 
   async function startCardPayment() {
@@ -304,8 +294,8 @@ export function WalletModal() {
             <div className="mb-5 rounded-2xl border border-border bg-card p-4">
               <p className="text-sm font-black">Pay by card, UPI or netbanking</p>
               <p className="mb-2 text-[11px] text-muted-foreground">
-                ₹{rate} = $1, plus a {payFee}% verification fee. Your balance updates on its own
-                once the payment is done.
+                ₹{rate} = $1, no extra fees. Your balance updates on its own once the payment is
+                done.
               </p>
               <input
                 className={`${inputCls} mb-2`}
@@ -316,8 +306,7 @@ export function WalletModal() {
               />
               {Number(payAmount) > 0 ? (
                 <p className="mb-2 text-[11px] font-bold text-muted-foreground">
-                  You pay ₹{(payBase + payFeeInr).toFixed(2)} (₹{payBase.toFixed(2)} + ₹
-                  {payFeeInr.toFixed(2)} fee) and get ${Number(payAmount)} in your balance
+                  You pay ₹{payBase.toFixed(2)} and get ${Number(payAmount)} in your balance
                 </p>
               ) : null}
 
