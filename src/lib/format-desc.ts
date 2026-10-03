@@ -6,11 +6,14 @@
 export function formatDescription(raw: string): string {
   const text = String(raw || "")
     .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/&nbsp;/g, " ");
+    .replace(/&nbsp;/g, " ")
+    .replace(/\\n/g, "\n")
+    .replace(/\r\n?/g, "\n");
   return text
-    .split(/\r?\n/)
-    .flatMap((line) => line.split(/\s*(?=[✔✔️✅☑✓•●▪◆★])/))
-    .map((line) => line.trim())
-    .filter(Boolean)
+    .split("\n")
+    .flatMap((line) => {
+      if (!line.trim()) return [""];
+      return line.split(/\s*(?=[✔✔️✅☑✓•●▪◆★])/).map((part) => part.trim());
+    })
     .join("\n");
 }
