@@ -43,8 +43,22 @@ async function read(path: string) {
   }
 }
 
+let inflight: Promise<StoreSnapshot> | null = null;
+
 export const getStoreSnapshot = createServerFn({ method: "GET" }).handler(async () => {
   if (cache && Date.now() - cache.at < TTL) return cache.data;
+  // Stale copy: answer instantly, refresh once in the background.
+  if (cache) {
+    if (!inflight) inflight = build().finally(() => (inflight = null));
+    inflight.catch(() => {});
+    return cache.data;
+  }
+  if (!inflight) inflight = build().finally(() => (inflight = null));
+  return inflight;
+});
+
+async function build(): Promise<StoreSnapshot> {
+
 
   const [rawProducts, config, banner, flashSale, emojis, prodEmojis] = await Promise.all([
     read("products"),
@@ -81,4 +95,4 @@ export const getStoreSnapshot = createServerFn({ method: "GET" }).handler(async 
   };
   cache = { at: Date.now(), data };
   return data;
-});
+}
