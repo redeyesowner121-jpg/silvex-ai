@@ -60,5 +60,5 @@ Phase 4 — polish
 ## Pending
 - [x] Phone pop-up notifications (admin notice push + test button)
 - [x] Add Safwan Tiger shop API (stapi key, /api/products, /api/balance, /api/order)
-- [ ] Preserve typed line gaps in product descriptions on the website and Telegram
-- [ ] Connect Telegram fresh in the new workspace
+- [x] Preserve typed line gaps in product descriptions on the website and Telegram
+- [x] Connect Telegram fresh in the new workspace
