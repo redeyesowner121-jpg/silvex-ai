@@ -415,6 +415,11 @@ export function decorateKeyboard(markup: any): any {
             text = text.slice(lead.length).trimStart();
             lead = text.match(LEAD_EMOJI)?.[0] || "";
           }
+          let tail = text.match(/\s*(\p{Extended_Pictographic}(\uFE0F|\u200D\p{Extended_Pictographic})*)$/u)?.[0] || "";
+          while (tail) {
+            text = text.slice(0, -tail.length).trimEnd();
+            tail = text.match(/\s*(\p{Extended_Pictographic}(\uFE0F|\u200D\p{Extended_Pictographic})*)$/u)?.[0] || "";
+          }
         }
         const out: any = { ...btn, text: text.trim(), ...(premiumId ? { icon_custom_emoji_id: premiumId } : {}) };
         if (!out.style) {
