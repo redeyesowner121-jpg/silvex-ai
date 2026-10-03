@@ -43,7 +43,7 @@ export function ProductEditor({ product }: { product: Product }) {
     if (form.delivery === "supplier" && !form.supplierId.trim()) return notify("Supplier product ID is required");
     setSaving(true);
     const data = {
-      title: form.title.trim(), group: form.group.trim() || null, desc: form.desc.trim(), type: form.type,
+      title: form.title.trim(), group: form.group.trim() || null, desc: form.desc.trim(), descEdited: true, type: form.type,
       price: form.delivery === "supplier" ? Number(sellingPrice.toFixed(2)) : Number(form.price),
       logo: form.logo, link: form.delivery === "supplier" ? null : form.link.trim(), delivery: form.delivery,
       supplierId: form.delivery === "supplier" ? (/^\d+$/.test(form.supplierId) ? Number(form.supplierId) : form.supplierId.trim()) : null,
