@@ -63,4 +63,4 @@ Phase 4 — polish
 - [x] Preserve typed line gaps in product descriptions on the website and Telegram
 - [x] Connect Telegram fresh in the new workspace
 - [x] Ensure Telegram `/start` finishes before the webhook request closes
-- [ ] Securely replace the Telegram bot token and register its webhook
+- [x] Securely replace the Telegram bot token and register its webhook
