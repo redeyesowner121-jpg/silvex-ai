@@ -42,7 +42,8 @@ export async function handleText(
 
 
   if (t === "/start" || t === "/menu" || t.startsWith("/start ")) {
-    await setState(chatId, null);
+    // A temporary database write failure must not suppress the welcome message.
+    await setState(chatId, null).catch(() => undefined);
     void registerBotCommands().catch(() => undefined);
     if (await forceJoinBlocked(chatId)) return;
     // Every /start goes to the activity group right away.
