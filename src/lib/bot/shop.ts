@@ -104,7 +104,7 @@ async function catalog(query = ""): Promise<Entry[]> {
   return out;
 }
 
-const searchButton = () => ({ text: `${be("btn.search")} Search products`, callback_data: "psearch" });
+const searchButton = () => ({ text: "Search products", callback_data: "psearch" });
 
 export async function sendProducts(chatId: number, page = 0, query = "") {
   const q = String(query || "").slice(0, 30);
@@ -142,8 +142,8 @@ export async function sendProducts(chatId: number, page = 0, query = "") {
     .join("\n");
 
   const nav: { text: string; callback_data: string }[] = [];
-  if (current > 0) nav.push({ text: `${be("btn.prev")} Previous Page`, callback_data: move(current - 1) });
-  if (current < pages - 1) nav.push({ text: `Next Page ${be("btn.next")}`, callback_data: move(current + 1) });
+  if (current > 0) nav.push({ text: "Previous Page", callback_data: move(current - 1) });
+  if (current < pages - 1) nav.push({ text: "Next Page", callback_data: move(current + 1) });
 
   const header = q ? `🔍 <b>Results for “${q.replace(/</g, "&lt;")}”</b>` : `${em("btn.products")} <b>Products</b>`;
 
@@ -155,7 +155,7 @@ export async function sendProducts(chatId: number, page = 0, query = "") {
         ...slice.map((entry) => [listButton(entry.id, entry.p)]),
         ...(nav.length ? [nav] : []),
         [searchButton()],
-        [{ text: "⬅️ Back to Shop", callback_data: "home" }],
+        [{ text: "Back to Shop", callback_data: "home" }],
       ],
     },
   );
