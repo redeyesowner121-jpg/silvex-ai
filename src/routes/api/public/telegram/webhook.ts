@@ -92,10 +92,8 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
         ]);
         if (!telegramWebhookOk(actual)) return new Response("Unauthorized", { status: 401 });
 
-        // Keep updates ordered per chat, and wait for the reply before returning.
-        // Serverless hosts may cancel untracked promises as soon as the response
-        // is sent, which previously made /start acknowledge successfully without
-        // ever delivering its greeting.
+        // Answer Telegram immediately so it sends the next update without waiting.
+        // Work continues in the background, queued per chat to keep order.
         const key = String(
           update?.callback_query?.message?.chat?.id ??
             update?.message?.chat?.id ??
@@ -107,8 +105,9 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
           console.error("telegram webhook error", err);
         });
         chatQueues.set(key, next);
-        await next;
-        if (chatQueues.get(key) === next) chatQueues.delete(key);
+        void next.finally(() => {
+          if (chatQueues.get(key) === next) chatQueues.delete(key);
+        });
         return Response.json({ ok: true });
       },
     },

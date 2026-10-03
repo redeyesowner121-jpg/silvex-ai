@@ -440,10 +440,8 @@ export async function welcome(chatId: number) {
     `Hey <b>${who}</b> ${em("norm.ok")} <b>Welcome to ${name} !</b>`,
     mainKeyboard(),
   );
-  // The greeting is the critical /start response. Account setup is secondary,
-  // so a temporary database failure must not turn a successful start into silence.
-  const uid = await ensureUser(chatId).catch(() => "");
-  if (uid && !(await userEmail(uid).catch(() => ""))) {
+  const uid = await ensureUser(chatId);
+  if (!(await userEmail(uid))) {
     await askEmail(
       chatId,
       "Send your email address so we can mail your orders and delivery details. You can skip and add it later from Profile.",

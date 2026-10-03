@@ -11,6 +11,5 @@
 
 - Telegram browsing screens use the short-lived in-memory catalogue cache; final purchases always re-read product and user data for correctness and safety.
 - Supplier refreshes triggered by Telegram are single-flight and locally limited to once per minute to prevent interaction traffic from creating overlapping sync work.
-- Telegram webhook requests await each queued chat update because serverless hosts may cancel unfinished reply promises after responding.
 Pandora Digital provider added to PROVIDERS (id 'pandora', string product ids, Idempotency-Key header, available_balance).
 - Telegram button presentation settings live under `site_settings/button_colors`, `button_names`, and `product_buttons`; emoji metadata stays under `telegramEmoji` so premium IDs are preserved.
