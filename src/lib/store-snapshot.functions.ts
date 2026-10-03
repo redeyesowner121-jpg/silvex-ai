@@ -43,9 +43,9 @@ async function read(path: string) {
   }
 }
 
-export const getStoreSnapshot = createServerFn({ method: "GET" }).handler(async () => {
-  if (cache && Date.now() - cache.at < TTL) return cache.data;
+let loading: Promise<StoreSnapshot> | null = null;
 
+async function build(): Promise<StoreSnapshot> {
   const [rawProducts, config, banner, flashSale, emojis, prodEmojis] = await Promise.all([
     read("products"),
     read("site_settings/config"),
@@ -60,10 +60,7 @@ export const getStoreSnapshot = createServerFn({ method: "GET" }).handler(async 
   for (const [id, p] of Object.entries((rawProducts || {}) as Record<string, any>)) {
     if (!p || typeof p !== "object") continue;
     const { stock, usedStock, ...rest } = p as Record<string, any>;
-    // Keep only how many are left, not the secret stock lines themselves.
     const left = Array.isArray(stock) ? stock.filter(Boolean).length : 0;
-    // Base64 photos would inline megabytes into the page HTML — swap them
-    // for the cached image endpoint; external URLs stay as they are.
     if (typeof rest["logo"] === "string" && (rest["logo"] as string).startsWith("data:")) {
       rest["logo"] = `/api/public/product-img/${id}`;
     }
@@ -79,6 +76,26 @@ export const getStoreSnapshot = createServerFn({ method: "GET" }).handler(async 
     emojis: emojis || {},
     prodEmojis: prodEmojis || {},
   };
-  cache = { at: Date.now(), data };
-  return data;
+  // Don't replace good data with an empty result from a failed read.
+  if (rawProducts || !cache) cache = { at: Date.now(), data };
+  return cache.data;
+}
+
+function refresh() {
+  loading ||= build().finally(() => {
+    loading = null;
+  });
+  return loading;
+}
+
+// Warm the copy as soon as the server starts.
+void refresh().catch(() => undefined);
+
+export const getStoreSnapshot = createServerFn({ method: "GET" }).handler(async () => {
+  // Serve the saved copy instantly and refresh it in the background when old.
+  if (cache) {
+    if (Date.now() - cache.at >= TTL) void refresh().catch(() => undefined);
+    return cache.data;
+  }
+  return refresh();
 });

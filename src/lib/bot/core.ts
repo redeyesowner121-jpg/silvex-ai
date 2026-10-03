@@ -179,7 +179,12 @@ export async function productById(id: string): Promise<Product | null> {
   return products[id] || null;
 }
 export function invalidateProducts() {
-  productCache = null;
+  // Keep serving the current list while a fresh copy loads in the background,
+  // so no customer tap has to wait for the database.
+  if (productCache) {
+    productCache.at = 0;
+    void pullProducts();
+  }
 }
 
 function pullUsers(): Promise<void> {
