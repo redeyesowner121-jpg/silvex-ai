@@ -47,6 +47,16 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
   console.error(error);
   const router = useRouter();
   useEffect(() => {
+    const msg = String((error as Error)?.message ?? error);
+    if (/dynamically imported module|Importing a module script failed|error loading dynamically/i.test(msg)) {
+      // A new version was deployed; old chunk files are gone. Reload once.
+      const key = "chunkReload:" + location.pathname;
+      if (!sessionStorage.getItem(key)) {
+        sessionStorage.setItem(key, "1");
+        location.reload();
+        return;
+      }
+    }
     reportLovableError(error, { boundary: "tanstack_root_error_component" });
   }, [error]);
 
@@ -139,6 +149,21 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  useEffect(() => {
+    const onPreloadError = (e: Event) => {
+      const key = "chunkReload:" + location.pathname;
+      if (sessionStorage.getItem(key)) return;
+      e.preventDefault();
+      sessionStorage.setItem(key, "1");
+      location.reload();
+    };
+    const clear = setTimeout(() => sessionStorage.removeItem("chunkReload:" + location.pathname), 10000);
+    window.addEventListener("vite:preloadError", onPreloadError);
+    return () => {
+      clearTimeout(clear);
+      window.removeEventListener("vite:preloadError", onPreloadError);
+    };
+  }, []);
   // Settings and shop data travel with the page, so the store shows instantly.
   const data = Route.useLoaderData();
   primeFirebaseConfig(data?.config);
