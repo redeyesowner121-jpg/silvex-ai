@@ -88,7 +88,7 @@ export function ProductEditor({ product }: { product: Product }) {
         const text = await file.text();
         lines = text.split(/\r?\n/).map((line) => {
           const parts = line.split(/[,;\t]/).map((p) => p.trim()).filter(Boolean);
-          return parts.length > 1 && name.endsWith(".csv") ? parts[0] : line.trim();
+          return (parts.length > 1 && name.endsWith(".csv") ? parts[0] : line.trim()) ?? "";
         });
       }
       const items = lines.map((l) => l.trim()).filter(Boolean);
