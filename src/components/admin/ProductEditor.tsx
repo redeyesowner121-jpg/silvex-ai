@@ -79,9 +79,11 @@ export function ProductEditor({ product }: { product: Product }) {
       if (name.endsWith(".xlsx") || name.endsWith(".xls")) {
         const XLSX = await import("xlsx");
         const wb = XLSX.read(await file.arrayBuffer());
-        const sheet = wb.Sheets[wb.SheetNames[0]];
+        const sheetName = wb.SheetNames[0];
+        const sheet = sheetName ? wb.Sheets[sheetName] : undefined;
+        if (!sheet) throw new Error("empty workbook");
         const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, raw: false });
-        lines = rows.map((r) => (Array.isArray(r) ? r : [r]).map((c) => String(c ?? "").trim()).filter(Boolean).join(" "));
+        lines = rows.map((r) => (Array.isArray(r) ? r : [r]).map((c) => String(c ?? "").trim()).filter(Boolean).join(" ")).filter(Boolean);
       } else {
         const text = await file.text();
         lines = text.split(/\r?\n/).map((line) => {
