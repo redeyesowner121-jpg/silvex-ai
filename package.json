@@ -73,6 +73,7 @@
     "vite-tsconfig-paths": "^6.0.2",
     "web-push": "^3.6.7",
     "worker-mailer": "^1.2.1",
+    "xlsx": "^0.18.5",
     "zod": "^3.25.76"
   },
   "devDependencies": {
