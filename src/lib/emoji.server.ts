@@ -297,6 +297,7 @@ setTextDecorator(sanitizeText);
 /* ---------------- coloured inline buttons ---------------- */
 
 const LEAD_EMOJI = /^(\p{Extended_Pictographic}(\uFE0F|\u200D\p{Extended_Pictographic})*)\s*/u;
+const NAV_ARROW_EMOJI = /[⬅➡⬆⬇↖↗↘↙↔↕⏪⏩◀▶🔙🔚🔛🔜🔝]\uFE0F?/gu;
 const MARKERS = /^[\u{1F7E2}\u{1F535}\u{1F7E3}\u{1F7E0}\u{1F534}\u{1F7E1}\u26AA\u26AB\u{1F7E4}]\s*/u;
 const SUCCESS = /(buy|deposit|approve|complete|confirm|save|generate|add|make admin|joined|yes|enable|set )/i;
 const DANGER = /(cancel|reject|remove|delete|refund|turn off|disable|block|withdraw|no,|clear)/i;
@@ -407,6 +408,12 @@ export function decorateKeyboard(markup: any): any {
         const productName = data.startsWith("p:") ? productButtons[data.slice(2)]?.name : undefined;
         const configuredName = productName || (key ? buttonNames[key] : undefined);
         let text = stripPremiumEmojiTags((configuredName || btn.text).replace(MARKERS, ""));
+        // Old saved names may still contain arrow characters. Navigation slots
+        // already render their chosen premium icon, so remove every legacy
+        // arrow from the visible label instead of showing both icons.
+        if (entry?.id && ["btn.prev", "btn.next", "btn.back"].some((slot) => entry === store.slots[slot])) {
+          text = text.replace(NAV_ARROW_EMOJI, " ").replace(/\s+/g, " ").trim();
+        }
         // Telegram renders icon_custom_emoji_id before the label. Strip any
         // leading emoji chars from the text so the icon never doubles them.
         if (premiumId) {
