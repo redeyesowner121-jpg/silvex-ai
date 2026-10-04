@@ -149,6 +149,21 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  useEffect(() => {
+    const onPreloadError = (e: Event) => {
+      const key = "chunkReload:" + location.pathname;
+      if (sessionStorage.getItem(key)) return;
+      e.preventDefault();
+      sessionStorage.setItem(key, "1");
+      location.reload();
+    };
+    const clear = setTimeout(() => sessionStorage.removeItem("chunkReload:" + location.pathname), 10000);
+    window.addEventListener("vite:preloadError", onPreloadError);
+    return () => {
+      clearTimeout(clear);
+      window.removeEventListener("vite:preloadError", onPreloadError);
+    };
+  }, []);
   // Settings and shop data travel with the page, so the store shows instantly.
   const data = Route.useLoaderData();
   primeFirebaseConfig(data?.config);
