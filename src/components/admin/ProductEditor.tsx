@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Eye, EyeOff, Megaphone, PackagePlus, PackageX, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, Megaphone, PackagePlus, PackageX, Save, Search, Trash2 } from "lucide-react";
+import { providerName } from "@/lib/provider-names";
 import { get, push, ref, remove, set, update } from "firebase/database";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useStore, type Product } from "@/context/StoreContext";
@@ -14,6 +15,12 @@ export function ProductEditor({ product }: { product: Product }) {
   const navigate = useNavigate();
   const [saving, setSaving] = useState(false);
   const [bulk, setBulk] = useState("");
+  const [jump, setJump] = useState("");
+  const jumpList = useMemo(() => {
+    const q = jump.trim().toLowerCase();
+    if (!q) return [];
+    return products.filter((p) => p && p.title && p.id !== product.id && `${p.title} ${providerName((p as { provider?: string }).provider)}`.toLowerCase().includes(q)).slice(0, 20);
+  }, [jump, products, product.id]);
   const [usedStock, setUsedStock] = useState<Record<string, { content: string; orderId?: string; email?: string }>>({});
   const [form, setForm] = useState<Form>({ title: product.title, group: product.group ?? "", desc: product.desc ?? "", type: product.type ?? categories[0]?.label ?? "Service", price: String(product.price), logo: product.logo ?? "", link: product.link ?? "", delivery: product.delivery ?? "manual", supplierId: product.supplierId == null ? "" : String(product.supplierId), markup: String(product.markup ?? 130), botPrice: product.botPrice ? String(product.botPrice) : "" });
 
@@ -81,6 +88,9 @@ export function ProductEditor({ product }: { product: Product }) {
         soldOut: false,
       });
       setBulk(""); notify(`${lines.length} stock item(s) added`);
+      void broadcastProductEvent({ data: { kind: "restock", productId: product.id, added: lines.length, left: current.length + lines.length } })
+        .then((r) => notify(r.ok ? `📣 "${lines.length} stocks added" sent to ${r.sent} bot users` : r.error || "Announcement failed"))
+        .catch(() => undefined);
     } catch {
       notify("Stock could not be added. Please try again.");
     }
@@ -112,6 +122,7 @@ export function ProductEditor({ product }: { product: Product }) {
 
   return <div className="fade-in mx-auto max-w-3xl space-y-5">
     <div className="flex items-center justify-between gap-3"><Link to="/admin/products" className="flex items-center gap-2 text-sm font-bold text-muted-foreground"><ArrowLeft className="h-4 w-4" /> Products</Link><div className="flex items-center gap-2">{product.soldOut ? <span className="rounded-lg bg-destructive/10 px-2.5 py-1 text-[11px] font-bold text-destructive">Out of stock</span> : null}<span className={`rounded-lg px-2.5 py-1 text-[11px] font-bold ${product.hidden ? "bg-muted text-muted-foreground" : "bg-emerald-500/10 text-emerald-600"}`}>{product.hidden ? "Hidden" : "Visible"}</span></div></div>
+    <div className="relative"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><input className={`${input} pl-9`} type="search" placeholder="Search another product to edit" value={jump} onChange={(e) => setJump(e.target.value)} />{jumpList.length ? <div className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-xl border border-border bg-card shadow-lg">{jumpList.map((p) => <Link key={p.id} to="/admin/edit/$productId" params={{ productId: p.id }} onClick={() => setJump("")} className="flex items-center justify-between gap-2 px-3 py-2 text-sm hover:bg-muted"><span className="truncate font-bold">{p.title}</span><span className="shrink-0 text-[10px] font-bold text-primary">{p.delivery === "supplier" ? providerName((p as { provider?: string }).provider) || "API" : ""}</span></Link>)}</div> : null}</div>
     <div><p className="text-xs font-bold text-primary">PRODUCT EDITOR</p><h1 className="break-words text-2xl font-black">{product.id === "new" ? "New product" : product.title}</h1>{product.id === "new" ? null : <p className="mt-1 text-xs text-muted-foreground">ID: {product.id}{product.locked ? " · API product" : ""}</p>}</div>
     <section className="grid gap-5 md:grid-cols-[minmax(0,1fr)_minmax(260px,0.75fr)]">
       <div className="space-y-4">

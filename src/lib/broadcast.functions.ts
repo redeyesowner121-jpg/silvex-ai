@@ -5,6 +5,7 @@ type Input = {
   productId: string;
   price?: number;
   left?: number;
+  added?: number;
   ends?: number;
 };
 
@@ -17,6 +18,7 @@ function validate(input: Input): Input {
     productId: String(input?.productId || ""),
     ...(input?.price != null ? { price: Number(input.price) } : {}),
     ...(input?.left != null ? { left: Number(input.left) } : {}),
+    ...(input?.added != null ? { added: Number(input.added) } : {}),
     ...(input?.ends != null ? { ends: Number(input.ends) } : {}),
   };
 }
@@ -28,7 +30,8 @@ export const broadcastProductEvent = createServerFn({ method: "POST" })
     if (!data.productId) return { ok: false as const, sent: 0, total: 0, error: "no product" };
     try {
       const { announce } = await import("./broadcast.server");
-      const extra: { price?: number; left?: number; ends?: number } = {};
+      const extra: { price?: number; left?: number; ends?: number; added?: number } = {};
+      if (data.added != null) extra.added = data.added;
       if (data.price != null) extra.price = data.price;
       if (data.left != null) extra.left = data.left;
       if (data.ends != null) extra.ends = data.ends;

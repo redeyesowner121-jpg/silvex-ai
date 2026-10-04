@@ -3,12 +3,16 @@ import { Link } from "@tanstack/react-router";
 import { Pencil, Plus, Search } from "lucide-react";
 import { input } from "@/components/admin/shared";
 import type { Product } from "@/context/StoreContext";
+import { providerName } from "@/lib/provider-names";
 
 export function ProductsList({ products }: { products: Product[] }) {
   const [search, setSearch] = useState("");
   const q = search.trim().toLowerCase();
+  const prov = (p: Product) =>
+    p.delivery === "supplier" ? providerName((p as { provider?: string }).provider) || "API" : "";
   const list = products
-    .filter((p) => `${p.title} ${p.type || ""}`.toLowerCase().includes(q))
+    .filter((p) => p && p.title)
+    .filter((p) => `${p.title} ${p.type || ""} ${prov(p)}`.toLowerCase().includes(q))
     .sort((a, b) => a.title.localeCompare(b.title));
 
   return (
@@ -41,6 +45,11 @@ export function ProductsList({ products }: { products: Product[] }) {
             <div key={p.id} className="flex items-center gap-3 p-3">
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-bold">{p.title}</p>
+                {isApi ? (
+                  <span className="mt-0.5 inline-block rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary">
+                    {prov(p)}
+                  </span>
+                ) : null}
                 <p className="mt-0.5 text-xs text-muted-foreground">
                   ${p.price}
                   {isApi ? <> · Commission {p.markup ?? 130}%</> : null}
