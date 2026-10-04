@@ -72,6 +72,32 @@ export function ProductEditor({ product }: { product: Product }) {
     } finally { setSaving(false); }
   }
 
+  async function importStockFile(file: File) {
+    try {
+      const name = file.name.toLowerCase();
+      let lines: string[] = [];
+      if (name.endsWith(".xlsx") || name.endsWith(".xls")) {
+        const XLSX = await import("xlsx");
+        const wb = XLSX.read(await file.arrayBuffer());
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, raw: false });
+        lines = rows.map((r) => (Array.isArray(r) ? r : [r]).map((c) => String(c ?? "").trim()).filter(Boolean).join(" "));
+      } else {
+        const text = await file.text();
+        lines = text.split(/\r?\n/).map((line) => {
+          const parts = line.split(/[,;\t]/).map((p) => p.trim()).filter(Boolean);
+          return parts.length > 1 && name.endsWith(".csv") ? parts[0] : line.trim();
+        });
+      }
+      const items = lines.map((l) => l.trim()).filter(Boolean);
+      if (!items.length) return notify("No stock items found in that file");
+      setBulk((prev) => (prev.trim() ? `${prev.trim()}\n${items.join("\n")}` : items.join("\n")));
+      notify(`${items.length} stock item(s) loaded from file — tap Add stock to save`);
+    } catch {
+      notify("That file could not be read. Use a .txt, .csv or .xlsx file.");
+    }
+  }
+
   async function addStock() {
     if (!db || product.id === "new") return notify("Save the product first, then add stock");
     const lines = bulk.split("\n").map((line) => line.trim()).filter(Boolean);
