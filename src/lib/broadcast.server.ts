@@ -32,14 +32,16 @@ function stockOf(p: Product): number {
   return (p.stock || []).filter(Boolean).length;
 }
 
-function body(kind: BroadcastKind, p: Product, extra: { price?: number; left?: number; ends?: number }) {
+function body(kind: BroadcastKind, p: Product, extra: { price?: number; left?: number; ends?: number; added?: number }) {
   const title = p.title || "New item";
   const price = money(Number(extra.price ?? p.price ?? 0));
   switch (kind) {
     case "new":
       return `🆕 <b>New product available</b>\n\n<b>${title}</b>\nPrice: ${price}\n\nTap below to grab it.`;
     case "restock":
-      return `📦 <b>Back in stock</b>\n\n<b>${title}</b>\nPrice: ${price}\nAvailable: ${extra.left ?? stockOf(p)}\n\nGet it before it runs out.`;
+      return extra.added
+        ? `📦 <b>${extra.added} stocks added</b>\n\n<b>${title}</b>\nPrice: ${price}\nAvailable: ${extra.left ?? stockOf(p)}\n\nGrab it now.`
+        : `📦 <b>Back in stock</b>\n\n<b>${title}</b>\nPrice: ${price}\nAvailable: ${extra.left ?? stockOf(p)}\n\nGet it before it runs out.`;
     case "low":
       return `⚠️ <b>Almost sold out</b>\n\n<b>${title}</b>\nPrice: ${price}\nOnly ${extra.left ?? stockOf(p)} left!\n\nHurry up.`;
     case "flash":
@@ -53,7 +55,7 @@ function body(kind: BroadcastKind, p: Product, extra: { price?: number; left?: n
 export async function announce(
   kind: BroadcastKind,
   productId: string,
-  extra: { price?: number; left?: number; ends?: number } = {},
+  extra: { price?: number; left?: number; ends?: number; added?: number } = {},
 ): Promise<{ ok: boolean; sent: number; total: number; error?: string }> {
   await loadBotRuntime();
   if (!(await enabled())) return { ok: false, sent: 0, total: 0, error: "broadcasts disabled" };
