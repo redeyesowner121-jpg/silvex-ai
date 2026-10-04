@@ -47,6 +47,16 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
   console.error(error);
   const router = useRouter();
   useEffect(() => {
+    const msg = String((error as Error)?.message ?? error);
+    if (/dynamically imported module|Importing a module script failed|error loading dynamically/i.test(msg)) {
+      // A new version was deployed; old chunk files are gone. Reload once.
+      const key = "chunkReload:" + location.pathname;
+      if (!sessionStorage.getItem(key)) {
+        sessionStorage.setItem(key, "1");
+        location.reload();
+        return;
+      }
+    }
     reportLovableError(error, { boundary: "tanstack_root_error_component" });
   }, [error]);
 
