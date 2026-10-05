@@ -42,8 +42,8 @@ function body(kind: BroadcastKind, p: Product, extra: { price?: number; left?: n
       return `🆕 <b>New product available</b>\n\n<b>${title}</b>\nPrice: ${price}\n\nTap below to grab it.`;
     case "restock":
       return extra.added
-        ? `📦 <b>${extra.added} stocks added</b>\n\n<b>${title}</b>\nPrice: ${price}\nAvailable: ${extra.left ?? stockOf(p)}\n\nGrab it now.`
-        : `📦 <b>Back in stock</b>\n\n<b>${title}</b>\nPrice: ${price}\nAvailable: ${extra.left ?? stockOf(p)}\n\nGet it before it runs out.`;
+        ? `☁️ <b>${title}</b>\n\n➕ Added: <b>${extra.added}</b>\n📦 Current stock: <b>${extra.left ?? stockOf(p)}</b>\n💰 Price: <b>${price}</b>`
+        : `☁️ <b>${title}</b>\n\n📦 Back in stock: <b>${extra.left ?? stockOf(p)}</b>\n💰 Price: <b>${price}</b>`;
     case "low":
       return `⚠️ <b>Almost sold out</b>\n\n<b>${title}</b>\nPrice: ${price}\nOnly ${extra.left ?? stockOf(p)} left!\n\nHurry up.`;
     case "flash":
