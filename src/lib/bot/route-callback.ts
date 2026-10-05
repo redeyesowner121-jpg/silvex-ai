@@ -4,7 +4,7 @@ import { dbGet, dbPatch, dbPut } from "@/lib/telegram.server";
 import { resetAllEmojis, syncEmojiImages } from "@/lib/emoji.server";
 import { adminBack, askEmail, cfg, forceJoinBlocked, invalidateProducts, isBotAdmin, say, saveConfig, setState, welcome } from "@/lib/bot/core";
 import { askPayMethod, askProductSearch, askQty, buy, checkCardPayment, payProductByCard, confirmWalletPay, sendApiDocsFile, sendApiKey, sendOrders, sendProduct, sendProducts, sendProfile, sendRefer, sendReviews, sendSupport, sendWallet, startCardDeposit, startDeposit, startWithdraw, walletHistory } from "@/lib/bot/shop";
-import { adminAskDelivery, adminCancelOrder, adminDecideRequest, adminHome, adminOrder, adminOrders, adminProduct, adminProducts, adminRequests, adminSettings, adminStats, adminUser, adminUsers, broadcast } from "@/lib/bot/admin";
+import { adminAskDelivery, adminCancelOrder, adminDecideRequest, adminHome, adminOrder, adminOrders, adminProduct, adminProducts, adminRequests, adminSettings, adminStats, adminUser, adminUsers, broadcast, broadcastMenu, broadcastTemplate, broadcastTemplates } from "@/lib/bot/admin";
 import { clearProductEmoji, emojiGroup, emojiHome, emojiList, emojiProducts, emojiSlotPick, emojiSlotReset, emojiToggle } from "@/lib/bot/emoji-ui";
 
 export async function handleCallback(chatId: number, data: string) {
@@ -85,7 +85,11 @@ export async function handleCallback(chatId: number, data: string) {
       await dbPatch(`users/${arg}`, { isAdmin: !cur });
       return adminUser(chatId, arg!);
     }
-    if (key === "bc") {
+    if (key === "bc") return broadcastMenu(chatId);
+    if (key === "bcpg") return broadcastMenu(chatId, Number(arg) || 0);
+    if (key === "bcp") return broadcastTemplates(chatId, arg!);
+    if (key === "bct") return broadcastTemplate(chatId, arg!, arg2!);
+    if (key === "bcc") {
       await setState(chatId, { k: "bc" });
       return say(chatId, "📣 Send the message to broadcast to every bot user.", {
         inline_keyboard: [[{ text: "❌ Cancel", callback_data: "a:home" }]],
