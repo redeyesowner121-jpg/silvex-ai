@@ -392,26 +392,16 @@ export async function broadcastTemplate(chatId: number, kind: string, id: string
       inline_keyboard: [[{ text: "❌ Cancel", callback_data: "a:bc" }]],
     });
   }
-  await say(chatId, "📣 Sending… I'll report back when it's done.", adminBack);
+  await say(chatId, "📣 Starting broadcast… live progress will appear below.", adminBack);
   void import("@/lib/broadcast.server")
-    .then(({ announce }) => announce(kind as any, id))
-    .then((r) =>
-      say(chatId, r.ok ? `📣 Broadcast sent to ${r.sent}/${r.total} users.` : `⚠️ Not sent: ${r.error}`, adminBack),
-    )
+    .then(({ announce }) => announce(kind as any, id, {}, chatId))
+    .then((r) => (r.ok ? undefined : say(chatId, `⚠️ Not sent: ${r.error}`, adminBack)))
     .catch(() => undefined);
 }
 
 export async function broadcast(chatId: number, text: string, productId?: string) {
-  const users = (await dbGet<Record<string, boolean>>("telegramUsers")) || {};
-  const ids = Object.keys(users).map(Number).filter(Boolean);
   await setState(chatId, null);
-  await say(
-    chatId,
-    `📣 Broadcasting to ${ids.length} users… I'll report back when it's done.`,
-    adminBack,
-  );
-  // Run in the background so the admin isn't stuck waiting; fire every
-  // message at once — rate-limit retries handle any Telegram slowdowns.
+  await say(chatId, "📣 Starting broadcast… live progress will appear below.", adminBack);
   const markup = productId
     ? {
         inline_keyboard: [
@@ -420,51 +410,18 @@ export async function broadcast(chatId: number, text: string, productId?: string
         ],
       }
     : undefined;
-  void broadcastAll(chatId, ids, text, markup).catch(() => {});
+  void import("@/lib/broadcast-runner.server")
+    .then(({ runBroadcast }) =>
+      runBroadcast({
+        label: "Custom message",
+        adminChatId: chatId,
+        send: async (id) => {
+          await tg("sendMessage", { chat_id: id, text, parse_mode: "HTML", ...(markup ? { reply_markup: markup } : {}) });
+        },
+      }),
+    )
+    .catch(() => undefined);
   void import("@/lib/push.server")
     .then(({ pushEveryone }) => pushEveryone({ title: "📣 Silvex AI", body: text }))
     .catch(() => undefined);
-}
-
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
-function retryAfterMs(e: unknown): number {
-  // tg() throws an Error whose message embeds Telegram's JSON body.
-  const m = /"retry_after"\s*:\s*(\d+)/.exec(String((e as Error)?.message || ""));
-  return m ? Number(m[1]) * 1000 + 200 : 0;
-}
-
-async function sendOne(id: number, text: string, markup?: any): Promise<boolean> {
-  for (let attempt = 0; attempt < 4; attempt++) {
-    try {
-      await tg("sendMessage", { chat_id: id, text, parse_mode: "HTML", ...(markup ? { reply_markup: markup } : {}) });
-      return true;
-    } catch (e) {
-      const wait = retryAfterMs(e);
-      if (wait > 0 && attempt < 3) {
-        await sleep(wait);
-        continue;
-      }
-      return false;
-    }
-  }
-  return false;
-}
-
-async function broadcastAll(chatId: number, ids: number[], text: string, markup?: any) {
-  // ids come from unique database keys, so nobody can get the message twice.
-  // Fire every message at once; sendOne retries any that Telegram rate-limits.
-  let results = await Promise.all(ids.map((id) => sendOne(id, text, markup)));
-  // One catch-up pass for anyone still missing (e.g. a brief network error),
-  // so nobody is left out of the broadcast.
-  if (results.some((r) => !r)) {
-    results = await Promise.all(ids.map((id, i) => (results[i] ? Promise.resolve(true) : sendOne(id, text, markup))));
-  }
-  const sent = results.filter(Boolean).length;
-  const failed = ids.length - sent;
-  await say(
-    chatId,
-    `📣 Broadcast sent to ${sent}/${ids.length} users.${failed ? `\n⚠️ ${failed} could not be reached (they may have blocked the bot).` : ""}`,
-    adminBack,
-  ).catch(() => {});
 }
