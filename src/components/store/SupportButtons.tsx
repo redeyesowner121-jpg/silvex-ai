@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 const waHref = "https://wa.me/916393781174";
 const tgHref = "https://t.me/silvexai";
 
@@ -17,27 +19,62 @@ function TelegramIcon({ className }: { className?: string }) {
   );
 }
 
-export function SupportButtons() {
+function SupportIcon({ className }: { className?: string }) {
   return (
-    <div className="fixed bottom-20 right-3 z-50 flex flex-col gap-2">
-      <a
-        href={tgHref}
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label="Chat on Telegram"
-        className="flex h-11 w-11 items-center justify-center rounded-full bg-[#229ED9] text-white shadow-lg transition-transform active:scale-90"
-      >
-        <TelegramIcon className="h-6 w-6" />
-      </a>
-      <a
-        href={waHref}
-        target="_blank"
-        rel="noopener noreferrer"
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+      <path d="M3 14v-2a9 9 0 0 1 18 0v2" />
+      <path d="M21 15a2 2 0 0 1-2 2h-1a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h1a2 2 0 0 1 2 2z" />
+      <path d="M3 15a2 2 0 0 0 2 2h1a1 1 0 0 0 1-1v-4a1 1 0 0 0-1-1H5a2 2 0 0 0-2 2z" />
+      <path d="M19 17v1a3 3 0 0 1-3 3h-3" />
+    </svg>
+  );
+}
+
+export function SupportButtons() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="fixed bottom-20 right-3 z-50 flex flex-col items-end gap-2">
+      {/* WhatsApp */}
+      <button
+        type="button"
         aria-label="Chat on WhatsApp"
-        className="flex h-11 w-11 items-center justify-center rounded-full bg-[#25D366] text-white shadow-lg transition-transform active:scale-90"
+        onClick={() => window.open(waHref, "_blank", "noopener,noreferrer")}
+        className={`flex h-11 w-11 items-center justify-center rounded-full bg-[#25D366] text-white shadow-lg transition-all duration-200 active:scale-90 ${
+          open ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-2 opacity-0"
+        }`}
       >
         <WhatsAppIcon className="h-6 w-6" />
-      </a>
+      </button>
+
+      {/* Telegram */}
+      <button
+        type="button"
+        aria-label="Chat on Telegram"
+        onClick={() => window.open(tgHref, "_blank", "noopener,noreferrer")}
+        className={`flex h-11 w-11 items-center justify-center rounded-full bg-[#229ED9] text-white shadow-lg transition-all duration-200 active:scale-90 ${
+          open ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-2 opacity-0"
+        }`}
+      >
+        <TelegramIcon className="h-6 w-6" />
+      </button>
+
+      {/* Main support button */}
+      <button
+        type="button"
+        aria-label={open ? "Close support options" : "Open support options"}
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform duration-200 active:scale-90"
+      >
+        {open ? (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="h-6 w-6" aria-hidden="true">
+            <path d="M18 6 6 18M6 6l12 12" />
+          </svg>
+        ) : (
+          <SupportIcon className="h-6 w-6" />
+        )}
+      </button>
     </div>
   );
 }
