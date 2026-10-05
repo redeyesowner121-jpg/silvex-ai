@@ -415,8 +415,8 @@ export async function broadcast(chatId: number, text: string, productId?: string
       runBroadcast({
         label: "Custom message",
         adminChatId: chatId,
-        send: async (id) => {
-          await tg("sendMessage", { chat_id: id, text, parse_mode: "HTML", ...(markup ? { reply_markup: markup } : {}) });
+        send: async (id, extra) => {
+          await tg("sendMessage", { chat_id: id, text, parse_mode: "HTML", ...extra, ...(markup ? { reply_markup: markup } : {}) });
         },
       }),
     )

@@ -585,3 +585,8 @@ export async function tgFileDataUrl(fileId: string, maxBytes = 1_500_000): Promi
     return null;
   }
 }
+
+/** Telegram file id for a photo already uploaded once (null if not yet cached). */
+export async function telegramPhotoId(photo: string): Promise<string | null> {
+  return cachedPhotoId(photoKey(photo.trim()));
+}

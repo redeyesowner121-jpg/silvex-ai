@@ -7,6 +7,8 @@ import {
   siteUrl,
   tg,
   tgSendPhoto,
+  telegramPhotoId,
+  ownerIds,
 } from "./telegram.server";
 
 export type BroadcastKind = "new" | "restock" | "low" | "flash";
@@ -83,14 +85,24 @@ export async function announce(
     ],
   };
 
+  // Upload the photo once (to an owner chat) so every user gets the cached file id.
+  let photoId: string | null = null;
+  if (p.logo) {
+    photoId = await telegramPhotoId(p.logo);
+    const first = adminChatId ?? ownerIds()[0];
+    if (!photoId && first && (await tgSendPhoto(first, p.logo, text, keyboard))) photoId = await telegramPhotoId(p.logo);
+  }
   const { runBroadcast } = await import("./broadcast-runner.server");
   const labels: Record<BroadcastKind, string> = { new: "New product", restock: "New stock", low: "Low stock", flash: "Flash sale" };
   const r = await runBroadcast({
     label: `${labels[kind]} · ${p.title || productId}`,
     adminChatId,
-    send: async (id) => {
-      const photo = p.logo ? await tgSendPhoto(id, p.logo, text, keyboard) : false;
-      if (!photo) await tg("sendMessage", { chat_id: id, text, parse_mode: "HTML", reply_markup: keyboard });
+    send: async (id, extra) => {
+      if (photoId) {
+        await tg("sendPhoto", { chat_id: id, photo: photoId, caption: text, parse_mode: "HTML", reply_markup: keyboard, ...extra });
+        return;
+      }
+      await tg("sendMessage", { chat_id: id, text, parse_mode: "HTML", reply_markup: keyboard, ...extra });
     },
   });
   await dbPatch(`products/${productId}`, { lastBroadcast: `${kind}:${Date.now()}` });
