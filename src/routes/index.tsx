@@ -173,6 +173,8 @@ function Home() {
       >
         View All Products
       </button>
+
+      <SupportButtons />
     </div>
   );
 }
