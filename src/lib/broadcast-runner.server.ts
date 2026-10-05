@@ -6,8 +6,11 @@
 import { dbGet, ownerIds, tg } from "./telegram.server";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-const WAVE = 25; // messages per wave
-const WAVE_MS = 1100; // spacing between waves (stays under 30/s)
+const WAVE_MS = 1000;
+/** Free Telegram limit is ~30 msg/s per bot — keep 22/s so customer replies stay instant.
+ *  Paid broadcast (allow_paid_broadcast, billed in Stars) allows up to 1000/s. */
+const FREE_WAVE = 22;
+const PAID_WAVE = 120;
 const MAX_ROUNDS = 6; // retry rounds for transient failures
 
 /** Every Telegram chat that has ever used the bot or linked an account. */
@@ -61,7 +64,7 @@ async function postLogs(text: string, logs: Log[]) {
 
 export async function runBroadcast(opts: {
   label: string;
-  send: (chatId: number) => Promise<void>;
+  send: (chatId: number, extra: Record<string, unknown>) => Promise<void>;
   adminChatId?: number | undefined;
   ids?: number[];
 }): Promise<{ sent: number; total: number; blocked: number; failed: number }> {
@@ -70,6 +73,10 @@ export async function runBroadcast(opts: {
   const adminIds = [...new Set([...(opts.adminChatId ? [opts.adminChatId] : []), ...ownerIds()])];
   const logs: Log[] = adminIds.map((chatId) => ({ chatId }));
   const started = Date.now();
+  const cfg = await dbGet<{ paidBroadcast?: boolean }>("site_settings/config").catch(() => null);
+  const paid = cfg?.paidBroadcast === true;
+  const WAVE = paid ? PAID_WAVE : FREE_WAVE;
+  const extra: Record<string, unknown> = paid ? { allow_paid_broadcast: true } : {};
 
   const sent = new Set<number>();
   const blocked = new Set<number>();
@@ -82,7 +89,7 @@ export async function runBroadcast(opts: {
     const secs = Math.round((Date.now() - started) / 1000);
     const text = final
       ? `✅ <b>Broadcast finished</b> — ${opts.label}\n\n📨 Delivered: <b>${sent.size}/${total}</b>\n🚫 Blocked/unreachable: ${blocked.size}\n⚠️ Failed after retries: ${total - sent.size - blocked.size}\n⏱ ${secs}s`
-      : `📣 <b>Broadcasting…</b> — ${opts.label}\n\nProgress: <b>${pct}%</b> (${done}/${total})\n📨 Delivered: ${sent.size}\n🚫 Blocked: ${blocked.size}\n⏳ Remaining: ${total - done}${round > 0 ? `\n🔁 Retry round ${round}` : ""}\n⏱ ${secs}s`;
+      : `📣 <b>Broadcasting…</b> — ${opts.label}${paid ? " ⚡" : ""}\n\nProgress: <b>${pct}%</b> (${done}/${total})\n📨 Delivered: ${sent.size}\n🚫 Blocked: ${blocked.size}\n⏳ Remaining: ${total - done}${round > 0 ? `\n🔁 Retry round ${round}` : ""}\n⏱ ${secs}s`;
     await postLogs(text, logs);
   };
 
@@ -97,7 +104,7 @@ export async function runBroadcast(opts: {
       await Promise.all(
         wave.map(async (id) => {
           try {
-            await opts.send(id);
+            await opts.send(id, extra);
             sent.add(id);
           } catch (e) {
             if (isPermanent(e)) blocked.add(id);

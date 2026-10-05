@@ -554,6 +554,29 @@ export function SettingsAdmin({
       </div>
 
       <div className="space-y-2 rounded-2xl border border-border bg-card p-4">
+        <h2 className="text-sm font-black">Fast broadcast (paid)</h2>
+        <p className="text-xs text-muted-foreground">
+          Telegram allows ~30 free messages per second. Turn this on to send ~120/second (1000 users in about
+          9 seconds). Telegram charges 0.1 Telegram Stars per message above the free limit — keep Stars in the bot's balance.
+        </p>
+        <button
+          onClick={async () => {
+            if (!db) return;
+            const on = (config as { paidBroadcast?: boolean }).paidBroadcast === true;
+            await update(ref(db, "site_settings/config"), { paidBroadcast: !on });
+            notify(on ? "Fast broadcast off" : "Fast broadcast on");
+          }}
+          className={`w-full rounded-xl py-2.5 text-sm font-bold ${
+            (config as { paidBroadcast?: boolean }).paidBroadcast === true
+              ? "bg-emerald-500/10 text-emerald-600"
+              : "bg-muted text-muted-foreground"
+          }`}
+        >
+          {(config as { paidBroadcast?: boolean }).paidBroadcast === true ? "Fast broadcast ON" : "Fast broadcast OFF"}
+        </button>
+      </div>
+
+      <div className="space-y-2 rounded-2xl border border-border bg-card p-4">
         <h2 className="text-sm font-black">Flash sale</h2>
         <select
           className={input}
