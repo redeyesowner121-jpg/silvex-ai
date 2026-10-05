@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useStore } from "@/context/StoreContext";
 import { ProductCard } from "@/components/store/ProductCard";
 import { Emo } from "@/components/store/Emo";
+import { SupportButtons } from "@/components/store/SupportButtons";
 
 export const Route = createFileRoute("/")({
   head: () => ({
