@@ -108,7 +108,7 @@ export function AuthModal() {
           myRefCode,
           ...(refBy ? { refBy, usedRef } : {}),
         });
-        showSuccess("Account created", "Welcome to SILENT SELLER!");
+        showSuccess("Account created", "Welcome to Silvex AI!");
       } else {
         await signInWithEmailAndPassword(auth, mail, pass);
         showSuccess("Logged in", "Welcome back.");

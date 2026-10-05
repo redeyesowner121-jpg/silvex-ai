@@ -9,19 +9,45 @@ import { SupportButtons } from "@/components/store/SupportButtons";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "SILENT SELLER — Digital Products at Cheapest Rates" },
+      { title: "Silvex AI — Cheapest Premium Subscriptions & AI Tools" },
       {
         name: "description",
         content:
-          "Buy premium subscriptions, digital services and earning methods at the cheapest rates with instant delivery and wallet payments.",
+          "Silvex AI: buy Gemini, ChatGPT, Canva, CapCut, Lovable and other premium subscriptions and AI tools at the cheapest rates. Instant delivery, wallet & crypto payments.",
       },
-      { property: "og:title", content: "SILENT SELLER — Digital Products" },
+      { property: "og:title", content: "Silvex AI — Cheapest Premium Subscriptions & AI Tools" },
       {
         property: "og:description",
-        content: "Cheapest rates, instant delivery and wallet payments.",
+        content: "Premium subscriptions and AI tools at the cheapest rates with instant delivery.",
       },
       { property: "og:type", content: "website" },
+      { property: "og:url", content: "https://silvex-ai.com/" },
+      { property: "og:site_name", content: "Silvex AI" },
       { name: "twitter:card", content: "summary_large_image" },
+    ],
+    links: [{ rel: "canonical", href: "https://silvex-ai.com/" }],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "WebSite",
+          name: "Silvex AI",
+          alternateName: ["Silvex", "silvex-ai.com"],
+          url: "https://silvex-ai.com/",
+        }),
+      },
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "OnlineStore",
+          name: "Silvex AI",
+          url: "https://silvex-ai.com/",
+          logo: "https://silvex-ai.com/favicon.png",
+          sameAs: ["https://t.me/silvexai"],
+        }),
+      },
     ],
   }),
   component: Home,
@@ -73,7 +99,7 @@ function Home() {
     <div className="fade-in">
       <div className="mb-5 overflow-hidden rounded-xl bg-card px-3 py-2 text-xs font-medium text-muted-foreground shadow-sm">
         <div className="marquee whitespace-nowrap">
-          {config.marquee || "Welcome to SILENT SELLER! 🔥 Get the best deals here."}
+          {config.marquee || "Welcome to Silvex AI! 🔥 Get the best deals here."}
         </div>
       </div>
 

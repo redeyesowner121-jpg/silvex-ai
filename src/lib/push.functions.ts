@@ -63,7 +63,7 @@ export const sendNoticePush = createServerFn({ method: "POST" })
     const who = await verify(data.idToken);
     if (!who?.admin) return { ok: false as const, error: "Admins only." };
     const { pushEveryone } = await import("./push.server");
-    const r = await pushEveryone({ title: "🔔 SILENT SELLER", body: data.msg, url: "/" });
+    const r = await pushEveryone({ title: "🔔 Silvex AI", body: data.msg, url: "/" });
     return { ok: true as const, ...r };
   });
 

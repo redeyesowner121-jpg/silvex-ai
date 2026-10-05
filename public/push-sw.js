@@ -6,7 +6,7 @@ self.addEventListener("push", (event) => {
   let d = {};
   try { d = event.data ? event.data.json() : {}; } catch { d = { body: event.data && event.data.text() }; }
   event.waitUntil(
-    self.registration.showNotification(d.title || "SILENT SELLER", {
+    self.registration.showNotification(d.title || "Silvex AI", {
       body: d.body || "",
       icon: "/favicon.png",
       badge: "/favicon.png",

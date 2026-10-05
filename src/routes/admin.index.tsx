@@ -10,10 +10,10 @@ import type { OrderRow } from "@/components/admin/shared";
 
 export const Route = createFileRoute("/admin/")({
   head: () => ({ meta: [
-    { title: "Admin Panel — SILENT SELLER" },
-    { name: "description", content: "Store analysis and management tools for SILENT SELLER admins." },
-    { property: "og:title", content: "Admin Panel — SILENT SELLER" },
-    { property: "og:description", content: "Store analysis and management tools for SILENT SELLER admins." },
+    { title: "Admin Panel — Silvex AI" },
+    { name: "description", content: "Store analysis and management tools for Silvex AI admins." },
+    { property: "og:title", content: "Admin Panel — Silvex AI" },
+    { property: "og:description", content: "Store analysis and management tools for Silvex AI admins." },
     { property: "og:type", content: "website" },
     { name: "robots", content: "noindex" },
     { name: "twitter:card", content: "summary" },

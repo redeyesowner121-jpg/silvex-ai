@@ -8,8 +8,8 @@ import { useStore } from "@/context/StoreContext";
 type Coupon = { code: string; type: string; value: number };
 export const Route = createFileRoute("/admin/coupons")({
   head: () => ({ meta: [
-    { title: "Coupons — SILENT SELLER" }, { name: "description", content: "Create and manage store discount coupons." },
-    { property: "og:title", content: "Coupons — SILENT SELLER" }, { property: "og:description", content: "Create and manage store discount coupons." },
+    { title: "Coupons — Silvex AI" }, { name: "description", content: "Create and manage store discount coupons." },
+    { property: "og:title", content: "Coupons — Silvex AI" }, { property: "og:description", content: "Create and manage store discount coupons." },
     { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }, { name: "robots", content: "noindex" },
   ] }), component: CouponsPage,
 });

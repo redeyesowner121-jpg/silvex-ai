@@ -60,7 +60,7 @@ export function SettingsAdmin({
     qr: config.qr ?? "",
     fee: String(config.fee ?? 25),
     marquee: config.marquee ?? "",
-    siteName: config.siteName ?? "SILENT SELLER",
+    siteName: config.siteName ?? "Silvex AI",
     siteTagline: config.siteTagline ?? "",
     depositAddress: config.depositAddress ?? "",
     supportLink: config.supportLink ?? "",

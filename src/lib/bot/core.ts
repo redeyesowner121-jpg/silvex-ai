@@ -88,7 +88,7 @@ export async function saveConfig(patch: Record<string, unknown>) {
 }
 
 export async function siteName(): Promise<string> {
-  return (await cfg()).siteName || "SILENT SELLER";
+  return (await cfg()).siteName || "Silvex AI";
 }
 
 function refreshButtons(): Promise<void> {

@@ -5,8 +5,8 @@ import { useStore } from "@/context/StoreContext";
 
 export const Route = createFileRoute("/admin/api-shops")({
   head: () => ({ meta: [
-    { title: "API Shops — SILENT SELLER" }, { name: "description", content: "Manage supplier shops and imported API products." },
-    { property: "og:title", content: "API Shops — SILENT SELLER" }, { property: "og:description", content: "Manage supplier shops and imported API products." },
+    { title: "API Shops — Silvex AI" }, { name: "description", content: "Manage supplier shops and imported API products." },
+    { property: "og:title", content: "API Shops — Silvex AI" }, { property: "og:description", content: "Manage supplier shops and imported API products." },
     { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }, { name: "robots", content: "noindex" },
   ] }), component: ApiShopsPage,
 });

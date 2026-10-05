@@ -14,12 +14,12 @@ import { productImageSrc } from "@/lib/product-image";
 export const Route = createFileRoute("/cart")({
   head: () => ({
     meta: [
-      { title: "Your Cart — SILENT SELLER" },
+      { title: "Your Cart — Silvex AI" },
       {
         name: "description",
         content: "Review your items, apply a promo code and pay instantly from your wallet.",
       },
-      { property: "og:title", content: "Your Cart — SILENT SELLER" },
+      { property: "og:title", content: "Your Cart — Silvex AI" },
       { property: "og:description", content: "Review items and pay instantly from your wallet." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

@@ -9,9 +9,9 @@ import { downloadTextFile, resellerApiDocs } from "@/lib/reseller-docs";
 export const Route = createFileRoute("/api-key")({
   head: () => ({
     meta: [
-      { title: "Reseller API Key — SILENT SELLER" },
+      { title: "Reseller API Key — Silvex AI" },
       { name: "description", content: "Get your personal API key to resell products automatically." },
-      { property: "og:title", content: "Reseller API Key — SILENT SELLER" },
+      { property: "og:title", content: "Reseller API Key — Silvex AI" },
       { property: "og:description", content: "Get your personal API key to resell products automatically." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
