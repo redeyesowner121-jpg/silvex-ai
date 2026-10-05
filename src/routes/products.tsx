@@ -22,6 +22,7 @@ export const Route = createFileRoute("/products")({
           "Browse premium subscriptions, services, methods and free digital products with instant delivery.",
       },
       { property: "og:title", content: "Shop Digital Products — Silvex AI" },
+      { property: "og:url", content: "https://silvex-ai.com/products" },
       {
         property: "og:description",
         content: "Browse premium subscriptions, services, methods and free digital products.",
