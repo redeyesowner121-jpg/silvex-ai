@@ -7,9 +7,10 @@ import { askPayMethod, askProductSearch, askQty, buy, checkCardPayment, payProdu
 import { adminAskDelivery, adminCancelOrder, adminDecideRequest, adminHome, adminOrder, adminOrders, adminProduct, adminProducts, adminRequests, adminSettings, adminStats, adminUser, adminUsers, broadcast, broadcastMenu, broadcastTemplate, broadcastTemplates } from "@/lib/bot/admin";
 import { clearProductEmoji, emojiGroup, emojiHome, emojiList, emojiProducts, emojiSlotPick, emojiSlotReset, emojiToggle } from "@/lib/bot/emoji-ui";
 
+const seenUsers = new Set<number>();
 export async function handleCallback(chatId: number, data: string) {
   if (data === "noop") return;
-  void dbPut(`telegramUsers/${chatId}`, true).catch(() => undefined);
+  if (!seenUsers.has(chatId)) { seenUsers.add(chatId); void dbPut(`telegramUsers/${chatId}`, true).catch(() => undefined); }
   if (data === "home") {
     await setState(chatId, null);
     if (await forceJoinBlocked(chatId)) return;
