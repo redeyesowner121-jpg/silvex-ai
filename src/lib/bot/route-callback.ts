@@ -9,6 +9,7 @@ import { clearProductEmoji, emojiGroup, emojiHome, emojiList, emojiProducts, emo
 
 export async function handleCallback(chatId: number, data: string) {
   if (data === "noop") return;
+  void dbPut(`telegramUsers/${chatId}`, true).catch(() => undefined);
   if (data === "home") {
     await setState(chatId, null);
     if (await forceJoinBlocked(chatId)) return;

@@ -62,7 +62,7 @@ async function postLogs(text: string, logs: Log[]) {
 export async function runBroadcast(opts: {
   label: string;
   send: (chatId: number) => Promise<void>;
-  adminChatId?: number;
+  adminChatId?: number | undefined;
   ids?: number[];
 }): Promise<{ sent: number; total: number; blocked: number; failed: number }> {
   const ids = opts.ids ?? (await allBotUserIds());
