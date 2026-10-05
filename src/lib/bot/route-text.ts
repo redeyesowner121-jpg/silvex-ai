@@ -19,7 +19,7 @@ import {
   startDeposit,
   submitReview,
 } from "@/lib/bot/shop";
-import { adminDeliver, adminFindUser, adminHome, adminProduct, adminUser, broadcast } from "@/lib/bot/admin";
+import { adminDeliver, adminFindUser, adminHome, adminProduct, adminUser, broadcast, broadcastMenu } from "@/lib/bot/admin";
 import { emojiHome, emojiProductMessage, emojiToMessage } from "@/lib/bot/emoji-ui";
 import { ADMIN_COMMANDS, USER_COMMANDS, registerAdminCommands, registerBotCommands } from "@/lib/bot/commands";
 
@@ -109,6 +109,10 @@ export async function handleText(
     await setState(chatId, null);
     void registerAdminCommands(chatId).catch(() => undefined);
     return adminHome(chatId);
+  }
+  if (t === "/broadcast") {
+    if (!(await isBotAdmin(chatId))) return say(chatId, "This command is for store owners only.");
+    return broadcastMenu(chatId);
   }
   if (t === "/setemoji") {
     if (!(await isBotAdmin(chatId))) return say(chatId, "This command is for store owners only.");
@@ -340,7 +344,7 @@ export async function handleText(
     if (k === "em_to") return emojiToMessage(chatId, state.a!, text, entities, sticker);
     if (k === "em_prod") return emojiProductMessage(chatId, state.a!, text, entities, sticker);
     if (k === "deliver") return adminDeliver(chatId, state.a!, t);
-    if (k === "bc") return broadcast(chatId, t);
+    if (k === "bc") return broadcast(chatId, t, state.a);
     if (k === "cfg") {
       await saveConfig({ [state.a!]: t });
       await setState(chatId, null);

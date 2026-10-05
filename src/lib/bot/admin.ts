@@ -345,7 +345,63 @@ export async function adminSettings(chatId: number) {
   );
 }
 
-export async function broadcast(chatId: number, text: string) {
+/** Step 1 of /broadcast: pick a product (10 per page) or send plain custom text. */
+export async function broadcastMenu(chatId: number, page = 0) {
+  await setState(chatId, null);
+  const list = Object.entries(await allProducts()).filter(([, p]) => p?.title && !p.hidden);
+  const per = 10;
+  const pages = Math.max(1, Math.ceil(list.length / per));
+  const pg = Math.min(Math.max(0, page), pages - 1);
+  const slice = list.slice(pg * per, pg * per + per);
+  const nav: any[] = [];
+  if (pg > 0) nav.push({ text: "Previous Page", callback_data: `a:bcpg:${pg - 1}` });
+  if (pg < pages - 1) nav.push({ text: "Next Page", callback_data: `a:bcpg:${pg + 1}` });
+  await say(chatId, `📣 <b>Broadcast</b>\n\nPick a product to announce, or send custom text only.\nPage ${pg + 1}/${pages}`, {
+    inline_keyboard: [
+      [{ text: "✍️ Custom text only", callback_data: "a:bcc" }],
+      ...slice.map(([id, p]) => [{ text: String(p.title).slice(0, 60), callback_data: `a:bcp:${id}` }]),
+      ...(nav.length ? [nav] : []),
+      [{ text: "⬅️ Back to Admin Panel", callback_data: "a:home" }],
+    ],
+  });
+}
+
+/** Step 2: template buttons for the chosen product. */
+export async function broadcastTemplates(chatId: number, id: string) {
+  const p = await dbGet<Product>(`products/${id}`);
+  if (!p) return say(chatId, "Product not found.", adminBack);
+  await say(chatId, `📣 <b>${p.title}</b>\n\nChoose a message template:`, {
+    inline_keyboard: [
+      [
+        { text: "📦 New stock", callback_data: `a:bct:restock:${id}` },
+        { text: "⚠️ Low stock", callback_data: `a:bct:low:${id}` },
+      ],
+      [
+        { text: "🆕 New product", callback_data: `a:bct:new:${id}` },
+        { text: "✍️ Custom text", callback_data: `a:bct:custom:${id}` },
+      ],
+      [{ text: "⬅️ Back to Products", callback_data: "a:bc" }],
+    ],
+  });
+}
+
+export async function broadcastTemplate(chatId: number, kind: string, id: string) {
+  if (kind === "custom") {
+    await setState(chatId, { k: "bc", a: id });
+    return say(chatId, "✍️ Send the custom text. A Buy button for this product will be added below it.", {
+      inline_keyboard: [[{ text: "❌ Cancel", callback_data: "a:bc" }]],
+    });
+  }
+  await say(chatId, "📣 Sending… I'll report back when it's done.", adminBack);
+  void import("@/lib/broadcast.server")
+    .then(({ announce }) => announce(kind as any, id))
+    .then((r) =>
+      say(chatId, r.ok ? `📣 Broadcast sent to ${r.sent}/${r.total} users.` : `⚠️ Not sent: ${r.error}`, adminBack),
+    )
+    .catch(() => undefined);
+}
+
+export async function broadcast(chatId: number, text: string, productId?: string) {
   const users = (await dbGet<Record<string, boolean>>("telegramUsers")) || {};
   const ids = Object.keys(users).map(Number).filter(Boolean);
   await setState(chatId, null);
@@ -356,7 +412,15 @@ export async function broadcast(chatId: number, text: string) {
   );
   // Run in the background so the admin isn't stuck waiting; fire every
   // message at once — rate-limit retries handle any Telegram slowdowns.
-  void broadcastAll(chatId, ids, text).catch(() => {});
+  const markup = productId
+    ? {
+        inline_keyboard: [
+          [{ text: "🛒 Buy now", callback_data: `p:${productId}` }],
+          [{ text: "🏬 Browse shop", callback_data: "products" }],
+        ],
+      }
+    : undefined;
+  void broadcastAll(chatId, ids, text, markup).catch(() => {});
   void import("@/lib/push.server")
     .then(({ pushEveryone }) => pushEveryone({ title: "📣 SILENT SELLER", body: text }))
     .catch(() => undefined);
@@ -370,10 +434,10 @@ function retryAfterMs(e: unknown): number {
   return m ? Number(m[1]) * 1000 + 200 : 0;
 }
 
-async function sendOne(id: number, text: string): Promise<boolean> {
+async function sendOne(id: number, text: string, markup?: any): Promise<boolean> {
   for (let attempt = 0; attempt < 4; attempt++) {
     try {
-      await tg("sendMessage", { chat_id: id, text, parse_mode: "HTML" });
+      await tg("sendMessage", { chat_id: id, text, parse_mode: "HTML", ...(markup ? { reply_markup: markup } : {}) });
       return true;
     } catch (e) {
       const wait = retryAfterMs(e);
@@ -387,14 +451,14 @@ async function sendOne(id: number, text: string): Promise<boolean> {
   return false;
 }
 
-async function broadcastAll(chatId: number, ids: number[], text: string) {
+async function broadcastAll(chatId: number, ids: number[], text: string, markup?: any) {
   // ids come from unique database keys, so nobody can get the message twice.
   // Fire every message at once; sendOne retries any that Telegram rate-limits.
-  let results = await Promise.all(ids.map((id) => sendOne(id, text)));
+  let results = await Promise.all(ids.map((id) => sendOne(id, text, markup)));
   // One catch-up pass for anyone still missing (e.g. a brief network error),
   // so nobody is left out of the broadcast.
   if (results.some((r) => !r)) {
-    results = await Promise.all(ids.map((id, i) => (results[i] ? Promise.resolve(true) : sendOne(id, text))));
+    results = await Promise.all(ids.map((id, i) => (results[i] ? Promise.resolve(true) : sendOne(id, text, markup))));
   }
   const sent = results.filter(Boolean).length;
   const failed = ids.length - sent;
