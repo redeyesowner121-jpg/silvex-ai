@@ -56,6 +56,7 @@ export async function announce(
   kind: BroadcastKind,
   productId: string,
   extra: { price?: number; left?: number; ends?: number; added?: number } = {},
+  adminChatId?: number,
 ): Promise<{ ok: boolean; sent: number; total: number; error?: string }> {
   await loadBotRuntime();
   if (!(await enabled())) return { ok: false, sent: 0, total: 0, error: "broadcasts disabled" };
@@ -82,24 +83,16 @@ export async function announce(
     ],
   };
 
-  const users = (await dbGet<Record<string, boolean>>("telegramUsers")) || {};
-  const ids = Object.keys(users).map(Number).filter(Boolean);
-  let sent = 0;
-  for (const id of ids) {
-    try {
+  const { runBroadcast } = await import("./broadcast-runner.server");
+  const labels: Record<BroadcastKind, string> = { new: "New product", restock: "New stock", low: "Low stock", flash: "Flash sale" };
+  const r = await runBroadcast({
+    label: `${labels[kind]} · ${p.title || productId}`,
+    adminChatId,
+    send: async (id) => {
       const photo = p.logo ? await tgSendPhoto(id, p.logo, text, keyboard) : false;
-      if (!photo)
-        await tg("sendMessage", {
-          chat_id: id,
-          text,
-          parse_mode: "HTML",
-          reply_markup: keyboard,
-        });
-      sent++;
-    } catch {
-      /* blocked user */
-    }
-  }
+      if (!photo) await tg("sendMessage", { chat_id: id, text, parse_mode: "HTML", reply_markup: keyboard });
+    },
+  });
   await dbPatch(`products/${productId}`, { lastBroadcast: `${kind}:${Date.now()}` });
-  return { ok: true, sent, total: ids.length };
+  return { ok: true, sent: r.sent, total: r.total };
 }
