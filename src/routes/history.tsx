@@ -7,12 +7,12 @@ import { useStore } from "@/context/StoreContext";
 export const Route = createFileRoute("/history")({
   head: () => ({
     meta: [
-      { title: "Wallet History — SILENT SELLER" },
+      { title: "Wallet History — Silvex AI" },
       {
         name: "description",
         content: "See every deposit, purchase and refund made with your wallet.",
       },
-      { property: "og:title", content: "Wallet History — SILENT SELLER" },
+      { property: "og:title", content: "Wallet History — Silvex AI" },
       {
         property: "og:description",
         content: "See every deposit, purchase and refund made with your wallet.",

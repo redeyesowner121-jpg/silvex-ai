@@ -422,7 +422,7 @@ export async function broadcast(chatId: number, text: string, productId?: string
     : undefined;
   void broadcastAll(chatId, ids, text, markup).catch(() => {});
   void import("@/lib/push.server")
-    .then(({ pushEveryone }) => pushEveryone({ title: "📣 SILENT SELLER", body: text }))
+    .then(({ pushEveryone }) => pushEveryone({ title: "📣 Silvex AI", body: text }))
     .catch(() => undefined);
 }
 

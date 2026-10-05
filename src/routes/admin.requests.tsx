@@ -4,9 +4,9 @@ import { RequestsAdmin } from "@/components/admin/RequestsAdmin";
 
 export const Route = createFileRoute("/admin/requests")({
   head: () => ({ meta: [
-    { title: "Wallet Requests — SILENT SELLER" },
+    { title: "Wallet Requests — Silvex AI" },
     { name: "description", content: "Review store wallet deposit and withdrawal requests." },
-    { property: "og:title", content: "Wallet Requests — SILENT SELLER" },
+    { property: "og:title", content: "Wallet Requests — Silvex AI" },
     { property: "og:description", content: "Review store wallet deposit and withdrawal requests." },
     { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }, { name: "robots", content: "noindex" },
   ] }),

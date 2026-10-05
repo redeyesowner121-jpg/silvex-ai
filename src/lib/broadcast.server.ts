@@ -68,7 +68,7 @@ export async function announce(
   void import("./push.server")
     .then(({ pushEveryone, plain }) => {
       const [title, ...rest] = plain(text).split("\n");
-      return pushEveryone({ title: title || "SILENT SELLER", body: rest.join("\n").trim(), url: "/products" });
+      return pushEveryone({ title: title || "Silvex AI", body: rest.join("\n").trim(), url: "/products" });
     })
     .catch(() => undefined);
   const site = siteUrl();

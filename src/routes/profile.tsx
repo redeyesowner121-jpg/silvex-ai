@@ -16,9 +16,9 @@ import { isAppInstalled, startAppInstall } from "@/lib/pwa-install";
 export const Route = createFileRoute("/profile")({
   head: () => ({
     meta: [
-      { title: "My Profile — SILENT SELLER" },
+      { title: "My Profile — Silvex AI" },
       { name: "description", content: "Manage your wallet, phone number, referral code and orders." },
-      { property: "og:title", content: "My Profile — SILENT SELLER" },
+      { property: "og:title", content: "My Profile — Silvex AI" },
       { property: "og:description", content: "Manage your wallet, phone number, referral code and orders." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

@@ -532,7 +532,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         Array.isArray(config.categories) && config.categories.length
           ? config.categories
           : DEFAULT_CATEGORIES,
-      siteName: config.siteName || (isOriginProject() ? "SILENT SELLER" : "My Store"),
+      siteName: config.siteName || (isOriginProject() ? "Silvex AI" : "My Store"),
       // Every place keeps its own emoji; nothing is guessed from the character.
       emoji: (key: string) => slotEmojis[key]?.char || slotChar(key),
       emojiImg: (key: string) => (slotEmojis[key] ? slotEmojiImgs[key] || "" : ""),

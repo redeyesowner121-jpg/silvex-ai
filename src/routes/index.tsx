@@ -9,13 +9,13 @@ import { SupportButtons } from "@/components/store/SupportButtons";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "SILENT SELLER — Digital Products at Cheapest Rates" },
+      { title: "Silvex AI — Digital Products at Cheapest Rates" },
       {
         name: "description",
         content:
           "Buy premium subscriptions, digital services and earning methods at the cheapest rates with instant delivery and wallet payments.",
       },
-      { property: "og:title", content: "SILENT SELLER — Digital Products" },
+      { property: "og:title", content: "Silvex AI — Digital Products" },
       {
         property: "og:description",
         content: "Cheapest rates, instant delivery and wallet payments.",
@@ -73,7 +73,7 @@ function Home() {
     <div className="fade-in">
       <div className="mb-5 overflow-hidden rounded-xl bg-card px-3 py-2 text-xs font-medium text-muted-foreground shadow-sm">
         <div className="marquee whitespace-nowrap">
-          {config.marquee || "Welcome to SILENT SELLER! 🔥 Get the best deals here."}
+          {config.marquee || "Welcome to Silvex AI! 🔥 Get the best deals here."}
         </div>
       </div>
 

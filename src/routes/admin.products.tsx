@@ -5,8 +5,8 @@ import { useStore } from "@/context/StoreContext";
 
 export const Route = createFileRoute("/admin/products")({
   head: () => ({ meta: [
-    { title: "Products — SILENT SELLER" }, { name: "description", content: "Manage products, prices, delivery and stock." },
-    { property: "og:title", content: "Products — SILENT SELLER" }, { property: "og:description", content: "Manage products, prices, delivery and stock." },
+    { title: "Products — Silvex AI" }, { name: "description", content: "Manage products, prices, delivery and stock." },
+    { property: "og:title", content: "Products — Silvex AI" }, { property: "og:description", content: "Manage products, prices, delivery and stock." },
     { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }, { name: "robots", content: "noindex" },
   ] }), component: ProductsPage,
 });

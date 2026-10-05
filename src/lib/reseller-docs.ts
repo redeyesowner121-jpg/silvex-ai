@@ -1,6 +1,6 @@
 export function resellerApiDocs(base: string, apiKey?: string): string {
   const key = apiKey || "YOUR_KEY";
-  return `SILENT SELLER — Reseller API Documentation
+  return `Silvex AI — Reseller API Documentation
 
 Base URL
 ${base}

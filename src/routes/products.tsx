@@ -15,13 +15,13 @@ export const Route = createFileRoute("/products")({
   }),
   head: () => ({
     meta: [
-      { title: "Shop Digital Products — SILENT SELLER" },
+      { title: "Shop Digital Products — Silvex AI" },
       {
         name: "description",
         content:
           "Browse premium subscriptions, services, methods and free digital products with instant delivery.",
       },
-      { property: "og:title", content: "Shop Digital Products — SILENT SELLER" },
+      { property: "og:title", content: "Shop Digital Products — Silvex AI" },
       {
         property: "og:description",
         content: "Browse premium subscriptions, services, methods and free digital products.",

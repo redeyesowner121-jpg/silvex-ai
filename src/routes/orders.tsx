@@ -7,12 +7,12 @@ import type { CartItem } from "@/context/StoreContext";
 export const Route = createFileRoute("/orders")({
   head: () => ({
     meta: [
-      { title: "Orders — SILENT SELLER" },
+      { title: "Orders — Silvex AI" },
       {
         name: "description",
-        content: "Track your SILENT SELLER orders, delivery status and wallet refunds.",
+        content: "Track your Silvex AI orders, delivery status and wallet refunds.",
       },
-      { property: "og:title", content: "Orders — SILENT SELLER" },
+      { property: "og:title", content: "Orders — Silvex AI" },
       { property: "og:description", content: "Track your orders and refunds in one place." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

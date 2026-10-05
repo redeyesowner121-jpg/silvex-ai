@@ -4,9 +4,9 @@ import { useStore } from "@/context/StoreContext";
 
 export const Route = createFileRoute("/admin/edit/$productId")({
   head: () => ({ meta: [
-    { title: "Edit Product — SILENT SELLER" },
+    { title: "Edit Product — Silvex AI" },
     { name: "description", content: "Edit product details, delivery, pricing and stock." },
-    { property: "og:title", content: "Edit Product — SILENT SELLER" },
+    { property: "og:title", content: "Edit Product — Silvex AI" },
     { property: "og:description", content: "Edit product details, delivery, pricing and stock." },
     { property: "og:type", content: "website" },
     { name: "twitter:card", content: "summary" },
