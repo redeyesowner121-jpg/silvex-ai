@@ -18,6 +18,7 @@ export const USER_COMMANDS = [
 export const ADMIN_COMMANDS = [
   ...USER_COMMANDS,
   { command: "admin", description: "Admin panel" },
+  { command: "broadcast", description: "Broadcast to all users" },
   { command: "setemoji", description: "Change bot & website emojis" },
 ];
 
