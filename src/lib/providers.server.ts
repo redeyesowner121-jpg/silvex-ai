@@ -379,12 +379,16 @@ export async function providerBuy(
   const raw = String(productId);
   const pid =
     cfg.shape.stringProductId || !/^\d+$/.test(raw) ? raw : Number(raw);
+  const amount = Math.max(1, Number(qty) || 1);
   const body: Record<string, unknown> = {
     product_id: pid,
     // some shops name it productId or product — harmless extra fields for the others
     productId: pid,
     product: pid,
-    [cfg.shape.qtyField]: Math.max(1, Number(qty) || 1),
+    // Shops differ on "qty" vs "quantity" — send both so bulk orders are never
+    // silently treated as a single item.
+    qty: amount,
+    quantity: amount,
     ...(cfg.shape.orderExtra || {}),
   };
   if (cfg.shape.refField) body[cfg.shape.refField] = reference;
