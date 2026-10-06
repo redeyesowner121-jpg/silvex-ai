@@ -62,3 +62,4 @@ Phase 4 — polish
 - [x] Add Safwan Tiger shop API (stapi key, /api/products, /api/balance, /api/order)
 - [x] Preserve typed line gaps in product descriptions on the website and Telegram
 - [x] Connect Telegram fresh in the new workspace
+- [x] Stop automatic bot email prompts while keeping email setup in Profile and /email

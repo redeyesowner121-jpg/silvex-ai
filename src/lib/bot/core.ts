@@ -445,13 +445,7 @@ export async function welcome(chatId: number) {
     `Hey <b>${who}</b> ${em("norm.ok")} <b>Welcome to ${name} !</b>`,
     mainKeyboard(),
   );
-  const uid = await ensureUser(chatId);
-  if (!(await userEmail(uid))) {
-    await askEmail(
-      chatId,
-      "Send your email address so we can mail your orders and delivery details. You can skip and add it later from Profile.",
-    );
-  }
+  await ensureUser(chatId);
 }
 
 /* ---------------- users ---------------- */
@@ -490,10 +484,6 @@ export async function ensureUser(chatId: number): Promise<string> {
   await dbPut(`telegramLinks/${chatId}`, uid);
   invalidateUsers();
   return uid;
-}
-
-export async function userEmail(uid: string): Promise<string> {
-  return String((await dbGet<string>(`users/${uid}/email`)) || "");
 }
 
 /** Ask for an email so delivery + order mails can be sent. */
