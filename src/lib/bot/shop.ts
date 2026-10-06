@@ -4,7 +4,7 @@ import { formatDescription } from "@/lib/format-desc";
 
 import { dbGet, dbPush, dbPut, money, notifyOwners, siteUrl, tg, tgSendPhoto, tgTag } from "@/lib/telegram.server";
 import { be, e as em, productEmoji, productEmojiChar } from "@/lib/emoji.server";
-import { allProducts, askEmail, backHome, cfg, editTarget, ensureUser, invalidateProducts, invalidateUsers, productById, say, type Product } from "./core";
+import { allProducts, backHome, cfg, editTarget, ensureUser, invalidateProducts, invalidateUsers, productById, say, type Product } from "./core";
 import { payReferralCommission } from "./wallet";
 
 export { defaultDepositAddress };
@@ -420,10 +420,6 @@ export async function buy(chatId: number, productId: string, qty = 1) {
     ],
   });
   // Delivery receipt files removed — the message above already carries the content.
-  if (!user.email) {
-    await askEmail(chatId, "Add your email to also receive this order and its delivery details by mail.");
-  }
-
   await notifyOwners(
     `🛒 <b>New Telegram order</b>\n${p.title}\nBuyer: ${await tgTag(chatId)}${user.email ? ` (${user.email})` : ""}\nTotal: ${money(price)}\nOrder: ${orderId}\nStatus: ${complete ? "Completed" : "Pending"}`,
   );
