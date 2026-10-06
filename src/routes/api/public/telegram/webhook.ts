@@ -21,6 +21,13 @@ function refreshSuppliersInBackground() {
     });
 }
 
+// On the always-on Railway server, also check suppliers every 2 minutes so
+// API stock announcements go out even when nobody is using the bot.
+const g = globalThis as { __supplierTimer?: unknown };
+if (!g.__supplierTimer && typeof process !== "undefined" && process.env?.["RAILWAY_ENVIRONMENT"]) {
+  g.__supplierTimer = setInterval(refreshSuppliersInBackground, 120_000);
+}
+
 // Warm the shared caches before the first customer interaction reaches this worker.
 void Promise.all([
   loadBotRuntime().catch(() => undefined),

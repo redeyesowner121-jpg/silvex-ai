@@ -14,6 +14,40 @@ import {
   type ApiProduct,
 } from "./providers.server";
 
+type Announcement = { kind: "new" | "restock"; id: string; left: number; added?: number };
+
+/** A stock jump this big (or more) at the supplier is announced as new stock. */
+const MIN_STOCK_JUMP = 5;
+
+/**
+ * Bot announcements for supplier changes run one after another in the
+ * background, so the sync itself never waits on a long broadcast.
+ */
+let announceChain: Promise<void> = Promise.resolve();
+function queueAnnouncements(list: Announcement[]) {
+  if (!list.length) return;
+  announceChain = announceChain.then(async () => {
+    const { announce } = await import("./broadcast.server");
+    for (const a of list) {
+      await announce(a.kind, a.id, { left: a.left, ...(a.added ? { added: a.added } : {}) }).catch((e) =>
+        console.error("supplier announce failed", a.id, e),
+      );
+    }
+  });
+}
+
+/** Decide whether a supplier stock change should be told to bot users. */
+function stockAnnouncement(id: string, p: any, before: number, after: number): Announcement | null {
+  if (!p || p.hidden || p.botHidden || after <= 0 || after >= 9999) {
+    // Unlimited items: only announce when they come back from sold out.
+    if (p && !p.hidden && !p.botHidden && after >= 9999 && before <= 0) return { kind: "restock", id, left: after };
+    return null;
+  }
+  if (before <= 0) return { kind: "restock", id, left: after };
+  if (after - before >= MIN_STOCK_JUMP) return { kind: "restock", id, left: after, added: after - before };
+  return null;
+}
+
 /**
  * Import every product of a provider into the shop.
  * Existing items are refreshed (price/stock/description) and keep their
@@ -48,6 +82,7 @@ export async function importProvider(
     removed++;
   }
 
+  const news: Announcement[] = [];
   for (const sp of list) {
     const key = apiProductKey(cfg.id, sp.id);
     const cur = (existing || {})[key];
@@ -74,6 +109,8 @@ export async function importProvider(
         ...(cur.logo || !sp.image ? {} : { logo: sp.image }),
       });
       updated++;
+      const a = stockAnnouncement(key, cur, Number(cur.supplierStock ?? 0), Number(base.supplierStock || 0));
+      if (a) news.push(a);
     } else {
       await dbPut(`products/${key}`, {
         ...base,
@@ -87,6 +124,8 @@ export async function importProvider(
         salesCount: 0,
       });
       added++;
+      if (Number(base.supplierStock || 0) > 0)
+        news.push({ kind: "new", id: key, left: Number(base.supplierStock) });
     }
   }
 
@@ -94,6 +133,7 @@ export async function importProvider(
     imported_at: new Date().toISOString(),
     imported_count: list.length,
   });
+  queueAnnouncements(news);
   return { added, updated, removed };
 }
 
@@ -188,6 +228,7 @@ export async function syncAllProviders(force = true): Promise<{
   );
 
   const updated: { id: string; title: string; price: number; stock: number }[] = [];
+  const news: Announcement[] = [];
   for (const [id, p] of linked) {
     const sid = String(p.supplierId);
     // The product key (api_<shop>_<id>) is the truth for which shop it belongs to.
@@ -225,7 +266,6 @@ export async function syncAllProviders(force = true): Promise<{
     }
     const price = sellPrice(sp.price, Number(p.markup) || 130);
     const stock = sp.unlimited ? 9999 : Math.max(0, sp.stock);
-    const wasOut = Number(p.supplierStock ?? 0) <= 0;
     const desc = String(sp.description || "").trim();
     await dbPatch(`products/${id}`, {
       price,
@@ -238,12 +278,11 @@ export async function syncAllProviders(force = true): Promise<{
       // unless the admin wrote their own (descEdited).
       ...(desc && !p.descEdited ? { desc } : {}),
     });
-    // Back in stock at the provider: tell every bot user.
-    if (wasOut && stock > 0 && !p.hidden) {
-      const { announce } = await import("./broadcast.server");
-      await announce("restock", id, { left: stock }).catch(() => undefined);
-    }
+    // Back in stock, or a fresh batch added at the provider: tell every bot user.
+    const a = stockAnnouncement(id, p, Number(p.supplierStock ?? 0), stock);
+    if (a) news.push(a);
     updated.push({ id, title: String(p.title || sp.name), price, stock });
   }
+  queueAnnouncements(news);
   return { updated };
 }
