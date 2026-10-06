@@ -16,4 +16,5 @@ Pandora Digital provider added to PROVIDERS (id 'pandora', string product ids, I
 - Telegram button presentation settings live under `site_settings/button_colors`, `button_names`, and `product_buttons`; emoji metadata stays under `telegramEmoji` so premium IDs are preserved.
 - Bot purchases deduct wallet and claim auto-stock via ETag transactions (`dbTransact`), refund automatically when automatic delivery fails, and split bulk deliveries into multiple messages plus a .txt file — prevents duplicate accounts, lost money and Telegram's 4096-char limit.
 - Supplier orders send both `qty` and `quantity` — shops disagree on the field name and silently default to 1.
-- Supplier stock changes (back in stock, +5 or more, new imports) are announced via a background queue; Railway also runs a 2-minute supplier check timer.
+- Supplier stock changes (back in stock, +5 or more with a 3h per-product cooldown, new imports) are announced via a background queue, combined into one digest when several change; Railway also runs a 2-minute supplier check timer.
+- Broadcasts run one at a time (`runBroadcast` lane), are tagged `_broadcast` so `tg()` can pause them on 429s, and shrink free-mode waves while customers use the bot — keeps live replies responsive.

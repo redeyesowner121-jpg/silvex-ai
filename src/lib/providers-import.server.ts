@@ -27,13 +27,25 @@ let announceChain: Promise<void> = Promise.resolve();
 function queueAnnouncements(list: Announcement[]) {
   if (!list.length) return;
   announceChain = announceChain.then(async () => {
-    const { announce } = await import("./broadcast.server");
-    for (const a of list) {
-      await announce(a.kind, a.id, { left: a.left, ...(a.added ? { added: a.added } : {}) }).catch((e) =>
-        console.error("supplier announce failed", a.id, e),
-      );
+    const { announce, announceDigest } = await import("./broadcast.server");
+    // Many changes from one sync go out as ONE combined message, so users are
+    // not flooded and the bot is never stuck in back-to-back broadcasts.
+    if (list.length > 1) {
+      await announceDigest(list).catch((e) => console.error("supplier digest failed", e));
+      return;
     }
+    const a = list[0]!;
+    await announce(a.kind, a.id, { left: a.left, ...(a.added ? { added: a.added } : {}) }).catch((e) =>
+      console.error("supplier announce failed", a.id, e),
+    );
   });
+}
+
+/** Stock top-ups of the same product are announced at most once per this window. */
+const TOPUP_COOLDOWN_MS = 3 * 60 * 60 * 1000;
+function recentlyAnnounced(p: any): boolean {
+  const ts = Number(String(p?.lastBroadcast || "").split(":")[1] || 0);
+  return ts > 0 && Date.now() - ts < TOPUP_COOLDOWN_MS;
 }
 
 /** Decide whether a supplier stock change should be told to bot users. */
@@ -44,7 +56,7 @@ function stockAnnouncement(id: string, p: any, before: number, after: number): A
     return null;
   }
   if (before <= 0) return { kind: "restock", id, left: after };
-  if (after - before >= MIN_STOCK_JUMP) return { kind: "restock", id, left: after, added: after - before };
+  if (after - before >= MIN_STOCK_JUMP && !recentlyAnnounced(p)) return { kind: "restock", id, left: after, added: after - before };
   return null;
 }
 

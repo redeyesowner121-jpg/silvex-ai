@@ -108,3 +108,46 @@ export async function announce(
   await dbPatch(`products/${productId}`, { lastBroadcast: `${kind}:${Date.now()}` });
   return { ok: true, sent: r.sent, total: r.total };
 }
+
+/** One combined announcement for several products (used by supplier syncs). */
+export async function announceDigest(
+  list: { kind: "new" | "restock"; id: string; left: number; added?: number }[],
+): Promise<{ ok: boolean; sent: number; total: number; error?: string }> {
+  await loadBotRuntime();
+  if (!(await enabled())) return { ok: false, sent: 0, total: 0, error: "broadcasts disabled" };
+  const rows: { id: string; p: Product; a: (typeof list)[number] }[] = [];
+  for (const a of list.slice(0, 15)) {
+    const p = await dbGet<Product>(`products/${a.id}`);
+    if (p && !p.hidden && p.title) rows.push({ id: a.id, p, a });
+  }
+  if (!rows.length) return { ok: false, sent: 0, total: 0, error: "nothing to announce" };
+  if (rows.length === 1) {
+    const { id, a } = rows[0]!;
+    return announce(a.kind, id, { left: a.left, ...(a.added ? { added: a.added } : {}) });
+  }
+  const lines = rows.map(({ p, a }) => {
+    const tag = a.kind === "new" ? "🆕" : a.added ? `➕ ${a.added}` : "🔄";
+    return `☁️ <b>${p.title}</b>\n${tag} • 📦 ${a.left >= 9999 ? "In stock" : a.left} • 💰 ${money(Number(p.price || 0))}`;
+  });
+  const text = `📦 <b>Stock update</b>\n\n${lines.join("\n\n")}`;
+  const site = siteUrl();
+  const keyboard = {
+    inline_keyboard: [
+      ...rows.slice(0, 8).map(({ id, p }) => [{ text: `🛒 ${String(p.title).slice(0, 40)}`, callback_data: `p:${id}` }]),
+      [
+        { text: "🏬 Browse shop", callback_data: "products" },
+        ...(site ? [{ text: "🌐 Website", url: site }] : []),
+      ],
+    ],
+  };
+  const { runBroadcast } = await import("./broadcast-runner.server");
+  const r = await runBroadcast({
+    label: `Stock update · ${rows.length} products`,
+    send: async (id, extra) => {
+      await tg("sendMessage", { chat_id: id, text, parse_mode: "HTML", reply_markup: keyboard, ...extra });
+    },
+  });
+  const now = Date.now();
+  await Promise.all(rows.map(({ id, a }) => dbPatch(`products/${id}`, { lastBroadcast: `${a.kind}:${now}` })));
+  return { ok: true, sent: r.sent, total: r.total };
+}

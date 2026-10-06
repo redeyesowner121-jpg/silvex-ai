@@ -188,10 +188,30 @@ function stripUnsupportedButtonDecorations(markup: any): any {
   };
 }
 
+/* ---- customer-first sending: broadcasts yield to live bot replies ---- */
+const interactiveCalls: number[] = [];
+let broadcastPause = 0;
+/** How many customer-facing Telegram calls happened in the last second. */
+export function interactiveLoad(): number {
+  const cut = Date.now() - 1000;
+  while (interactiveCalls.length && interactiveCalls[0]! < cut) interactiveCalls.shift();
+  return interactiveCalls.length;
+}
+/** Broadcasts wait until this time after Telegram asked us to slow down. */
+export function broadcastPausedUntil(): number {
+  return broadcastPause;
+}
+
 export async function tg(method: string, body: Record<string, unknown>): Promise<any> {
   const api = tgApi(method);
   if (!api) throw new Error("Telegram bot is not configured. Add the bot token in the admin panel.");
   const payload: Record<string, unknown> = { ...body };
+  const isBroadcast = payload["_broadcast"] === true;
+  delete payload["_broadcast"];
+  if (!isBroadcast) {
+    interactiveCalls.push(Date.now());
+    if (interactiveCalls.length > 500) interactiveCalls.splice(0, 250);
+  }
   if (payload["reply_markup"]) payload["reply_markup"] = decorateMarkup(payload["reply_markup"]);
   if (payload["text"]) payload["text"] = decorateText(payload["text"]);
   if (payload["caption"]) payload["caption"] = decorateText(payload["caption"]);
@@ -223,7 +243,19 @@ export async function tg(method: string, body: Record<string, unknown>): Promise
   };
 
   try {
-    return await call(payload);
+    try {
+      return await call(payload);
+    } catch (err) {
+      const m = String((err as Error)?.message || "");
+      const ra = /\[429\][\s\S]*"retry_after"\s*:\s*(\d+)/.exec(m);
+      if (!ra) throw err;
+      const wait = Number(ra[1]) * 1000 + 250;
+      // Telegram said "slow down": pause broadcasts so customers come first.
+      broadcastPause = Math.max(broadcastPause, Date.now() + wait);
+      if (isBroadcast || wait > 6000) throw err;
+      await new Promise((r) => setTimeout(r, wait));
+      return await call(payload);
+    }
   } catch (err) {
     const msg = String((err as Error)?.message || "");
     // Bots without a Fragment username / premium owner can't use premium icons,
