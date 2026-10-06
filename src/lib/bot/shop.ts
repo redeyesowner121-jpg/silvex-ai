@@ -315,6 +315,37 @@ export async function confirmWalletPay(chatId: number, productId: string, qty: n
   );
 }
 
+const escHtml = (s: string) =>
+  String(s).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c] as string);
+
+/** Splits delivered items into Telegram-sized messages (limit is 4096 chars). */
+function deliveryChunks(items: { title: string; content: string }[], max = 3500): string[] {
+  const out: string[] = [];
+  let cur = "";
+  items.forEach((d, i) => {
+    const block = `${i + 1}. <code>${escHtml(d.content)}</code>`;
+    if (cur && cur.length + block.length + 2 > max) {
+      out.push(cur);
+      cur = "";
+    }
+    cur += (cur ? "\n\n" : "") + block;
+  });
+  if (cur) out.push(cur);
+  return out;
+}
+
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
+/** Safely add/remove wallet money even when several orders run at once. */
+async function changeWallet(uid: string, delta: number, mustCover = 0): Promise<number | undefined> {
+  const { dbTransact } = await import("@/lib/telegram.server");
+  return dbTransact<number>(`users/${uid}/wallet`, (cur) => {
+    const w = Number(cur || 0);
+    if (mustCover > 0 && w < mustCover) return undefined;
+    return round2(w + delta);
+  });
+}
+
 export async function buy(chatId: number, productId: string, qty = 1) {
   const uid = await ensureUser(chatId);
   const [p, storedUser] = await Promise.all([
@@ -324,12 +355,30 @@ export async function buy(chatId: number, productId: string, qty = 1) {
   if (!p) return say(chatId, "Product not found.", backHome);
   if (isOutOfStock(p))
     return say(chatId, "This product is out of stock right now.", backHome);
-  const count = Math.max(1, Math.min(Math.floor(Number(qty) || 1), 20));
+  const count = Math.max(1, Math.min(Math.floor(Number(qty) || 1), 100));
   const unitPrice = Number(p.price || 0);
-  const price = Math.round(unitPrice * count * 100) / 100;
+  const price = round2(unitPrice * count);
   const user = storedUser || {};
-  const wallet = Number(user.wallet || 0);
-  if (wallet < price) {
+  const title = p.title || "Item";
+  const buyer = user.email || `tg:${chatId}`;
+
+  // Never take money for more items than are available.
+  if (p.delivery === "auto") {
+    const have = Array.isArray(p.stock) ? p.stock.filter(Boolean).length : 0;
+    if (have < count)
+      return say(chatId, `Only <b>${have}</b> in stock right now — please choose a smaller quantity.`, backHome);
+  } else if (p.delivery === "supplier" && p.supplierStock != null && Number(p.supplierStock) < count) {
+    return say(
+      chatId,
+      `Only <b>${Number(p.supplierStock)}</b> in stock right now — please choose a smaller quantity.`,
+      backHome,
+    );
+  }
+
+  // Take the money first, atomically, so parallel taps can't overspend.
+  const after = await changeWallet(uid, -price, price);
+  if (after === undefined) {
+    const wallet = Number((await dbGet<number>(`users/${uid}/wallet`)) || 0);
     return say(chatId, `Not enough wallet balance. You have ${money(wallet)}, this order costs ${money(price)}.`, {
       inline_keyboard: [[{ text: `🟢 ${be("btn.deposit")} Deposit`, callback_data: "dep" }]],
     });
@@ -337,6 +386,7 @@ export async function buy(chatId: number, productId: string, qty = 1) {
 
   const delivered: { title: string; content: string }[] = [];
   let complete = false;
+  let failReason = "";
   if (p.delivery === "supplier") {
     try {
       const { supplierBuy } = await import("@/lib/supplier.server");
@@ -346,79 +396,133 @@ export async function buy(chatId: number, productId: string, qty = 1) {
         `tg-${chatId}-${Date.now()}`,
         String(p.provider || "custom"),
       );
-      for (const content of items) {
-        await dbPush(`usedStock/${productId}`, {
-          content,
-          orderId: "",
-          email: user.email || `tg:${chatId}`,
-          date: new Date().toISOString(),
-        });
-        delivered.push({ title: p.title || "Item", content });
-      }
+      for (const content of items) delivered.push({ title, content });
       complete = delivered.length > 0;
-    } catch {
-      complete = false;
+    } catch (err) {
+      failReason = err instanceof Error ? err.message : String(err);
     }
   } else if (p.delivery === "repeat" && p.link) {
-    for (let i = 0; i < count; i++) delivered.push({ title: p.title || "Item", content: p.link });
+    for (let i = 0; i < count; i++) delivered.push({ title, content: p.link });
     complete = true;
   } else if (p.delivery === "auto") {
-    const stock = Array.isArray(p.stock) ? p.stock.filter(Boolean) : [];
-    if (stock.length >= count) {
-      const taken = stock.slice(0, count) as string[];
-      await dbPut(`products/${productId}/stock`, stock.slice(count));
-      for (const content of taken) {
-        await dbPush(`usedStock/${productId}`, {
-          content,
-          orderId: "",
-          email: user.email || `tg:${chatId}`,
-          date: new Date().toISOString(),
-        });
-        delivered.push({ title: p.title || "Item", content });
-      }
-      complete = true;
+    // Claim the exact items atomically so two buyers never get the same account.
+    const { dbTransact } = await import("@/lib/telegram.server");
+    let taken: string[] = [];
+    try {
+      await dbTransact<string[]>(`products/${productId}/stock`, (cur) => {
+        const list = Array.isArray(cur) ? cur.filter(Boolean) : [];
+        if (list.length < count) {
+          taken = [];
+          return undefined;
+        }
+        taken = list.slice(0, count);
+        return list.slice(count);
+      });
+    } catch (err) {
+      failReason = err instanceof Error ? err.message : String(err);
     }
+    for (const content of taken) delivered.push({ title, content });
+    complete = taken.length === count;
+    if (!complete && !failReason) failReason = "Not enough stock left";
   }
 
-  const orderId = "ORD" + Date.now();
-  await dbPut(`users/${uid}/wallet`, Math.round((wallet - price) * 100) / 100);
-  await dbPut(`orders/${orderId}`, {
-    orderId,
-    uid,
-    email: user.email || "",
-    items: [{ ...p, id: productId, qty: count, price: unitPrice }],
-    subTotal: price,
-    couponDiscount: 0,
-    couponCode: null,
-    total: price,
-    phone: user.phone || "",
-    note: "Ordered from Telegram bot",
-    source: "telegram",
-    telegramChatId: chatId,
-    delivered,
-    status: complete ? "Completed" : "Pending",
-    date: new Date().toISOString(),
-  });
-  await dbPush(`users/${uid}/history`, {
-    type: "Purchase",
-    amount: price,
-    desc: `Order ${orderId.slice(-4)}`,
-    date: new Date().toISOString(),
-  });
-  await dbPut(`products/${productId}/salesCount`, Number(p.salesCount || 0) + count);
+  // Automatic products that could not be delivered: give the money back.
+  const autoKind = p.delivery === "supplier" || p.delivery === "auto";
+  if (autoKind && !complete) {
+    await changeWallet(uid, price).catch(() => undefined);
+    await say(
+      chatId,
+      `⚠️ <b>Delivery could not be completed</b>\n\n${escHtml(title)} × ${count}\nYour ${money(price)} has been returned to your wallet. Please try again in a moment or choose a smaller quantity.`,
+      { inline_keyboard: [[{ text: "🛍 Back to shop", callback_data: "products" }]] },
+    );
+    await notifyOwners(
+      `⚠️ <b>Telegram delivery failed — refunded</b>\n${escHtml(title)} × ${count}\nBuyer: ${await tgTag(chatId)}\nAmount: ${money(price)}\nReason: ${escHtml(failReason.slice(0, 300))}`,
+    );
+    return;
+  }
+
+  const orderId = "ORD" + Date.now() + Math.floor(Math.random() * 90 + 10);
+  const now = new Date().toISOString();
+  await Promise.all([
+    ...(p.delivery === "repeat"
+      ? []
+      : delivered.map((d) =>
+          dbPush(`usedStock/${productId}`, { content: d.content, orderId, email: buyer, date: now }),
+        )),
+    dbPut(`orders/${orderId}`, {
+      orderId,
+      uid,
+      email: user.email || "",
+      items: [{ ...p, stock: null, id: productId, qty: count, price: unitPrice }],
+      subTotal: price,
+      couponDiscount: 0,
+      couponCode: null,
+      total: price,
+      phone: user.phone || "",
+      note: "Ordered from Telegram bot",
+      source: "telegram",
+      telegramChatId: chatId,
+      delivered,
+      status: complete ? "Completed" : "Pending",
+      date: now,
+    }),
+    dbPush(`users/${uid}/history`, {
+      type: "Purchase",
+      amount: price,
+      desc: `Order ${orderId.slice(-4)}`,
+      date: now,
+    }),
+    dbPut(`products/${productId}/salesCount`, Number(p.salesCount || 0) + count),
+  ]);
   invalidateProducts();
   invalidateUsers();
   await payReferralCommission(uid, price);
 
-  const body = complete
-    ? `✅ <b>Order delivered</b>\n\n${delivered.map((d) => `${d.title}\n<code>${d.content}</code>`).join("\n\n")}`
-    : `🧾 <b>Order placed</b>\n\n${p.title}\nWe will deliver it shortly.`;
-  await say(chatId, `${body}\n\nOrder: <code>${orderId}</code>\nPaid: ${money(price)}\n\n🌐 Website: ${siteUrl()}`, {
+  const footer = `\n\nOrder: <code>${orderId}</code>\nPaid: ${money(price)}\n\n🌐 Website: ${siteUrl()}`;
+  const keyboard = {
     inline_keyboard: [
       [{ text: "🌐 Visit website", url: siteUrl() }],
       [{ text: "🛍 Buy more", callback_data: "products" }],
     ],
-  });
+  };
+  if (!complete) {
+    await say(chatId, `🧾 <b>Order placed</b>\n\n${escHtml(title)}\nWe will deliver it shortly.${footer}`, keyboard);
+  } else {
+    // Bulk orders (e.g. many mail accounts) are split so Telegram never rejects them.
+    const chunks = deliveryChunks(delivered);
+    const head = `✅ <b>Order delivered</b>\n\n${escHtml(title)} × ${delivered.length}`;
+    if (chunks.length === 1 && head.length + chunks[0]!.length + footer.length < 3900) {
+      await say(chatId, `${head}\n\n${chunks[0]}${footer}`, keyboard);
+    } else {
+      await say(chatId, `${head}\n\nYour items are below 👇`);
+      for (let i = 0; i < chunks.length; i++) {
+        await tg("sendMessage", {
+          chat_id: chatId,
+          text: `📦 <b>Part ${i + 1}/${chunks.length}</b>\n\n${chunks[i]}`,
+          parse_mode: "HTML",
+          disable_web_page_preview: true,
+        }).catch((e) => console.error("delivery part failed", e));
+      }
+      await tg("sendMessage", {
+        chat_id: chatId,
+        text: `✅ All ${delivered.length} items delivered.${footer}`,
+        parse_mode: "HTML",
+        disable_web_page_preview: true,
+        reply_markup: keyboard,
+      }).catch(() => undefined);
+    }
+    // A text file copy makes bulk orders easy to save.
+    if (delivered.length >= 5) {
+      const { tgSendDocument } = await import("./delivery-files.server");
+      await tgSendDocument(
+        chatId,
+        `order-${orderId}.txt`,
+        new TextEncoder().encode(delivered.map((d) => d.content).join("\n") + "\n"),
+        "text/plain",
+        `📄 ${escHtml(title)} × ${delivered.length}`,
+      ).catch(() => undefined);
+    }
+  }
   // Delivery receipt files removed — the message above already carries the content.
   await notifyOwners(
     `🛒 <b>New Telegram order</b>\n${p.title}\nBuyer: ${await tgTag(chatId)}${user.email ? ` (${user.email})` : ""}\nTotal: ${money(price)}\nOrder: ${orderId}\nStatus: ${complete ? "Completed" : "Pending"}`,
