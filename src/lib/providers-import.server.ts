@@ -228,6 +228,7 @@ export async function syncAllProviders(force = true): Promise<{
   );
 
   const updated: { id: string; title: string; price: number; stock: number }[] = [];
+  const news: Announcement[] = [];
   for (const [id, p] of linked) {
     const sid = String(p.supplierId);
     // The product key (api_<shop>_<id>) is the truth for which shop it belongs to.
@@ -265,7 +266,6 @@ export async function syncAllProviders(force = true): Promise<{
     }
     const price = sellPrice(sp.price, Number(p.markup) || 130);
     const stock = sp.unlimited ? 9999 : Math.max(0, sp.stock);
-    const wasOut = Number(p.supplierStock ?? 0) <= 0;
     const desc = String(sp.description || "").trim();
     await dbPatch(`products/${id}`, {
       price,
@@ -278,12 +278,11 @@ export async function syncAllProviders(force = true): Promise<{
       // unless the admin wrote their own (descEdited).
       ...(desc && !p.descEdited ? { desc } : {}),
     });
-    // Back in stock at the provider: tell every bot user.
-    if (wasOut && stock > 0 && !p.hidden) {
-      const { announce } = await import("./broadcast.server");
-      await announce("restock", id, { left: stock }).catch(() => undefined);
-    }
+    // Back in stock, or a fresh batch added at the provider: tell every bot user.
+    const a = stockAnnouncement(id, p, Number(p.supplierStock ?? 0), stock);
+    if (a) news.push(a);
     updated.push({ id, title: String(p.title || sp.name), price, stock });
   }
+  queueAnnouncements(news);
   return { updated };
 }
