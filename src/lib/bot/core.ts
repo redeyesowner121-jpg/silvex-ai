@@ -354,13 +354,14 @@ export function channelHandle(raw: string): string {
   return `@${name}`;
 }
 
-/** Members are remembered for a few minutes so every tap isn't a channel check. */
+/** Members are remembered for a few minutes so repeated /start calls stay fast. */
 const joinedCache = new Map<number, number>();
 const JOIN_CACHE_MS = 10 * 60_000;
 
-export async function forceJoinBlocked(chatId: number): Promise<boolean> {
+/** Show an optional channel prompt on /start only. Returns true when the prompt was shown. */
+export async function startJoinPrompt(chatId: number): Promise<boolean> {
   const c = await cfg();
-  const ch = (c.forceJoin || "").trim();
+  const ch = (c.forceJoin || "@SilentstoreOfficial").trim();
   const handle = ch ? channelHandle(ch) : "";
   if (!ch || !handle) return false;
   const ok = joinedCache.get(chatId);
@@ -378,11 +379,14 @@ export async function forceJoinBlocked(chatId: number): Promise<boolean> {
 
   await say(
     chatId,
-    "🔒 <b>Join our channel first</b>\n\nYou must join the channel below to use this bot.",
+    "📢 <b>Join our official channel</b>\n\nJoin for product updates, new stock and special offers.",
     {
       inline_keyboard: [
         [{ text: "📢 Join channel", url: channelLink(ch) }],
-        [{ text: "✅ I joined", callback_data: "home" }],
+        [
+          { text: "✅ I joined", callback_data: "joincheck" },
+          { text: "⏭ Skip", callback_data: "joinskip" },
+        ],
       ],
     },
   );
