@@ -3,13 +3,15 @@
  * waves under Telegram's ~30 msg/s limit, retries rate-limited/network
  * failures until done, and keeps a live progress log in the admin chat(s).
  */
-import { dbGet, ownerIds, tg } from "./telegram.server";
+import { broadcastPausedUntil, dbGet, interactiveLoad, ownerIds, tg } from "./telegram.server";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const WAVE_MS = 1000;
 /** Free Telegram limit is ~30 msg/s per bot — keep 22/s so customer replies stay instant.
  *  Paid broadcast (allow_paid_broadcast, billed in Stars) allows up to 1000/s. */
-const FREE_WAVE = 22;
+const FREE_WAVE = 20;
+/** Messages per second always kept free for live customer replies. */
+const CUSTOMER_HEADROOM = 6;
 const PAID_WAVE = 120;
 const MAX_ROUNDS = 6; // retry rounds for transient failures
 
@@ -62,12 +64,24 @@ async function postLogs(text: string, logs: Log[]) {
   );
 }
 
-export async function runBroadcast(opts: {
+type RunOpts = {
   label: string;
   send: (chatId: number, extra: Record<string, unknown>) => Promise<void>;
   adminChatId?: number | undefined;
   ids?: number[];
-}): Promise<{ sent: number; total: number; blocked: number; failed: number }> {
+};
+type RunResult = { sent: number; total: number; blocked: number; failed: number };
+
+/** Only one broadcast runs at a time; others wait their turn. Running two at
+ *  once doubles the send rate, trips Telegram's limit and freezes the bot. */
+let lane: Promise<unknown> = Promise.resolve();
+export function runBroadcast(opts: RunOpts): Promise<RunResult> {
+  const job = lane.then(() => runOne(opts));
+  lane = job.catch(() => undefined);
+  return job;
+}
+
+async function runOne(opts: RunOpts): Promise<RunResult> {
   const ids = opts.ids ?? (await allBotUserIds());
   const total = ids.length;
   const adminIds = [...new Set([...(opts.adminChatId ? [opts.adminChatId] : []), ...ownerIds()])];
@@ -76,7 +90,7 @@ export async function runBroadcast(opts: {
   const cfg = await dbGet<{ paidBroadcast?: boolean }>("site_settings/config").catch(() => null);
   const paid = cfg?.paidBroadcast === true;
   const WAVE = paid ? PAID_WAVE : FREE_WAVE;
-  const extra: Record<string, unknown> = paid ? { allow_paid_broadcast: true } : {};
+  const extra: Record<string, unknown> = { _broadcast: true, ...(paid ? { allow_paid_broadcast: true } : {}) };
 
   const sent = new Set<number>();
   const blocked = new Set<number>();
@@ -98,8 +112,14 @@ export async function runBroadcast(opts: {
   for (let round = 0; round < MAX_ROUNDS && pending.length; round++) {
     const retry: number[] = [];
     let waitFor = 0;
-    for (let i = 0; i < pending.length; i += WAVE) {
-      const wave = pending.slice(i, i + WAVE);
+    for (let i = 0; i < pending.length; ) {
+      // Respect any "slow down" from Telegram before sending more.
+      const pause = broadcastPausedUntil() - Date.now();
+      if (pause > 0) await sleep(pause);
+      // Shrink the wave while customers are actively using the bot.
+      const size = paid ? WAVE : Math.max(3, WAVE - CUSTOMER_HEADROOM - interactiveLoad());
+      const wave = pending.slice(i, i + size);
+      i += size;
       const t0 = Date.now();
       await Promise.all(
         wave.map(async (id) => {
@@ -120,7 +140,7 @@ export async function runBroadcast(opts: {
         waitFor = 0;
       } else {
         const spent = Date.now() - t0;
-        if (spent < WAVE_MS && i + WAVE < pending.length) await sleep(WAVE_MS - spent);
+        if (spent < WAVE_MS && i < pending.length) await sleep(WAVE_MS - spent);
       }
       if (Date.now() - lastLog > 3000) {
         lastLog = Date.now();
