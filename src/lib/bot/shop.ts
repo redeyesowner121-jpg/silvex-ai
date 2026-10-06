@@ -525,6 +525,6 @@ export async function buy(chatId: number, productId: string, qty = 1) {
   }
   // Delivery receipt files removed — the message above already carries the content.
   await notifyOwners(
-    `🛒 <b>New Telegram order</b>\n${p.title}\nBuyer: ${await tgTag(chatId)}${user.email ? ` (${user.email})` : ""}\nTotal: ${money(price)}\nOrder: ${orderId}\nStatus: ${complete ? "Completed" : "Pending"}`,
+    `🛒 <b>New Telegram order</b>\n${p.title}\n🔢 Quantity: <b>${count}</b>\n💵 Unit price: ${money(unitPrice)}\nBuyer: ${await tgTag(chatId)}${user.email ? ` (${user.email})` : ""}\nTotal: ${money(price)}\nOrder: ${orderId}\nStatus: ${complete ? "Completed" : "Pending"}`,
   );
 }

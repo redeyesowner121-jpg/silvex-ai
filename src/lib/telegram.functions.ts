@@ -33,7 +33,7 @@ export const notifyTelegramOrder = createServerFn({ method: "POST" })
     try {
       const { dbGet, money, notifyOwners, tg, siteUrl, loadBotRuntime } = await import("./telegram.server");
       await loadBotRuntime();
-      const lines = data.items.map((i) => `• ${i.title} x${i.qty}`).join("\n");
+      const lines = data.items.map((i) => `• ${i.title}\n   🔢 Quantity: ${i.qty}`).join("\n");
       await notifyOwners(
         `🛒 <b>New website order</b>\n${lines}\nBuyer: ${data.email || "-"}\nTotal: ${money(data.total)}\nOrder: ${data.orderId}\nStatus: ${data.status}`,
       );
