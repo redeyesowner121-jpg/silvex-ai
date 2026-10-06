@@ -5,7 +5,7 @@ import { dbGet, dbPatch, dbPut } from "./telegram.server";
  * Every value here is only a fallback — the admin panel can change the name,
  * base URL, key, profit % and whether a provider is on, in site_settings/providers.
  */
-export type ProviderId = "qamify" | "safwan" | "mmostore" | "w2premium" | "eklas" | "elite" | "canboso" | "pandora" | "safwantiger" | "custom";
+export type ProviderId = "qamify" | "safwan" | "mmostore" | "w2premium" | "eklas" | "elite" | "canboso" | "pandora" | "safwantiger" | "cupponhub" | "custom";
 
 /** Shops that were removed — their imported products get cleaned up. */
 export const RETIRED_PROVIDERS = ["canboso", "custom", "elite", "w2premium", "safwan", "eklas", "pandora"];
@@ -80,6 +80,23 @@ export const PROVIDERS: ProviderDef[] = [
       orderPath: "order",
       qtyField: "quantity",
       refField: "",
+    },
+  },
+  {
+    id: "cupponhub",
+    name: "CupponHub",
+    url: "https://cupponhub.shop/reseller/api",
+    key: "ch_live_Z6_CAN12sF5wEDy0mtiwxeovTxlQ9iKMSL_HbbD41cg",
+    docs: "https://cupponhub.shop/reseller/api/docs/",
+    markup: 130,
+    shape: {
+      productsPath: "?action=products",
+      balancePath: "?action=balance",
+      orderPath: "?action=purchase",
+      qtyField: "quantity",
+      refField: "",
+      stringProductId: true,
+      idempotencyHeader: true,
     },
   },
 ];
