@@ -352,6 +352,42 @@ export async function dbCreateIfAbsent(path: string, value: unknown): Promise<bo
   return true;
 }
 
+/**
+ * Read-modify-write that is safe across parallel requests (Firebase ETag).
+ * `update` returns the new value, or `undefined` to abort without writing.
+ * Returns the written value, or `undefined` when aborted.
+ */
+export async function dbTransact<T, R = T>(
+  path: string,
+  update: (current: T | null) => R | undefined,
+  tries = 8,
+): Promise<R | undefined> {
+  const url = `${rtdbUrl()}/${path}.json`;
+  for (let i = 0; i < tries; i++) {
+    const cur = await fetch(url, { headers: { "X-Firebase-ETag": "true" } });
+    if (!cur.ok) throw new Error(`Database read failed (${cur.status})`);
+    const etag = cur.headers.get("etag");
+    const value = (await cur.json()) as T | null;
+    const next = update(value);
+    if (next === undefined) return undefined;
+    if (!etag) throw new Error("Database did not return an ETag");
+    const res = await fetch(url, {
+      method: "PUT",
+      headers: { "If-Match": etag, "Content-Type": "application/json" },
+      body: JSON.stringify(next),
+    });
+    if (res.status === 412) {
+      await new Promise((r) => setTimeout(r, 40 + Math.random() * 120));
+      continue;
+    }
+    if (!res.ok) throw new Error(`Database write failed (${res.status})`);
+    return next;
+  }
+  throw new Error("Busy — please try again");
+}
+
+
+
 export async function dbPatch(path: string, value: Record<string, unknown>): Promise<void> {
   await dbWrite("PATCH", path, value);
 }

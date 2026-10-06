@@ -14,3 +14,5 @@
 - Supplier refreshes triggered by Telegram are single-flight and locally limited to once per minute to prevent interaction traffic from creating overlapping sync work.
 Pandora Digital provider added to PROVIDERS (id 'pandora', string product ids, Idempotency-Key header, available_balance).
 - Telegram button presentation settings live under `site_settings/button_colors`, `button_names`, and `product_buttons`; emoji metadata stays under `telegramEmoji` so premium IDs are preserved.
+- Bot purchases deduct wallet and claim auto-stock via ETag transactions (`dbTransact`), refund automatically when automatic delivery fails, and split bulk deliveries into multiple messages plus a .txt file — prevents duplicate accounts, lost money and Telegram's 4096-char limit.
+- Supplier orders send both `qty` and `quantity` — shops disagree on the field name and silently default to 1.
