@@ -109,6 +109,8 @@ export async function importProvider(
         ...(cur.logo || !sp.image ? {} : { logo: sp.image }),
       });
       updated++;
+      const a = stockAnnouncement(key, cur, Number(cur.supplierStock ?? 0), Number(base.supplierStock || 0));
+      if (a) news.push(a);
     } else {
       await dbPut(`products/${key}`, {
         ...base,
@@ -122,6 +124,8 @@ export async function importProvider(
         salesCount: 0,
       });
       added++;
+      if (Number(base.supplierStock || 0) > 0)
+        news.push({ kind: "new", id: key, left: Number(base.supplierStock) });
     }
   }
 
@@ -129,6 +133,7 @@ export async function importProvider(
     imported_at: new Date().toISOString(),
     imported_count: list.length,
   });
+  queueAnnouncements(news);
   return { added, updated, removed };
 }
 
