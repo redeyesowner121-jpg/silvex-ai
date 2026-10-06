@@ -2,7 +2,7 @@
 
 import { dbGet, dbPatch, dbPut } from "@/lib/telegram.server";
 import { resetAllEmojis, syncEmojiImages } from "@/lib/emoji.server";
-import { adminBack, askEmail, cfg, forceJoinBlocked, invalidateProducts, isBotAdmin, say, saveConfig, setState, welcome } from "@/lib/bot/core";
+import { adminBack, askEmail, cfg, invalidateProducts, isBotAdmin, say, saveConfig, setState, startJoinPrompt, welcome } from "@/lib/bot/core";
 import { askPayMethod, askProductSearch, askQty, buy, checkCardPayment, payProductByCard, confirmWalletPay, sendApiDocsFile, sendApiKey, sendOrders, sendProduct, sendProducts, sendProfile, sendRefer, sendReviews, sendSupport, sendWallet, startCardDeposit, startDeposit, startWithdraw, walletHistory } from "@/lib/bot/shop";
 import { adminAskDelivery, adminCancelOrder, adminDecideRequest, adminHome, adminOrder, adminOrders, adminProduct, adminProducts, adminRequests, adminSettings, adminStats, adminUser, adminUsers, broadcast, broadcastMenu, broadcastTemplate, broadcastTemplates } from "@/lib/bot/admin";
 import { clearProductEmoji, emojiGroup, emojiHome, emojiList, emojiProducts, emojiSlotPick, emojiSlotReset, emojiToggle } from "@/lib/bot/emoji-ui";
@@ -11,12 +11,18 @@ const seenUsers = new Set<number>();
 export async function handleCallback(chatId: number, data: string) {
   if (data === "noop") return;
   if (!seenUsers.has(chatId)) { seenUsers.add(chatId); void dbPut(`telegramUsers/${chatId}`, true).catch(() => undefined); }
-  if (data === "home") {
+  if (data === "joinskip") {
     await setState(chatId, null);
-    if (await forceJoinBlocked(chatId)) return;
     return welcome(chatId);
   }
-  if (await forceJoinBlocked(chatId)) return;
+  if (data === "joincheck") {
+    if (await startJoinPrompt(chatId)) return;
+    return welcome(chatId);
+  }
+  if (data === "home") {
+    await setState(chatId, null);
+    return welcome(chatId);
+  }
 
   if (data.startsWith("a:")) {
     if (!(await isBotAdmin(chatId))) return;

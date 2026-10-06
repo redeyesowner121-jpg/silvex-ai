@@ -63,3 +63,4 @@ Phase 4 — polish
 - [x] Preserve typed line gaps in product descriptions on the website and Telegram
 - [x] Connect Telegram fresh in the new workspace
 - [x] Stop automatic bot email prompts while keeping email setup in Profile and /email
+- [x] Show an optional Silent Store channel prompt on /start only for non-members

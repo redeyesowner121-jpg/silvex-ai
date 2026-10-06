@@ -2,7 +2,7 @@
 import { defaultDepositAddress, verifyDepositAnyChain } from "@/lib/deposit.server";
 import { dbGet, dbPatch, dbPush, dbPut, money, notifyGroup, notifyOwners, tgTag } from "@/lib/telegram.server";
 
-import { adminBack, askEmail, backHome, cfg, ensureUser, forceJoinBlocked, getState, invalidateProducts, isBotAdmin, say, saveConfig, saveEmail, setState, welcome } from "@/lib/bot/core";
+import { adminBack, askEmail, backHome, cfg, ensureUser, getState, invalidateProducts, isBotAdmin, say, saveConfig, saveEmail, setState, startJoinPrompt, welcome } from "@/lib/bot/core";
 import {
   applyStartReferral,
   askQty,
@@ -44,7 +44,7 @@ export async function handleText(
   if (t === "/start" || t === "/menu" || t.startsWith("/start ")) {
     await setState(chatId, null);
     void registerBotCommands().catch(() => undefined);
-    if (await forceJoinBlocked(chatId)) return;
+    if (await startJoinPrompt(chatId)) return;
     // Every /start goes to the activity group right away.
     if (t.startsWith("/start")) {
       const fullName = [fromUser?.first_name, fromUser?.last_name].filter(Boolean).join(" ").trim();
@@ -70,8 +70,6 @@ export async function handleText(
     }
     return welcome(chatId);
   }
-  if (await forceJoinBlocked(chatId)) return;
-
   /* quick-menu buttons under the message box */
   const quick = t.replace(/^[^\p{L}\p{N}]+/u, "").toLowerCase();
   if (quick === "products") {
