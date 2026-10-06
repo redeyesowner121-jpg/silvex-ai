@@ -216,6 +216,8 @@ function pickPrice(p: any): number {
   if (p?.price && typeof p.price === "object" && num(p.price.amount) > 0) return num(p.price.amount);
   if (p?.price != null && num(p.price) > 0) return num(p.price);
   if (p?.price_usd != null && num(p.price_usd) > 0) return num(p.price_usd);
+  if (p?.price_usdt_from != null && num(p.price_usdt_from) > 0) return num(p.price_usdt_from);
+  if (p?.price_usdt != null && num(p.price_usdt) > 0) return num(p.price_usdt);
   if (p?.unit_price != null && num(p.unit_price) > 0) return num(p.unit_price);
   if (p?.price_cents != null) return num(p.price_cents) / 100;
   if (p?.unit_price_cents != null) return num(p.unit_price_cents) / 100;
@@ -322,8 +324,10 @@ export async function providerBalance(
       ? num(w.balance)
       : w?.available_balance != null
         ? num(w.available_balance)
-        : w?.balance_usd != null
-          ? num(w.balance_usd)
+        : w?.balance_usdt != null
+          ? num(w.balance_usdt)
+          : w?.balance_usd != null
+            ? num(w.balance_usd)
           : w?.balance_cents != null
             ? num(w.balance_cents) / 100
             : 0;
@@ -377,8 +381,9 @@ export async function providerBuy(
     cfg.shape.stringProductId || !/^\d+$/.test(raw) ? raw : Number(raw);
   const body: Record<string, unknown> = {
     product_id: pid,
-    // some shops name it productId — harmless extra field for the others
+    // some shops name it productId or product — harmless extra fields for the others
     productId: pid,
+    product: pid,
     [cfg.shape.qtyField]: Math.max(1, Number(qty) || 1),
     ...(cfg.shape.orderExtra || {}),
   };

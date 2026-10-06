@@ -3,6 +3,7 @@ const NAMES: Record<string, string> = {
   qamify: "Qamify",
   mmostore: "MMO Store",
   safwantiger: "Safwan Tiger Shop",
+  cupponhub: "CupponHub",
   safwan: "Safwan",
   pandora: "Pandora Digital",
   w2premium: "W2 Premium",
