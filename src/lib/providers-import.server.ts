@@ -14,6 +14,40 @@ import {
   type ApiProduct,
 } from "./providers.server";
 
+type Announcement = { kind: "new" | "restock"; id: string; left: number; added?: number };
+
+/** A stock jump this big (or more) at the supplier is announced as new stock. */
+const MIN_STOCK_JUMP = 5;
+
+/**
+ * Bot announcements for supplier changes run one after another in the
+ * background, so the sync itself never waits on a long broadcast.
+ */
+let announceChain: Promise<void> = Promise.resolve();
+function queueAnnouncements(list: Announcement[]) {
+  if (!list.length) return;
+  announceChain = announceChain.then(async () => {
+    const { announce } = await import("./broadcast.server");
+    for (const a of list) {
+      await announce(a.kind, a.id, { left: a.left, ...(a.added ? { added: a.added } : {}) }).catch((e) =>
+        console.error("supplier announce failed", a.id, e),
+      );
+    }
+  });
+}
+
+/** Decide whether a supplier stock change should be told to bot users. */
+function stockAnnouncement(id: string, p: any, before: number, after: number): Announcement | null {
+  if (!p || p.hidden || p.botHidden || after <= 0 || after >= 9999) {
+    // Unlimited items: only announce when they come back from sold out.
+    if (p && !p.hidden && !p.botHidden && after >= 9999 && before <= 0) return { kind: "restock", id, left: after };
+    return null;
+  }
+  if (before <= 0) return { kind: "restock", id, left: after };
+  if (after - before >= MIN_STOCK_JUMP) return { kind: "restock", id, left: after, added: after - before };
+  return null;
+}
+
 /**
  * Import every product of a provider into the shop.
  * Existing items are refreshed (price/stock/description) and keep their
@@ -48,6 +82,7 @@ export async function importProvider(
     removed++;
   }
 
+  const news: Announcement[] = [];
   for (const sp of list) {
     const key = apiProductKey(cfg.id, sp.id);
     const cur = (existing || {})[key];
