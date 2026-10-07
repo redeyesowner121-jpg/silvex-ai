@@ -310,18 +310,22 @@ export function UsersAdmin() {
               <span className="rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary">
                 You
               </span>
+            ) : isFixedOwner(u.email) ? (
+              <span className="rounded-lg bg-amber-500/10 px-3 py-1.5 text-xs font-bold text-amber-600">
+                Permanent owner
+              </span>
             ) : (
               <button
                 onClick={async () => {
                   if (!db) return;
-                  if (isFixedOwner(u.email)) return notify("This owner cannot be changed");
                   const removing = u.isAdmin || u.hidden;
+                  if (!removing) return notify("Only permanent owners can be admin");
                   await update(ref(db, `users/${u.uid}`), {
-                    isAdmin: !removing,
-                    isOwner: removing ? false : u.hidden ? true : false,
-                    ownerRevoked: removing,
+                    isAdmin: false,
+                    isOwner: false,
+                    ownerRevoked: true,
                   });
-                  notify(removing ? "Access removed" : "Admin access granted");
+                  notify("Access removed");
                 }}
                 className={`rounded-lg px-3 py-1.5 text-xs font-bold ${
                   u.isAdmin || u.hidden
