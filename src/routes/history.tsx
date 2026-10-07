@@ -114,6 +114,26 @@ function HistoryPage() {
             </li>
           ))}
         </ul>
+        {items.length > limit ? (
+          <div className="mt-3 flex flex-wrap justify-center gap-2">
+            {[20, 50].filter((n) => n > limit && n < items.length).map((n) => (
+              <button
+                key={n}
+                onClick={() => setLimit(n)}
+                className="rounded-xl border border-border px-4 py-2 text-xs font-bold"
+              >
+                Show {n}
+              </button>
+            ))}
+            <button
+              onClick={() => setLimit(items.length)}
+              className="rounded-xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground"
+            >
+              Show all ({items.length})
+            </button>
+          </div>
+        ) : null}
+        </>
       )}
     </div>
   );
