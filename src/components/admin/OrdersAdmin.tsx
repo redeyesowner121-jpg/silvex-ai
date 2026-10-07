@@ -6,6 +6,7 @@ import { deliveryBlock, emailShell, sendMail } from "@/lib/mailer";
 import { notifyTelegramOrder } from "@/lib/telegram.functions";
 import { websiteUrl } from "@/lib/referral";
 import { exportOrdersCsv, exportOrdersPdf, type ExportRow } from "@/lib/export-orders";
+import { downloadDeliveryTxt } from "@/lib/delivery-download";
 import { Empty, input, type OrderRow } from "@/components/admin/shared";
 
 export function OrdersAdmin({ orders }: { orders: OrderRow[] }) {
@@ -101,7 +102,7 @@ export function OrdersAdmin({ orders }: { orders: OrderRow[] }) {
       <p className="mt-1 break-words text-xs text-muted-foreground">{userNames[order.uid] ? `${userNames[order.uid]} · ` : ""}{order.email} · {order.phone}</p>
       <ul className="my-2 text-sm">{(order.items || []).map((item, index) => <li key={index}>{item.title} × {item.qty}</li>)}</ul>
       <p className="text-lg font-black">${order.total}</p>
-      {order.delivered?.length ? <div className="mt-2 space-y-1 rounded-xl bg-muted/60 p-2 text-[11px]">{order.delivered.map((item, index) => <p key={index} className="break-all"><b>{item.title}:</b> {item.content}</p>)}</div> : null}
+      {order.delivered?.length ? <div className="mt-2 space-y-1 rounded-xl bg-muted/60 p-2 text-[11px]"><div className="flex items-center justify-between"><b>Delivery</b><button onClick={() => downloadDeliveryTxt(order)} className="rounded-lg bg-primary px-2 py-1 text-[10px] font-bold text-primary-foreground">Download .txt</button></div>{order.delivered.map((item, index) => <p key={index} className="break-all"><b>{item.title}:</b> {item.content}</p>)}</div> : null}
       <div className="mt-3 grid grid-cols-2 gap-2">
         <button onClick={() => openDelivery(order)} className="rounded-lg bg-emerald-500 py-2 text-xs font-bold text-white">{order.status === "Completed" ? "Edit delivery" : "Complete delivery"}</button>
         <button onClick={() => db && update(ref(db, `orders/${order.orderId}`), { status: "Cancelled" }).then(() => notify("Order marked Cancelled"))} className="rounded-lg bg-destructive py-2 text-xs font-bold text-destructive-foreground">Cancel</button>
