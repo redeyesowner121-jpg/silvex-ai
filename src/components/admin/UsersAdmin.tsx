@@ -40,6 +40,7 @@ export function UsersAdmin() {
   const [search, setSearch] = useState("");
   const [historyFor, setHistoryFor] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryRow[]>([]);
+  const [historyLimit, setHistoryLimit] = useState(5);
 
   // Live wallet history for whichever user the admin opened.
   useEffect(() => {
@@ -160,7 +161,7 @@ export function UsersAdmin() {
                   No transactions yet.
                 </p>
               ) : (
-                history.map((h) => (
+                history.slice(0, historyLimit).map((h) => (
                   <div
                     key={h.id}
                     className="flex items-center justify-between rounded-xl border border-border p-2.5"
