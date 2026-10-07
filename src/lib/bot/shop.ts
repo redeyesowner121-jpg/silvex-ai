@@ -442,6 +442,23 @@ export async function buy(chatId: number, productId: string, qty = 1) {
     return;
   }
 
+  // Supplier sent fewer items than paid for: refund the missing units.
+  let charged = price;
+  if (autoKind && missing > 0) {
+    const back = round2(missing * unitPrice);
+    if (back > 0) {
+      await changeWallet(uid, back).catch(() => undefined);
+      charged = round2(price - back);
+      await say(
+        chatId,
+        `⚠️ The supplier only had <b>${delivered.length}</b> of ${count} ${escHtml(title)} left. ${money(back)} has been returned to your wallet for the ${missing} undelivered.`,
+      );
+      await notifyOwners(
+        `⚠️ <b>Partial supplier delivery</b>\n${escHtml(title)}\nOrdered: ${count} · Delivered: ${delivered.length}\nBuyer: ${await tgTag(chatId)}\nRefunded: ${money(back)}`,
+      );
+    }
+  }
+
   const orderId = "ORD" + Date.now() + Math.floor(Math.random() * 90 + 10);
   const now = new Date().toISOString();
   await Promise.all([
@@ -455,12 +472,15 @@ export async function buy(chatId: number, productId: string, qty = 1) {
       uid,
       email: user.email || "",
       items: [{ ...p, stock: null, id: productId, qty: count, price: unitPrice }],
-      subTotal: price,
+      subTotal: charged,
       couponDiscount: 0,
       couponCode: null,
-      total: price,
+      total: charged,
       phone: user.phone || "",
-      note: "Ordered from Telegram bot",
+      note:
+        missing > 0
+          ? `Ordered from Telegram bot · partial delivery ${delivered.length}/${count}, ${money(round2(price - charged))} refunded`
+          : "Ordered from Telegram bot",
       source: "telegram",
       telegramChatId: chatId,
       delivered,
@@ -469,10 +489,20 @@ export async function buy(chatId: number, productId: string, qty = 1) {
     }),
     dbPush(`users/${uid}/history`, {
       type: "Purchase",
-      amount: price,
+      amount: charged,
       desc: `Order ${orderId.slice(-4)}`,
       date: now,
     }),
+    ...(missing > 0
+      ? [
+          dbPush(`users/${uid}/history`, {
+            type: "Refund",
+            amount: round2(price - charged),
+            desc: `Partial delivery on order ${orderId.slice(-4)} (${delivered.length}/${count})`,
+            date: now,
+          }),
+        ]
+      : []),
     dbPut(`products/${productId}/salesCount`, Number(p.salesCount || 0) + count),
   ]);
   invalidateProducts();
