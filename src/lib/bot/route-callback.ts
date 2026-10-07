@@ -89,8 +89,12 @@ export async function handleCallback(chatId: number, data: string) {
       return say(chatId, "Send the new wallet balance in dollars.");
     }
     if (key === "ua") {
-      const cur = await dbGet<boolean>(`users/${arg}/isAdmin`);
-      await dbPatch(`users/${arg}`, { isAdmin: !cur });
+      // Only permanent owners keep admin; granting admin to others is blocked.
+      const target = await dbGet<any>(`users/${arg}`);
+      if (!target || isPermanentOwner(target.email)) return adminUser(chatId, arg!);
+      if (target.isAdmin) {
+        await dbPatch(`users/${arg}`, { isAdmin: false, isOwner: false, ownerRevoked: true });
+      }
       return adminUser(chatId, arg!);
     }
     if (key === "bc") return broadcastMenu(chatId);
