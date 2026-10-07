@@ -20,7 +20,6 @@ export const WEB_EMOJI_SLOTS: Record<string, { label: string; char: string }> = 
   "web.users": { label: "Total referrals", char: "👥" },
   "web.wallet": { label: "Wallet & deposits", char: "💳" },
   "web.key": { label: "Reseller API key", char: "🔑" },
-  "web.mail": { label: "Email", char: "📧" },
   "web.idea": { label: "Request a product", char: "💡" },
   "web.bag": { label: "Product placeholder", char: "🛍️" },
   "web.party": { label: "Order delivered", char: "🎉" },
