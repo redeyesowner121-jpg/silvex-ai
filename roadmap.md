@@ -64,3 +64,5 @@ Phase 4 — polish
 - [x] Connect Telegram fresh in the new workspace
 - [x] Stop automatic bot email prompts while keeping email setup in Profile and /email
 - [x] Show an optional Silent Store channel prompt on /start only for non-members
+- [ ] Admin Users: high deposit/wallet/orders filters + top 5/20/50/all (in progress)
+- [ ] Wire forgot-password reset email delivery (web.mail) and verify end to end
