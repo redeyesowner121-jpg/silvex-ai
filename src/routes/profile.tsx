@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { equalTo, get, orderByChild, query, ref, update } from "firebase/database";
-import { EmailAuthProvider, reauthenticateWithCredential, signOut, updatePassword } from "firebase/auth";
+import { EmailAuthProvider, reauthenticateWithCredential, signOut, updatePassword, verifyBeforeUpdateEmail } from "firebase/auth";
 import { useStore } from "@/context/StoreContext";
 import { Emo } from "@/components/store/Emo";
 import {
@@ -37,6 +37,10 @@ function ProfilePage() {
   const [curPass, setCurPass] = useState("");
   const [newPass, setNewPass] = useState("");
   const [passBusy, setPassBusy] = useState(false);
+  const [showMail, setShowMail] = useState(false);
+  const [newEmail, setNewEmail] = useState("");
+  const [mailPass, setMailPass] = useState("");
+  const [mailBusy, setMailBusy] = useState(false);
   const isEmailUser = user?.providerData?.some((p) => p.providerId === "password") ?? false;
   const navigate = useNavigate();
   const [invited, setInvited] = useState(0);
@@ -93,6 +97,38 @@ function ProfilePage() {
       );
     } finally {
       setPassBusy(false);
+    }
+  }
+
+  async function changeEmail() {
+    if (!auth || !user || !user.email) return;
+    const mail = newEmail.trim().toLowerCase();
+    if (!mail || !mail.includes("@")) return notify("Enter a valid new email address");
+    setMailBusy(true);
+    try {
+      const cred = EmailAuthProvider.credential(user.email, mailPass);
+      await reauthenticateWithCredential(user, cred);
+      await verifyBeforeUpdateEmail(user, mail);
+      setNewEmail("");
+      setMailPass("");
+      setShowMail(false);
+      showSuccess(
+        "Check your new inbox",
+        `We sent a confirmation link to ${mail}. Your email changes after you tap it.`,
+      );
+    } catch (e) {
+      const code = (e as { code?: string })?.code || "";
+      notify(
+        code === "auth/wrong-password" || code === "auth/invalid-credential"
+          ? "Your current password is wrong."
+          : code === "auth/email-already-in-use"
+            ? "That email already belongs to another account."
+            : code === "auth/too-many-requests"
+              ? "Too many attempts. Please wait a minute and try again."
+              : "Could not change email. Please try again.",
+      );
+    } finally {
+      setMailBusy(false);
     }
   }
 
