@@ -397,7 +397,7 @@ export async function buy(chatId: number, productId: string, qty = 1) {
         String(p.provider || "custom"),
       );
       for (const content of items) delivered.push({ title, content });
-      complete = delivered.length > 0;
+      complete = delivered.length >= count;
     } catch (err) {
       failReason = err instanceof Error ? err.message : String(err);
     }
@@ -428,7 +428,8 @@ export async function buy(chatId: number, productId: string, qty = 1) {
 
   // Automatic products that could not be delivered: give the money back.
   const autoKind = p.delivery === "supplier" || p.delivery === "auto";
-  if (autoKind && !complete) {
+  const missing = count - delivered.length;
+  if (autoKind && delivered.length === 0) {
     await changeWallet(uid, price).catch(() => undefined);
     await say(
       chatId,
