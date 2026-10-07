@@ -222,8 +222,7 @@ export function applyOwnerEmails(list?: string | string[] | null) {
 }
 
 export function isFixedOwner(email?: string | null) {
-  if (!isOriginProject()) return false;
-  return String(email ?? "").trim().toLowerCase() === FIXED_OWNER_EMAIL;
+  return isPermanentOwner(email);
 }
 
 export function isOwnerEmail(email?: string | null) {
