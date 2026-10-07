@@ -1,5 +1,6 @@
 /** Owner panel inside the bot: stats, orders, requests, products, users. */
 import { formatDescription } from "@/lib/format-desc";
+import { isPermanentOwner } from "@/lib/owners";
 import {
   dbGet,
   dbPatch,
@@ -317,7 +318,7 @@ export async function adminUser(chatId: number, uid: string) {
   const u = (await dbGet<any>(`users/${uid}`)) || {};
   const permanent = isPermanentOwner(u.email);
   const adminRow = permanent
-    ? [{ text: "👑 Permanent owner", callback_data: "a:noop" }]
+    ? [{ text: "👑 Permanent owner", callback_data: "noop" }]
     : u.isAdmin
       ? [{ text: "🚫 Remove admin", callback_data: `a:ua:${uid}` }]
       : null;
