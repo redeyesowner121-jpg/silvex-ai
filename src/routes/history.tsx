@@ -29,6 +29,7 @@ type Entry = { id: string; type: string; amount: number; desc: string; date: str
 function HistoryPage() {
   const { db, user, wallet, openModal } = useStore();
   const [items, setItems] = useState<Entry[]>([]);
+  const [limit, setLimit] = useState(5);
 
   useEffect(() => {
     if (!db || !user) return;
@@ -80,8 +81,9 @@ function HistoryPage() {
       {items.length === 0 ? (
         <p className="py-10 text-center text-sm text-muted-foreground">No transactions yet.</p>
       ) : (
+        <>
         <ul className="space-y-2">
-          {items.map((h) => (
+          {items.slice(0, limit).map((h) => (
             <li
               key={h.id}
               className="flex items-center justify-between gap-3 rounded-xl border border-border p-3"
