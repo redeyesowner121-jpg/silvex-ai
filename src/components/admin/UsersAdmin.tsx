@@ -96,9 +96,24 @@ export function UsersAdmin() {
     return otherOwner ? { ...u, isOwner: false, isAdmin: false, hidden: true } : u;
   });
 
-  const list = disguised.filter((u) =>
+  // Total deposited per user, summed from their wallet history.
+  const depositTotal = (u: UserRow) =>
+    Object.values((u as RawUser).history || {})
+      .filter((h) => h.type === "Deposit")
+      .reduce((sum, h) => sum + (h.amount ?? 0), 0);
+
+  const searched = disguised.filter((u) =>
     `${u.name ?? ""} ${u.email ?? ""}`.toLowerCase().includes(search.toLowerCase()),
   );
+  const sorted =
+    sortMode === "deposits"
+      ? [...searched].sort((a, b) => depositTotal(b) - depositTotal(a))
+      : sortMode === "wallet"
+        ? [...searched].sort((a, b) => (b.wallet ?? 0) - (a.wallet ?? 0))
+        : sortMode === "orders"
+          ? [...searched].sort((a, b) => (orderCounts[b.uid] ?? 0) - (orderCounts[a.uid] ?? 0))
+          : searched;
+  const list = sorted.slice(0, listLimit);
 
   async function setWallet(u: UserRow) {
     if (!db) return;
