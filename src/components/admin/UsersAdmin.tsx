@@ -34,13 +34,33 @@ type UserRow = {
 
 
 
+type SortMode = "none" | "deposits" | "wallet" | "orders";
+
+type RawUser = Omit<UserRow, "uid"> & { history?: Record<string, HistoryRow> };
+
 export function UsersAdmin() {
   const { db, user, notify } = useStore();
   const [users, setUsers] = useState<UserRow[]>([]);
+  const [orderCounts, setOrderCounts] = useState<Record<string, number>>({});
   const [search, setSearch] = useState("");
+  const [sortMode, setSortMode] = useState<SortMode>("none");
+  const [listLimit, setListLimit] = useState(5);
   const [historyFor, setHistoryFor] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryRow[]>([]);
   const [historyLimit, setHistoryLimit] = useState(5);
+
+  // Order counts per user, loaded once for the "high orders" filter.
+  useEffect(() => {
+    if (!db) return;
+    get(ref(db, "orders")).then((s) => {
+      const counts: Record<string, number> = {};
+      Object.values(s.val() || {}).forEach((o) => {
+        const uid = (o as { userId?: string; uid?: string }).userId ?? (o as { uid?: string }).uid;
+        if (uid) counts[uid] = (counts[uid] ?? 0) + 1;
+      });
+      setOrderCounts(counts);
+    });
+  }, [db]);
 
   // Live wallet history for whichever user the admin opened.
   useEffect(() => {
