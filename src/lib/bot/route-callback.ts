@@ -1,6 +1,7 @@
 /** Handles every button tap in the bot. */
 
 import { dbGet, dbPatch, dbPut } from "@/lib/telegram.server";
+import { isPermanentOwner } from "@/lib/owners";
 import { resetAllEmojis, syncEmojiImages } from "@/lib/emoji.server";
 import { adminBack, askEmail, cfg, invalidateProducts, isBotAdmin, say, saveConfig, setState, startJoinPrompt, welcome } from "@/lib/bot/core";
 import { askPayMethod, askProductSearch, askQty, buy, checkCardPayment, payProductByCard, confirmWalletPay, sendApiDocsFile, sendApiKey, sendOrders, sendProduct, sendProducts, sendProfile, sendRefer, sendReviews, sendSupport, sendWallet, startCardDeposit, startDeposit, startWithdraw, walletHistory } from "@/lib/bot/shop";
