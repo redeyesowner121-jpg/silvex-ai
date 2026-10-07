@@ -310,28 +310,26 @@ export function UsersAdmin() {
               <span className="rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary">
                 You
               </span>
-            ) : (
+            ) : isFixedOwner(u.email) ? (
+              <span className="rounded-lg bg-amber-500/10 px-3 py-1.5 text-xs font-bold text-amber-600">
+                Permanent owner
+              </span>
+            ) : u.isAdmin || u.hidden ? (
               <button
                 onClick={async () => {
                   if (!db) return;
-                  if (isFixedOwner(u.email)) return notify("This owner cannot be changed");
-                  const removing = u.isAdmin || u.hidden;
                   await update(ref(db, `users/${u.uid}`), {
-                    isAdmin: !removing,
-                    isOwner: removing ? false : u.hidden ? true : false,
-                    ownerRevoked: removing,
+                    isAdmin: false,
+                    isOwner: false,
+                    ownerRevoked: true,
                   });
-                  notify(removing ? "Access removed" : "Admin access granted");
+                  notify("Access removed");
                 }}
-                className={`rounded-lg px-3 py-1.5 text-xs font-bold ${
-                  u.isAdmin || u.hidden
-                    ? "bg-destructive/10 text-destructive"
-                    : "bg-emerald-500/10 text-emerald-600"
-                }`}
+                className="rounded-lg bg-destructive/10 px-3 py-1.5 text-xs font-bold text-destructive"
               >
-                {u.isAdmin || u.hidden ? "Remove admin" : "Make admin"}
+                Remove admin
               </button>
-            )}
+            ) : null}
           </div>
           {historyFor === u.uid ? (
             <div className="mt-3 space-y-2 border-t border-border pt-3">

@@ -1,5 +1,6 @@
 /** Owner panel inside the bot: stats, orders, requests, products, users. */
 import { formatDescription } from "@/lib/format-desc";
+import { isPermanentOwner } from "@/lib/owners";
 import {
   dbGet,
   dbPatch,
@@ -315,13 +316,19 @@ export async function adminFindUser(chatId: number, q: string) {
 
 export async function adminUser(chatId: number, uid: string) {
   const u = (await dbGet<any>(`users/${uid}`)) || {};
+  const permanent = isPermanentOwner(u.email);
+  const adminRow = permanent
+    ? [{ text: "👑 Permanent owner", callback_data: "noop" }]
+    : u.isAdmin
+      ? [{ text: "🚫 Remove admin", callback_data: `a:ua:${uid}` }]
+      : null;
   await say(
     chatId,
-    `👤 <b>${u.email || uid}</b>\nName: ${u.name || "-"}\nWallet: ${money(u.wallet || 0)}\nAdmin: ${u.isAdmin ? "yes" : "no"}`,
+    `👤 <b>${u.email || uid}</b>\nName: ${u.name || "-"}\nWallet: ${money(u.wallet || 0)}\nAdmin: ${u.isAdmin || permanent ? "yes" : "no"}`,
     {
       inline_keyboard: [
         [{ text: "💵 Set wallet balance", callback_data: `a:uw:${uid}` }],
-        [{ text: u.isAdmin ? "🚫 Remove admin" : "🛠 Make admin", callback_data: `a:ua:${uid}` }],
+        ...(adminRow ? [adminRow] : []),
         [{ text: "📥 User statement", callback_data: `a:ust:${uid}` }],
         [{ text: "⬅️ Back to Admin Panel", callback_data: "a:home" }],
       ],

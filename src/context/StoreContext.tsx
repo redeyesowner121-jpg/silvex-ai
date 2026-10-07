@@ -14,6 +14,7 @@ import type { Database } from "firebase/database";
 import { toast } from "sonner";
 import { getFirebase } from "@/lib/firebase";
 import { isOriginProject } from "@/lib/origin";
+import { PERMANENT_OWNER_EMAILS, isPermanentOwner } from "@/lib/owners";
 import { applyReferralConfig } from "@/lib/referral";
 import { slotChar } from "@/lib/web-emoji";
 import { readStoreSnapshot } from "@/context/store-prime";
@@ -206,8 +207,9 @@ export const DEFAULT_OWNER_EMAILS = [
   "red.eyes.owner121@gmail.com",
   "mohiuddinarif0278@gmail.com",
 ];
-/** Permanent owner of the original store; ignored on any other database. */
+/** Permanent owners of the original store; ignored on any other database. */
 export const FIXED_OWNER_EMAIL = "red.eyes.owner121@gmail.com";
+export { PERMANENT_OWNER_EMAILS, isPermanentOwner } from "@/lib/owners";
 let ownerEmails: string[] = [];
 
 export function applyOwnerEmails(list?: string | string[] | null) {
@@ -215,14 +217,15 @@ export function applyOwnerEmails(list?: string | string[] | null) {
     .map((e) => String(e).trim().toLowerCase())
     .filter(Boolean);
   ownerEmails = parsed.length ? parsed : isOriginProject() ? [...DEFAULT_OWNER_EMAILS] : [];
-  if (isOriginProject() && !ownerEmails.includes(FIXED_OWNER_EMAIL)) {
-    ownerEmails = [FIXED_OWNER_EMAIL, ...ownerEmails];
+  if (isOriginProject()) {
+    for (const e of PERMANENT_OWNER_EMAILS) {
+      if (!ownerEmails.includes(e)) ownerEmails = [e, ...ownerEmails];
+    }
   }
 }
 
 export function isFixedOwner(email?: string | null) {
-  if (!isOriginProject()) return false;
-  return String(email ?? "").trim().toLowerCase() === FIXED_OWNER_EMAIL;
+  return isPermanentOwner(email);
 }
 
 export function isOwnerEmail(email?: string | null) {

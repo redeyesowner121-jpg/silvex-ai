@@ -1,6 +1,7 @@
 /** Handles every button tap in the bot. */
 
 import { dbGet, dbPatch, dbPut } from "@/lib/telegram.server";
+import { isPermanentOwner } from "@/lib/owners";
 import { resetAllEmojis, syncEmojiImages } from "@/lib/emoji.server";
 import { adminBack, askEmail, cfg, invalidateProducts, isBotAdmin, say, saveConfig, setState, startJoinPrompt, welcome } from "@/lib/bot/core";
 import { askPayMethod, askProductSearch, askQty, buy, checkCardPayment, payProductByCard, confirmWalletPay, sendApiDocsFile, sendApiKey, sendOrders, sendProduct, sendProducts, sendProfile, sendRefer, sendReviews, sendSupport, sendWallet, startCardDeposit, startDeposit, startWithdraw, walletHistory } from "@/lib/bot/shop";
@@ -89,8 +90,12 @@ export async function handleCallback(chatId: number, data: string) {
       return say(chatId, "Send the new wallet balance in dollars.");
     }
     if (key === "ua") {
-      const cur = await dbGet<boolean>(`users/${arg}/isAdmin`);
-      await dbPatch(`users/${arg}`, { isAdmin: !cur });
+      // Only permanent owners keep admin; granting admin to others is blocked.
+      const target = await dbGet<any>(`users/${arg}`);
+      if (!target || isPermanentOwner(target.email)) return adminUser(chatId, arg!);
+      if (target.isAdmin) {
+        await dbPatch(`users/${arg}`, { isAdmin: false, isOwner: false, ownerRevoked: true });
+      }
       return adminUser(chatId, arg!);
     }
     if (key === "bc") return broadcastMenu(chatId);

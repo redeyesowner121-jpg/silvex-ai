@@ -429,12 +429,18 @@ export function SettingsAdmin({
             onChange={(e) => setCfg({ ...cfg, referralCap: e.target.value })}
           />
         </div>
-        <input
-          className={input}
-          placeholder="Owner emails (comma separated)"
-          value={cfg.ownerEmails}
-          onChange={(e) => setCfg({ ...cfg, ownerEmails: e.target.value })}
-        />
+        <div>
+          <input
+            className={`${input} opacity-60`}
+            placeholder="Owner emails (comma separated)"
+            value={cfg.ownerEmails}
+            disabled
+            readOnly
+          />
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            Owner emails are locked — permanent owners cannot be changed or added.
+          </p>
+        </div>
         <input
           className={input}
           placeholder="Telegram owner IDs (comma separated)"
