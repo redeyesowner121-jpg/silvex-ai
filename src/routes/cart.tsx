@@ -91,6 +91,7 @@ function Cart() {
 
       // Deliver instantly where possible: auto = pull stock lines, repeat = same link.
       const delivered: { title: string; content: string }[] = [];
+      const partialRefunds: { title: string; missing: number; amount: number }[] = [];
       let allDelivered = true;
       for (const item of cart) {
         const snap = await get(ref(db, `products/${item.id}`));
@@ -101,6 +102,12 @@ function Cart() {
           }).catch(() => ({ ok: false as const, items: [] as string[] }));
           if (r.ok && r.items.length) {
             r.items.forEach((content) => delivered.push({ title: item.title, content }));
+            // Supplier sent fewer items than paid for: refund the missing units.
+            if (r.items.length < item.qty) {
+              const missing = item.qty - r.items.length;
+              const back = Math.round(missing * Number(item.price || 0) * 100) / 100;
+              if (back > 0) partialRefunds.push({ title: item.title, missing, amount: back });
+            }
             void Promise.all(
               r.items.map((content) =>
                 push(ref(db, `usedStock/${item.id}`), {
@@ -153,6 +160,18 @@ function Cart() {
 
 
       await set(ref(db, `users/${user.uid}/wallet`), wallet - total);
+      for (const pr of partialRefunds) {
+        await runTransaction(
+          ref(db, `users/${user.uid}/wallet`),
+          (w) => Math.round(((Number(w) || 0) + pr.amount) * 100) / 100,
+        );
+        await push(ref(db, `users/${user.uid}/history`), {
+          type: "Refund",
+          amount: pr.amount,
+          desc: `Partial delivery: ${pr.title} (${pr.missing} undelivered)`,
+          date: new Date().toISOString(),
+        });
+      }
       await set(ref(db, `orders/${orderId}`), {
         orderId,
         uid: user.uid,
@@ -163,7 +182,9 @@ function Cart() {
         couponCode: discount > 0 ? coupon.trim().toUpperCase() : null,
         total,
         phone,
-        note,
+        note: partialRefunds.length
+          ? `${note ? note + " · " : ""}Partial delivery: ${partialRefunds.map((pr) => `${pr.title} ${pr.missing} refunded $${pr.amount}`).join(", ")}`
+          : note,
         delivered,
         status: delivered.length && allDelivered ? "Completed" : "Pending",
         date: new Date().toISOString(),
@@ -262,7 +283,9 @@ function Cart() {
         delivered.length && allDelivered ? "Delivered!" : "Order placed",
         delivered.length && allDelivered
           ? "Your item is ready in Orders."
-          : "We'll deliver it shortly. Check Orders for status.",
+          : partialRefunds.length
+            ? `Some items were unavailable — $${partialRefunds.reduce((s, pr) => s + pr.amount, 0).toFixed(2)} was refunded to your wallet.`
+            : "We'll deliver it shortly. Check Orders for status.",
       );
       navigate({ to: "/orders" });
     } finally {

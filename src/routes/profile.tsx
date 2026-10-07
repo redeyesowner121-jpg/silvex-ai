@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { equalTo, get, orderByChild, query, ref, update } from "firebase/database";
-import { EmailAuthProvider, reauthenticateWithCredential, signOut, updatePassword } from "firebase/auth";
+import { EmailAuthProvider, reauthenticateWithCredential, signOut, updatePassword, verifyBeforeUpdateEmail } from "firebase/auth";
 import { useStore } from "@/context/StoreContext";
 import { Emo } from "@/components/store/Emo";
 import {
@@ -37,6 +37,10 @@ function ProfilePage() {
   const [curPass, setCurPass] = useState("");
   const [newPass, setNewPass] = useState("");
   const [passBusy, setPassBusy] = useState(false);
+  const [showMail, setShowMail] = useState(false);
+  const [newEmail, setNewEmail] = useState("");
+  const [mailPass, setMailPass] = useState("");
+  const [mailBusy, setMailBusy] = useState(false);
   const isEmailUser = user?.providerData?.some((p) => p.providerId === "password") ?? false;
   const navigate = useNavigate();
   const [invited, setInvited] = useState(0);
@@ -93,6 +97,38 @@ function ProfilePage() {
       );
     } finally {
       setPassBusy(false);
+    }
+  }
+
+  async function changeEmail() {
+    if (!auth || !user || !user.email) return;
+    const mail = newEmail.trim().toLowerCase();
+    if (!mail || !mail.includes("@")) return notify("Enter a valid new email address");
+    setMailBusy(true);
+    try {
+      const cred = EmailAuthProvider.credential(user.email, mailPass);
+      await reauthenticateWithCredential(user, cred);
+      await verifyBeforeUpdateEmail(user, mail);
+      setNewEmail("");
+      setMailPass("");
+      setShowMail(false);
+      showSuccess(
+        "Check your new inbox",
+        `We sent a confirmation link to ${mail}. Your email changes after you tap it.`,
+      );
+    } catch (e) {
+      const code = (e as { code?: string })?.code || "";
+      notify(
+        code === "auth/wrong-password" || code === "auth/invalid-credential"
+          ? "Your current password is wrong."
+          : code === "auth/email-already-in-use"
+            ? "That email already belongs to another account."
+            : code === "auth/too-many-requests"
+              ? "Too many attempts. Please wait a minute and try again."
+              : "Could not change email. Please try again.",
+      );
+    } finally {
+      setMailBusy(false);
     }
   }
 
@@ -215,6 +251,46 @@ function ProfilePage() {
               >
                 {passBusy ? "Saving…" : "Update password"}
               </button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {isEmailUser ? (
+        <div className="mb-4 rounded-2xl border border-border p-4">
+          <button
+            onClick={() => setShowMail(!showMail)}
+            className="flex w-full items-center justify-between text-sm font-bold"
+          >
+            <span><Emo k="web.mail" /> Change email</span>
+            <span>{showMail ? "−" : "›"}</span>
+          </button>
+          {showMail ? (
+            <div className="mt-3 space-y-2">
+              <input
+                className={inputCls}
+                type="email"
+                placeholder="New email address"
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+              />
+              <input
+                className={inputCls}
+                type="password"
+                placeholder="Current password"
+                value={mailPass}
+                onChange={(e) => setMailPass(e.target.value)}
+              />
+              <button
+                onClick={changeEmail}
+                disabled={mailBusy || !newEmail || !mailPass}
+                className="w-full rounded-xl bg-primary py-2.5 text-xs font-bold text-primary-foreground disabled:opacity-60"
+              >
+                {mailBusy ? "Sending…" : "Send confirmation link"}
+              </button>
+              <p className="text-[11px] text-muted-foreground">
+                A confirmation link goes to the new address — your login email changes after you tap it.
+              </p>
             </div>
           ) : null}
         </div>
