@@ -192,6 +192,15 @@ export function UsersAdmin() {
             </div>
             <span className="text-sm font-black">${u.wallet ?? 0}</span>
           </div>
+          {sortMode !== "none" ? (
+            <p className="mt-1 text-[11px] font-bold text-muted-foreground">
+              {sortMode === "deposits"
+                ? `Total deposited: $${depositTotal(u).toFixed(2)}`
+                : sortMode === "orders"
+                  ? `Orders: ${orderCounts[u.uid] ?? 0}`
+                  : `Wallet balance: $${u.wallet ?? 0}`}
+            </p>
+          ) : null}
           <div className="mt-3 flex flex-wrap gap-2">
             <button
               onClick={() => setWallet(u)}
