@@ -327,13 +327,9 @@ export function UsersAdmin() {
                   });
                   notify("Access removed");
                 }}
-                className={`rounded-lg px-3 py-1.5 text-xs font-bold ${
-                  u.isAdmin || u.hidden
-                    ? "bg-destructive/10 text-destructive"
-                    : "bg-emerald-500/10 text-emerald-600"
-                }`}
+                className="rounded-lg bg-destructive/10 px-3 py-1.5 text-xs font-bold text-destructive"
               >
-                {u.isAdmin || u.hidden ? "Remove admin" : "Make admin"}
+                Remove admin
               </button>
             )}
           </div>
