@@ -459,6 +459,9 @@ export async function buy(chatId: number, productId: string, qty = 1) {
     }
   }
 
+  // A partial supplier delivery still counts as delivered for what arrived.
+  if (delivered.length > 0) complete = true;
+
   const orderId = "ORD" + Date.now() + Math.floor(Math.random() * 90 + 10);
   const now = new Date().toISOString();
   await Promise.all([
@@ -507,9 +510,9 @@ export async function buy(chatId: number, productId: string, qty = 1) {
   ]);
   invalidateProducts();
   invalidateUsers();
-  await payReferralCommission(uid, price);
+  await payReferralCommission(uid, charged);
 
-  const footer = `\n\nOrder: <code>${orderId}</code>\nPaid: ${money(price)}\n\n🌐 Website: ${siteUrl()}`;
+  const footer = `\n\nOrder: <code>${orderId}</code>\nPaid: ${money(charged)}\n\n🌐 Website: ${siteUrl()}`;
   const keyboard = {
     inline_keyboard: [
       [{ text: "🌐 Visit website", url: siteUrl() }],
@@ -556,6 +559,6 @@ export async function buy(chatId: number, productId: string, qty = 1) {
   }
   // Delivery receipt files removed — the message above already carries the content.
   await notifyOwners(
-    `🛒 <b>New Telegram order</b>\n${p.title}\n🔢 Quantity: <b>${count}</b>\n💵 Unit price: ${money(unitPrice)}\nBuyer: ${await tgTag(chatId)}${user.email ? ` (${user.email})` : ""}\nTotal: ${money(price)}\nOrder: ${orderId}\nStatus: ${complete ? "Completed" : "Pending"}`,
+    `🛒 <b>New Telegram order</b>\n${p.title}\n🔢 Quantity: <b>${count}</b>\n💵 Unit price: ${money(unitPrice)}\nBuyer: ${await tgTag(chatId)}${user.email ? ` (${user.email})` : ""}\nTotal: ${money(charged)}\nOrder: ${orderId}\nStatus: ${complete ? "Completed" : "Pending"}`,
   );
 }
