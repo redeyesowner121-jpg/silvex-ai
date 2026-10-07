@@ -40,6 +40,7 @@ export function UsersAdmin() {
   const [search, setSearch] = useState("");
   const [historyFor, setHistoryFor] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryRow[]>([]);
+  const [historyLimit, setHistoryLimit] = useState(5);
 
   // Live wallet history for whichever user the admin opened.
   useEffect(() => {
@@ -120,7 +121,10 @@ export function UsersAdmin() {
               Set balance
             </button>
             <button
-              onClick={() => setHistoryFor(historyFor === u.uid ? null : u.uid)}
+              onClick={() => {
+                setHistoryFor(historyFor === u.uid ? null : u.uid);
+                setHistoryLimit(5);
+              }}
               className="rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary"
             >
               {historyFor === u.uid ? "Hide history" : "Wallet history"}
@@ -160,7 +164,7 @@ export function UsersAdmin() {
                   No transactions yet.
                 </p>
               ) : (
-                history.map((h) => (
+                history.slice(0, historyLimit).map((h) => (
                   <div
                     key={h.id}
                     className="flex items-center justify-between rounded-xl border border-border p-2.5"
@@ -189,6 +193,25 @@ export function UsersAdmin() {
                   </div>
                 ))
               )}
+              {history.length > historyLimit ? (
+                <div className="flex flex-wrap justify-center gap-2 pt-1">
+                  {[20, 50].filter((n) => n > historyLimit && n < history.length).map((n) => (
+                    <button
+                      key={n}
+                      onClick={() => setHistoryLimit(n)}
+                      className="rounded-lg border border-border px-3 py-1.5 text-[11px] font-bold"
+                    >
+                      Show {n}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => setHistoryLimit(history.length)}
+                    className="rounded-lg bg-primary px-3 py-1.5 text-[11px] font-bold text-primary-foreground"
+                  >
+                    Show all ({history.length})
+                  </button>
+                </div>
+              ) : null}
             </div>
           ) : null}
         </div>
