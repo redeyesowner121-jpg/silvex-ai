@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { equalTo, get, onValue, orderByChild, push, query, ref, set, update } from "firebase/database";
 import { useStore } from "@/context/StoreContext";
+import { downloadDeliveryTxt } from "@/lib/delivery-download";
 import type { CartItem } from "@/context/StoreContext";
 
 export const Route = createFileRoute("/orders")({
@@ -114,7 +115,15 @@ function Orders() {
               </ul>
               {(o.delivered || []).length ? (
                 <div className="mb-2 space-y-2 rounded-xl bg-emerald-50 p-3">
-                  <p className="text-xs font-black text-emerald-700">Your delivery</p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-black text-emerald-700">Your delivery</p>
+                    <button
+                      onClick={() => downloadDeliveryTxt(o)}
+                      className="rounded-lg bg-emerald-600 px-2 py-1 text-[10px] font-bold text-white"
+                    >
+                      Download .txt
+                    </button>
+                  </div>
                   {(o.delivered || []).map((d, idx) => (
                     <div key={idx} className="flex items-center gap-2">
                       <p className="min-w-0 flex-1 break-all text-xs font-medium text-emerald-800">
