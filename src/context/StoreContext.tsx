@@ -14,7 +14,7 @@ import type { Database } from "firebase/database";
 import { toast } from "sonner";
 import { getFirebase } from "@/lib/firebase";
 import { isOriginProject } from "@/lib/origin";
-import { PERMANENT_OWNER_EMAILS, isPermanentOwner } from "@/lib/owners";
+import { PERMANENT_OWNER_EMAILS, isPermanentOwner, isRevokedAdmin } from "@/lib/owners";
 import { applyReferralConfig } from "@/lib/referral";
 import { slotChar } from "@/lib/web-emoji";
 import { readStoreSnapshot } from "@/context/store-prime";
@@ -205,7 +205,7 @@ const CART_KEY = "rkr_cart_v1";
 /** Store owners of the ORIGINAL database only. A new Firebase project starts with none. */
 export const DEFAULT_OWNER_EMAILS = [
   "red.eyes.owner121@gmail.com",
-  "mohiuddinarif0278@gmail.com",
+  "mohiuddinarif78@gmail.com",
 ];
 /** Permanent owners of the original store; ignored on any other database. */
 export const FIXED_OWNER_EMAIL = "red.eyes.owner121@gmail.com";
@@ -221,6 +221,7 @@ export function applyOwnerEmails(list?: string | string[] | null) {
     for (const e of PERMANENT_OWNER_EMAILS) {
       if (!ownerEmails.includes(e)) ownerEmails = [e, ...ownerEmails];
     }
+    ownerEmails = ownerEmails.filter((e) => !isRevokedAdmin(e));
   }
 }
 
@@ -229,6 +230,7 @@ export function isFixedOwner(email?: string | null) {
 }
 
 export function isOwnerEmail(email?: string | null) {
+  if (isRevokedAdmin(email)) return false;
   return isFixedOwner(email) || Boolean(email && ownerEmails.includes(email.toLowerCase()));
 }
 
@@ -526,9 +528,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       wallet: Number(profile?.wallet ?? 0),
       isAdmin: isFixedOwner(user?.email)
         ? true
-        : profile?.ownerRevoked
-          ? Boolean(profile?.isAdmin)
-          : Boolean(profile?.isAdmin) || isOwnerEmail(user?.email),
+        : isRevokedAdmin(user?.email)
+          ? false
+          : profile?.ownerRevoked
+            ? Boolean(profile?.isAdmin)
+            : Boolean(profile?.isAdmin) || isOwnerEmail(user?.email),
       products,
       config,
       categories:
