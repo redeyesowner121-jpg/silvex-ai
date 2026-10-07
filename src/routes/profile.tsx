@@ -256,6 +256,46 @@ function ProfilePage() {
         </div>
       ) : null}
 
+      {isEmailUser ? (
+        <div className="mb-4 rounded-2xl border border-border p-4">
+          <button
+            onClick={() => setShowMail(!showMail)}
+            className="flex w-full items-center justify-between text-sm font-bold"
+          >
+            <span><Emo k="web.mail" /> Change email</span>
+            <span>{showMail ? "−" : "›"}</span>
+          </button>
+          {showMail ? (
+            <div className="mt-3 space-y-2">
+              <input
+                className={inputCls}
+                type="email"
+                placeholder="New email address"
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+              />
+              <input
+                className={inputCls}
+                type="password"
+                placeholder="Current password"
+                value={mailPass}
+                onChange={(e) => setMailPass(e.target.value)}
+              />
+              <button
+                onClick={changeEmail}
+                disabled={mailBusy || !newEmail || !mailPass}
+                className="w-full rounded-xl bg-primary py-2.5 text-xs font-bold text-primary-foreground disabled:opacity-60"
+              >
+                {mailBusy ? "Sending…" : "Send confirmation link"}
+              </button>
+              <p className="text-[11px] text-muted-foreground">
+                A confirmation link goes to the new address — your login email changes after you tap it.
+              </p>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
       <div className="space-y-2">
         <button
           onClick={() => navigate({ to: "/orders" })}
