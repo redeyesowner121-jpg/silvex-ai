@@ -14,7 +14,7 @@ import type { Database } from "firebase/database";
 import { toast } from "sonner";
 import { getFirebase } from "@/lib/firebase";
 import { isOriginProject } from "@/lib/origin";
-import { isPermanentOwner } from "@/lib/owners";
+import { PERMANENT_OWNER_EMAILS, isPermanentOwner } from "@/lib/owners";
 import { applyReferralConfig } from "@/lib/referral";
 import { slotChar } from "@/lib/web-emoji";
 import { readStoreSnapshot } from "@/context/store-prime";
