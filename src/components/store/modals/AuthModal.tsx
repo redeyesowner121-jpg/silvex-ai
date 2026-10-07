@@ -5,6 +5,7 @@ import {
   getRedirectResult,
   GoogleAuthProvider,
   signInWithEmailAndPassword,
+  sendPasswordResetEmail,
   signInWithPopup,
   signInWithRedirect,
   signOut,
@@ -114,6 +115,24 @@ export function AuthModal() {
         showSuccess("Logged in", "Welcome back.");
       }
       closeModal();
+    } catch (e) {
+      notify(friendly(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function forgotPassword() {
+    if (!auth) return;
+    const mail = email.trim().toLowerCase();
+    if (!mail) {
+      notify("Enter your email address first, then tap Forgot password.");
+      return;
+    }
+    setBusy(true);
+    try {
+      await sendPasswordResetEmail(auth, mail);
+      showSuccess("Email sent", "Check your inbox for a password reset link.");
     } catch (e) {
       notify(friendly(e));
     } finally {
@@ -231,6 +250,14 @@ export function AuthModal() {
       >
         {mode === "login" ? "Login" : "Sign up"}
       </button>
+      {mode === "login" ? (
+        <p
+          onClick={forgotPassword}
+          className="mt-3 cursor-pointer text-center text-xs font-bold text-primary"
+        >
+          Forgot password?
+        </p>
+      ) : null}
       <p
         onClick={() => setMode(mode === "login" ? "signup" : "login")}
         className="mt-5 cursor-pointer text-center text-xs font-bold text-muted-foreground"

@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { equalTo, get, orderByChild, query, ref, update } from "firebase/database";
-import { signOut } from "firebase/auth";
+import { EmailAuthProvider, reauthenticateWithCredential, signOut, updatePassword } from "firebase/auth";
 import { useStore } from "@/context/StoreContext";
 import { Emo } from "@/components/store/Emo";
 import {
@@ -33,6 +33,11 @@ const inputCls =
 function ProfilePage() {
   const { auth, db, user, profile, wallet, isAdmin, openModal, showSuccess, notify, emoji } = useStore();
   const [phone, setPhone] = useState(profile?.phone ?? "");
+  const [showPass, setShowPass] = useState(false);
+  const [curPass, setCurPass] = useState("");
+  const [newPass, setNewPass] = useState("");
+  const [passBusy, setPassBusy] = useState(false);
+  const isEmailUser = user?.providerData?.some((p) => p.providerId === "password") ?? false;
   const navigate = useNavigate();
   const [invited, setInvited] = useState(0);
   const earnings = useMemo(
@@ -63,6 +68,32 @@ function ProfilePage() {
         </button>
       </div>
     );
+  }
+
+  async function changePassword() {
+    if (!auth || !user || !user.email) return;
+    if (newPass.length < 6) return notify("New password must be at least 6 characters");
+    setPassBusy(true);
+    try {
+      const cred = EmailAuthProvider.credential(user.email, curPass);
+      await reauthenticateWithCredential(user, cred);
+      await updatePassword(user, newPass);
+      setCurPass("");
+      setNewPass("");
+      setShowPass(false);
+      showSuccess("Password changed", "Use your new password next time you log in.");
+    } catch (e) {
+      const code = (e as { code?: string })?.code || "";
+      notify(
+        code === "auth/wrong-password" || code === "auth/invalid-credential"
+          ? "Your current password is wrong."
+          : code === "auth/too-many-requests"
+            ? "Too many attempts. Please wait a minute and try again."
+            : "Could not change password. Please try again.",
+      );
+    } finally {
+      setPassBusy(false);
+    }
   }
 
   async function savePhone() {
@@ -151,6 +182,43 @@ function ProfilePage() {
           Save
         </button>
       </div>
+
+      {isEmailUser ? (
+        <div className="mb-4 rounded-2xl border border-border p-4">
+          <button
+            onClick={() => setShowPass(!showPass)}
+            className="flex w-full items-center justify-between text-sm font-bold"
+          >
+            <span><Emo k="web.key" /> Change password</span>
+            <span>{showPass ? "−" : "›"}</span>
+          </button>
+          {showPass ? (
+            <div className="mt-3 space-y-2">
+              <input
+                className={inputCls}
+                type="password"
+                placeholder="Current password"
+                value={curPass}
+                onChange={(e) => setCurPass(e.target.value)}
+              />
+              <input
+                className={inputCls}
+                type="password"
+                placeholder="New password (min 6 characters)"
+                value={newPass}
+                onChange={(e) => setNewPass(e.target.value)}
+              />
+              <button
+                onClick={changePassword}
+                disabled={passBusy || !curPass || !newPass}
+                className="w-full rounded-xl bg-primary py-2.5 text-xs font-bold text-primary-foreground disabled:opacity-60"
+              >
+                {passBusy ? "Saving…" : "Update password"}
+              </button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="space-y-2">
         <button
