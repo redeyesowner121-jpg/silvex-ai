@@ -314,12 +314,10 @@ export function UsersAdmin() {
               <span className="rounded-lg bg-amber-500/10 px-3 py-1.5 text-xs font-bold text-amber-600">
                 Permanent owner
               </span>
-            ) : (
+            ) : u.isAdmin || u.hidden ? (
               <button
                 onClick={async () => {
                   if (!db) return;
-                  const removing = u.isAdmin || u.hidden;
-                  if (!removing) return notify("Only permanent owners can be admin");
                   await update(ref(db, `users/${u.uid}`), {
                     isAdmin: false,
                     isOwner: false,
@@ -331,7 +329,7 @@ export function UsersAdmin() {
               >
                 Remove admin
               </button>
-            )}
+            ) : null}
           </div>
           {historyFor === u.uid ? (
             <div className="mt-3 space-y-2 border-t border-border pt-3">
