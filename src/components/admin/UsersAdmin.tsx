@@ -139,6 +139,50 @@ export function UsersAdmin() {
         value={search}
         onChange={(e) => setSearch(e.target.value)}
       />
+      <div className="flex flex-wrap gap-2">
+        {(
+          [
+            ["none", "All users"],
+            ["deposits", "High deposit"],
+            ["wallet", "High wallet balance"],
+            ["orders", "High orders"],
+          ] as [SortMode, string][]
+        ).map(([mode, label]) => (
+          <button
+            key={mode}
+            onClick={() => {
+              setSortMode(mode);
+              setListLimit(5);
+            }}
+            className={`rounded-lg px-3 py-1.5 text-xs font-bold ${
+              sortMode === mode
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {sorted.length > listLimit ? (
+        <div className="flex flex-wrap gap-2">
+          {[5, 20, 50].filter((n) => n > listLimit && n < sorted.length).map((n) => (
+            <button
+              key={n}
+              onClick={() => setListLimit(n)}
+              className="rounded-lg border border-border px-3 py-1.5 text-[11px] font-bold"
+            >
+              Show {n}
+            </button>
+          ))}
+          <button
+            onClick={() => setListLimit(sorted.length)}
+            className="rounded-lg bg-primary px-3 py-1.5 text-[11px] font-bold text-primary-foreground"
+          >
+            Show all ({sorted.length})
+          </button>
+        </div>
+      ) : null}
       {list.map((u) => (
         <div key={u.uid} className="rounded-2xl border border-border bg-card p-4">
           <div className="flex items-center justify-between">
