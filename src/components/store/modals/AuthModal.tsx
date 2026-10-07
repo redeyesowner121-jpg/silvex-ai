@@ -24,6 +24,7 @@ import {
 } from "firebase/database";
 import { useStore } from "@/context/StoreContext";
 import { checkDeposit, fallbackDepositAddress } from "@/lib/deposit.functions";
+import { emailShell, sendMail } from "@/lib/mailer";
 import { Emo } from "@/components/store/Emo";
 import { Sheet, inputCls } from "./ui";
 
