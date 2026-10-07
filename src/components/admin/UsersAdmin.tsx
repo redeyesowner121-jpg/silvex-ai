@@ -34,13 +34,33 @@ type UserRow = {
 
 
 
+type SortMode = "none" | "deposits" | "wallet" | "orders";
+
+type RawUser = Omit<UserRow, "uid"> & { history?: Record<string, HistoryRow> };
+
 export function UsersAdmin() {
   const { db, user, notify } = useStore();
   const [users, setUsers] = useState<UserRow[]>([]);
+  const [orderCounts, setOrderCounts] = useState<Record<string, number>>({});
   const [search, setSearch] = useState("");
+  const [sortMode, setSortMode] = useState<SortMode>("none");
+  const [listLimit, setListLimit] = useState(5);
   const [historyFor, setHistoryFor] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryRow[]>([]);
   const [historyLimit, setHistoryLimit] = useState(5);
+
+  // Order counts per user, loaded once for the "high orders" filter.
+  useEffect(() => {
+    if (!db) return;
+    get(ref(db, "orders")).then((s) => {
+      const counts: Record<string, number> = {};
+      Object.values(s.val() || {}).forEach((o) => {
+        const uid = (o as { userId?: string; uid?: string }).userId ?? (o as { uid?: string }).uid;
+        if (uid) counts[uid] = (counts[uid] ?? 0) + 1;
+      });
+      setOrderCounts(counts);
+    });
+  }, [db]);
 
   // Live wallet history for whichever user the admin opened.
   useEffect(() => {
@@ -76,9 +96,24 @@ export function UsersAdmin() {
     return otherOwner ? { ...u, isOwner: false, isAdmin: false, hidden: true } : u;
   });
 
-  const list = disguised.filter((u) =>
+  // Total deposited per user, summed from their wallet history.
+  const depositTotal = (u: UserRow) =>
+    Object.values((u as RawUser).history || {})
+      .filter((h) => h.type === "Deposit")
+      .reduce((sum, h) => sum + (h.amount ?? 0), 0);
+
+  const searched = disguised.filter((u) =>
     `${u.name ?? ""} ${u.email ?? ""}`.toLowerCase().includes(search.toLowerCase()),
   );
+  const sorted =
+    sortMode === "deposits"
+      ? [...searched].sort((a, b) => depositTotal(b) - depositTotal(a))
+      : sortMode === "wallet"
+        ? [...searched].sort((a, b) => (b.wallet ?? 0) - (a.wallet ?? 0))
+        : sortMode === "orders"
+          ? [...searched].sort((a, b) => (orderCounts[b.uid] ?? 0) - (orderCounts[a.uid] ?? 0))
+          : searched;
+  const list = sorted.slice(0, listLimit);
 
   async function setWallet(u: UserRow) {
     if (!db) return;
@@ -104,6 +139,50 @@ export function UsersAdmin() {
         value={search}
         onChange={(e) => setSearch(e.target.value)}
       />
+      <div className="flex flex-wrap gap-2">
+        {(
+          [
+            ["none", "All users"],
+            ["deposits", "High deposit"],
+            ["wallet", "High wallet balance"],
+            ["orders", "High orders"],
+          ] as [SortMode, string][]
+        ).map(([mode, label]) => (
+          <button
+            key={mode}
+            onClick={() => {
+              setSortMode(mode);
+              setListLimit(5);
+            }}
+            className={`rounded-lg px-3 py-1.5 text-xs font-bold ${
+              sortMode === mode
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {sorted.length > listLimit ? (
+        <div className="flex flex-wrap gap-2">
+          {[5, 20, 50].filter((n) => n > listLimit && n < sorted.length).map((n) => (
+            <button
+              key={n}
+              onClick={() => setListLimit(n)}
+              className="rounded-lg border border-border px-3 py-1.5 text-[11px] font-bold"
+            >
+              Show {n}
+            </button>
+          ))}
+          <button
+            onClick={() => setListLimit(sorted.length)}
+            className="rounded-lg bg-primary px-3 py-1.5 text-[11px] font-bold text-primary-foreground"
+          >
+            Show all ({sorted.length})
+          </button>
+        </div>
+      ) : null}
       {list.map((u) => (
         <div key={u.uid} className="rounded-2xl border border-border bg-card p-4">
           <div className="flex items-center justify-between">
@@ -113,6 +192,15 @@ export function UsersAdmin() {
             </div>
             <span className="text-sm font-black">${u.wallet ?? 0}</span>
           </div>
+          {sortMode !== "none" ? (
+            <p className="mt-1 text-[11px] font-bold text-muted-foreground">
+              {sortMode === "deposits"
+                ? `Total deposited: $${depositTotal(u).toFixed(2)}`
+                : sortMode === "orders"
+                  ? `Orders: ${orderCounts[u.uid] ?? 0}`
+                  : `Wallet balance: $${u.wallet ?? 0}`}
+            </p>
+          ) : null}
           <div className="mt-3 flex flex-wrap gap-2">
             <button
               onClick={() => setWallet(u)}
