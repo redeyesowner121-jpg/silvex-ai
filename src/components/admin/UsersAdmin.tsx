@@ -48,6 +48,26 @@ export function UsersAdmin() {
   const [historyFor, setHistoryFor] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryRow[]>([]);
   const [historyLimit, setHistoryLimit] = useState(5);
+  const [allWalletOpen, setAllWalletOpen] = useState(false);
+  const [walletSearch, setWalletSearch] = useState("");
+  const [walletLimit, setWalletLimit] = useState(5);
+
+  // Every wallet change across all users, newest first.
+  const allWalletRows = users
+    .flatMap((u) =>
+      Object.entries((u as RawUser).history || {}).map(([id, h]) => ({
+        id,
+        ...(h as Omit<HistoryRow, "id">),
+        userName: u.name || "User",
+        userEmail: u.email || "",
+      })),
+    )
+    .sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
+  const walletFiltered = allWalletRows.filter((h) =>
+    `${h.userName} ${h.userEmail} ${h.type ?? ""} ${h.desc ?? ""}`
+      .toLowerCase()
+      .includes(walletSearch.toLowerCase()),
+  );
 
   // Order counts per user, loaded once for the "high orders" filter.
   useEffect(() => {
@@ -181,6 +201,75 @@ export function UsersAdmin() {
           >
             Show all ({sorted.length})
           </button>
+        </div>
+      ) : null}
+      <button
+        onClick={() => {
+          setAllWalletOpen(!allWalletOpen);
+          setWalletLimit(5);
+          setWalletSearch("");
+        }}
+        className={`w-full rounded-xl px-3 py-2.5 text-xs font-black ${
+          allWalletOpen ? "bg-primary text-primary-foreground" : "bg-muted"
+        }`}
+      >
+        {allWalletOpen ? "Hide wallet changes" : `Wallet changes (${allWalletRows.length})`}
+      </button>
+      {allWalletOpen ? (
+        <div className="space-y-2 rounded-2xl border border-border bg-card p-3">
+          <input
+            className={input}
+            placeholder="Search user, type or description"
+            value={walletSearch}
+            onChange={(e) => {
+              setWalletSearch(e.target.value);
+              setWalletLimit(5);
+            }}
+          />
+          {walletFiltered.length === 0 ? (
+            <p className="py-2 text-center text-[11px] text-muted-foreground">
+              No wallet changes found.
+            </p>
+          ) : (
+            walletFiltered.slice(0, walletLimit).map((h) => (
+              <div
+                key={`${h.userEmail}-${h.id}`}
+                className="flex items-center justify-between rounded-xl border border-border p-2.5"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-bold">
+                    {h.userName} <span className="text-muted-foreground">({h.userEmail})</span>
+                  </p>
+                  <p className="truncate text-[11px] text-muted-foreground">
+                    {h.type} — {h.desc}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {h.date ? new Date(h.date).toLocaleString() : ""}
+                  </p>
+                </div>
+                <span className="text-sm font-black">${h.amount ?? 0}</span>
+              </div>
+            ))
+          )}
+          {walletFiltered.length > walletLimit ? (
+            <div className="flex flex-wrap justify-center gap-2 pt-1">
+              {[20, 50].filter((n) => n > walletLimit && n < walletFiltered.length).map((n) => (
+                <button
+                  key={n}
+                  onClick={() => setWalletLimit(n)}
+                  className="rounded-lg border border-border px-3 py-1.5 text-[11px] font-bold"
+                >
+                  Show {n}
+                </button>
+              ))}
+              <button
+                onClick={() => setWalletLimit(walletFiltered.length)}
+                className="rounded-lg bg-primary px-3 py-1.5 text-[11px] font-bold text-primary-foreground"
+              >
+                Show all ({walletFiltered.length})
+              </button>
+            </div>
+          ) : null}
         </div>
       ) : null}
       {list.map((u) => (
