@@ -48,6 +48,26 @@ export function UsersAdmin() {
   const [historyFor, setHistoryFor] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryRow[]>([]);
   const [historyLimit, setHistoryLimit] = useState(5);
+  const [allWalletOpen, setAllWalletOpen] = useState(false);
+  const [walletSearch, setWalletSearch] = useState("");
+  const [walletLimit, setWalletLimit] = useState(5);
+
+  // Every wallet change across all users, newest first.
+  const allWalletRows = users
+    .flatMap((u) =>
+      Object.entries((u as RawUser).history || {}).map(([id, h]) => ({
+        id,
+        ...(h as Omit<HistoryRow, "id">),
+        userName: u.name || "User",
+        userEmail: u.email || "",
+      })),
+    )
+    .sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
+  const walletFiltered = allWalletRows.filter((h) =>
+    `${h.userName} ${h.userEmail} ${h.type ?? ""} ${h.desc ?? ""}`
+      .toLowerCase()
+      .includes(walletSearch.toLowerCase()),
+  );
 
   // Order counts per user, loaded once for the "high orders" filter.
   useEffect(() => {
