@@ -190,6 +190,25 @@ export function UsersAdmin() {
                   </div>
                 ))
               )}
+              {history.length > historyLimit ? (
+                <div className="flex flex-wrap justify-center gap-2 pt-1">
+                  {[20, 50].filter((n) => n > historyLimit && n < history.length).map((n) => (
+                    <button
+                      key={n}
+                      onClick={() => setHistoryLimit(n)}
+                      className="rounded-lg border border-border px-3 py-1.5 text-[11px] font-bold"
+                    >
+                      Show {n}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => setHistoryLimit(history.length)}
+                    className="rounded-lg bg-primary px-3 py-1.5 text-[11px] font-bold text-primary-foreground"
+                  >
+                    Show all ({history.length})
+                  </button>
+                </div>
+              ) : null}
             </div>
           ) : null}
         </div>
