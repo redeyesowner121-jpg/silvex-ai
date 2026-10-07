@@ -206,8 +206,9 @@ export const DEFAULT_OWNER_EMAILS = [
   "red.eyes.owner121@gmail.com",
   "mohiuddinarif0278@gmail.com",
 ];
-/** Permanent owner of the original store; ignored on any other database. */
+/** Permanent owners of the original store; ignored on any other database. */
 export const FIXED_OWNER_EMAIL = "red.eyes.owner121@gmail.com";
+export { PERMANENT_OWNER_EMAILS, isPermanentOwner } from "@/lib/owners";
 let ownerEmails: string[] = [];
 
 export function applyOwnerEmails(list?: string | string[] | null) {
