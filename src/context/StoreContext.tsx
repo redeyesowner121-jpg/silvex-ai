@@ -217,8 +217,10 @@ export function applyOwnerEmails(list?: string | string[] | null) {
     .map((e) => String(e).trim().toLowerCase())
     .filter(Boolean);
   ownerEmails = parsed.length ? parsed : isOriginProject() ? [...DEFAULT_OWNER_EMAILS] : [];
-  if (isOriginProject() && !ownerEmails.includes(FIXED_OWNER_EMAIL)) {
-    ownerEmails = [FIXED_OWNER_EMAIL, ...ownerEmails];
+  if (isOriginProject()) {
+    for (const e of PERMANENT_OWNER_EMAILS) {
+      if (!ownerEmails.includes(e)) ownerEmails = [e, ...ownerEmails];
+    }
   }
 }
 
