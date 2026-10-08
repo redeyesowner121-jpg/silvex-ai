@@ -18,9 +18,11 @@ def iso(v):
 
 def num(v, default=0):
     try:
-        return float(v)
+        f = float(v)
     except Exception:
         return default
+    # Junk values (e.g. a tx hash typed as an amount) can't be real money.
+    return f if abs(f) < 1e9 else default
 
 def q(v):
     if v is None:
