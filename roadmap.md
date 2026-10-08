@@ -74,4 +74,4 @@ Phase 4 — polish
 - [x] 4. Website logins + live data + admin pages (Cloud logins, rules in server code, owner admin tested)
 - [x] 5. Fresh copy loaded 14:2x UTC Oct 8 (668 customers, $606.22, 248 orders match)
 - [x] 6. Switched over 14:33 UTC Oct 8 — live site + bot run on Lovable Cloud
-- [~] 7. Website Firebase removed; server rollback path + FIREBASE_* secrets removed after live check
+- [x] 7. Firebase removed: data erased + locked, keys deleted, backup path removed (14:50 UTC Oct 8)
