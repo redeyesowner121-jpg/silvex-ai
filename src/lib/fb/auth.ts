@@ -14,6 +14,7 @@ export interface User {
   uid: string;
   email: string | null;
   displayName: string | null;
+  photoURL: string | null;
   emailVerified: boolean;
   providerData: UserInfo[];
   getIdToken: (forceRefresh?: boolean) => Promise<string>;
@@ -40,7 +41,7 @@ class AuthError extends Error {
   }
 }
 
-function mapError(e: { message?: string; status?: number } | null): AuthError {
+function mapError(e: any): AuthError {
   const m = String(e?.message || "Something went wrong");
   if (/invalid login|invalid credentials/i.test(m)) return new AuthError("auth/invalid-credential", m);
   if (/already registered|already exists/i.test(m)) return new AuthError("auth/email-already-in-use", m);
@@ -67,6 +68,7 @@ async function toUser(session: any): Promise<User | null> {
     uid: who?.uid || su.id,
     email: su.email ?? null,
     displayName: su.user_metadata?.name || su.user_metadata?.full_name || null,
+    photoURL: su.user_metadata?.avatar_url || null,
     emailVerified: !!su.email_confirmed_at,
     providerData: [{ providerId: su.app_metadata?.provider === "google" ? "google.com" : "password" }],
     getIdToken: token,
