@@ -43,6 +43,18 @@ async function read(path: string) {
   }
 }
 
+// Secret settings (bot token, payment and supplier keys) never leave the server.
+const SECRET_CONFIG = /(secret|token|apikey|password|smtp)/i;
+const SECRET_EXTRA = new Set(["supplierApiUrl", "notifyGroup", "telegramOwners"]);
+function publicConfig(c: any): Record<string, any> {
+  const out: Record<string, any> = {};
+  for (const [k, v] of Object.entries((c || {}) as Record<string, any>)) {
+    if (SECRET_CONFIG.test(k) || SECRET_EXTRA.has(k)) continue;
+    out[k] = v;
+  }
+  return out;
+}
+
 let loading: Promise<StoreSnapshot> | null = null;
 
 async function build(): Promise<StoreSnapshot> {
@@ -70,7 +82,7 @@ async function build(): Promise<StoreSnapshot> {
   const data: StoreSnapshot = {
     ...EMPTY,
     products,
-    config: config || {},
+    config: publicConfig(config),
     banner: banner || {},
     flashSale: flashSale || null,
     emojis: emojis || {},

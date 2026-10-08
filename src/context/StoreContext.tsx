@@ -324,24 +324,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           setReady(true);
         }),
       );
-      unsubs.push(
-        onValue(ref(d, "products"), (snap) => {
-          const val = snap.val() || {};
-          setProducts(
-            Object.entries(val).map(([id, p]) => ({
-              id,
-              ...(p as Omit<Product, "id">),
-              price: Number((p as Product).price) || 0,
-            })),
-          );
-        }),
-      );
-      unsubs.push(onValue(ref(d, "site_settings/config"), (s) => {
-          const c = (s.val() || {}) as SiteConfig;
-          applyOwnerEmails(c.ownerEmails);
-          applyReferralConfig(c);
-          setConfig(c);
-        }));
       // Product ids hold dots, stored as "~" because Firebase keys can't have dots.
       const decodeKeys = (v: Record<string, any> | null) =>
         Object.fromEntries(Object.entries(v || {}).map(([k, val]) => [k.split("~").join("."), val]));
@@ -383,6 +365,61 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       unsubs = [];
     };
   }, []);
+
+  // Products and full settings are admin-only in the database. Admins get
+  // them live; customers get the server's cleaned copy, refreshed regularly.
+  const adminNow = isFixedOwner(user?.email)
+    ? true
+    : isRevokedAdmin(user?.email)
+      ? false
+      : Boolean(profile?.isAdmin);
+  useEffect(() => {
+    if (!db) return;
+    const toList = (val: Record<string, any>) =>
+      Object.entries(val || {}).map(([id, p]) => ({
+        id,
+        ...(p as Omit<Product, "id">),
+        price: Number((p as Product).price) || 0,
+      }));
+    const applyCfg = (c: SiteConfig) => {
+      applyOwnerEmails(c.ownerEmails);
+      applyReferralConfig(c);
+      setConfig(c);
+    };
+    if (adminNow) {
+      let offs: Array<() => void> = [];
+      let alive = true;
+      void import("firebase/database").then(({ ref, onValue }) => {
+        if (!alive) return;
+        offs.push(onValue(ref(db, "products"), (s) => setProducts(toList(s.val() || {})), () => undefined));
+        offs.push(onValue(ref(db, "site_settings/config"), (s) => applyCfg((s.val() || {}) as SiteConfig), () => undefined));
+      });
+      return () => {
+        alive = false;
+        offs.forEach((o) => o());
+        offs = [];
+      };
+    }
+    let stop = false;
+    const pull = async () => {
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
+      try {
+        const { getStoreSnapshot } = await import("@/lib/store-snapshot.functions");
+        const s = await getStoreSnapshot();
+        if (stop || !s) return;
+        if (s.products && Object.keys(s.products).length) setProducts(toList(s.products));
+        if (s.config) applyCfg(s.config as SiteConfig);
+      } catch {
+        /* keep current data */
+      }
+    };
+    void pull();
+    const t = setInterval(pull, 30_000);
+    return () => {
+      stop = true;
+      clearInterval(t);
+    };
+  }, [db, adminNow]);
 
   // Per-user profile listener
   useEffect(() => {
