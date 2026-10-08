@@ -21,7 +21,7 @@ async function resolveKey(request: Request): Promise<{ uid: string; user: any } 
   const uid = await dbGet<string>(`apiKeys/${key}`);
   if (!uid) return null;
   const user = (await dbGet<any>(`users/${uid}`)) || {};
-  if (user.apiEnabled === false) return null;
+  if (user.apiEnabled === false || user.blocked) return null;
   return { uid, user };
 }
 

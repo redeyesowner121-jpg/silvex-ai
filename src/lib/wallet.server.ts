@@ -13,6 +13,7 @@ export async function verifyIdToken(idToken: string): Promise<{ uid: string; ema
   const { callerFromToken } = await import("./cloud-access.server");
   const who = await callerFromToken(idToken);
   if (!who) throw new Error("Please log in again.");
+  if (await dbGet<boolean>(`users/${who.uid}/blocked`).catch(() => false)) throw new Error("This account is blocked.");
   return { uid: who.uid, email: who.email };
 }
 
