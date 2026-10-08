@@ -448,7 +448,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const offProfile = onValue(ref(db, `users/${user.uid}`), (s) => {
         const v = s.val() || {};
         // Blocked accounts are signed out straight away.
-        if (v.blocked) { void import("@/lib/fb/auth").then((m) => m.signOut(auth)); return; }
+        if (v.blocked) { if (auth) void import("@/lib/fb/auth").then((m) => m.signOut(auth)); return; }
         setProfile(v);
       });
       const offAlerts = onValue(ref(db, `users/${user.uid}/alerts`), (s) => {
