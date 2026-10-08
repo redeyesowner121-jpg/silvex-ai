@@ -68,10 +68,10 @@ Phase 4 — polish
 - [x] Wire forgot-password reset email delivery and verify end to end
 
 ## Firebase → Lovable Cloud migration
-- [ ] 1. Enable Lovable Cloud + schema (tables, roles, RLS, transaction functions)
+- [x] 1. Enable Lovable Cloud + schema (tables, roles, RLS, transaction functions)
 - [ ] 2. Server data layer replacing dbGet/dbPut/dbPatch/dbPush/dbTransact
 - [ ] 3. Bot + server code on new layer
 - [ ] 4. Website logins + live data + admin pages
-- [ ] 5. Data copy script + verification
+- [~] 5. Data copy script + verification (test copy done: 668 customers, $609.43, 246 orders match; re-run with --wipe at switch)
 - [ ] 6. Switch over (Railway settings, webhook, live test) — needs user go-ahead for downtime
 - [ ] 7. Remove Firebase code/secrets, update REMIX.md + memory
