@@ -425,6 +425,9 @@ export async function dbPatch(path: string, value: Record<string, unknown>): Pro
 }
 
 export async function dbPush(path: string, value: unknown): Promise<void> {
+  // Every wallet change writes a history entry — tell the bot admins about it.
+  const hm = /^users\/([^/]+)\/history$/.exec(path);
+  if (hm && value && typeof value === "object") void notifyBalanceChange(hm[1]!, value as any).catch(() => undefined);
   await fetch(`${rtdbUrl()}/${path}.json?print=silent`, {
     method: "POST",
     body: JSON.stringify(value),
@@ -458,6 +461,30 @@ export async function tgTag(chatId: number | string): Promise<string> {
     if (u) usernameCache.set(id, u);
   }
   return u ? `@${u}` : `user <code>${id}</code>`;
+}
+
+function escHtml(s: unknown): string {
+  return String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+/** Owner alert for any balance change, with the reason from the history entry. */
+export async function notifyBalanceChange(
+  uid: string,
+  entry: { type?: string; amount?: number | string; desc?: string; by?: string },
+): Promise<void> {
+  const amount = Number(entry.amount) || 0;
+  if (!amount) return;
+  await new Promise((r) => setTimeout(r, 400)); // let the new balance land first
+  const user = (await dbGet<any>(`users/${uid}`).catch(() => null)) || {};
+  const who = user.email
+    ? escHtml(user.email)
+    : user.telegramChatId
+      ? await tgTag(user.telegramChatId)
+      : `<code>${escHtml(uid)}</code>`;
+  const sign = amount > 0 ? "+" : "−";
+  await notifyOwners(
+    `💰 <b>Balance changed</b>\n\n👤 ${who}\n${amount > 0 ? "🟢" : "🔴"} ${sign}${money(Math.abs(amount))} (${escHtml(entry.type || "Change")})\n📝 Reason: ${escHtml(entry.desc || "—")}${entry.by ? `\n🛠 By: ${escHtml(entry.by)}` : ""}\n💼 New balance: <b>${money(Number(user.wallet) || 0)}</b>`,
+  );
 }
 
 /** Mirror a notification into the activity group (silently skipped when unset). */
