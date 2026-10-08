@@ -1,0 +1,71 @@
+import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+
+const token = z.string().min(10).max(5000);
+
+export const checkoutCart = createServerFn({ method: "POST" })
+  .inputValidator((d) =>
+    z
+      .object({
+        idToken: token,
+        items: z.array(z.object({ id: z.string().min(1).max(200), qty: z.number() })).min(1).max(50),
+        coupon: z.string().max(60).optional(),
+        phone: z.string().max(30).optional(),
+        note: z.string().max(500).optional(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const { verifyIdToken, webCheckout } = await import("./wallet.server");
+    try {
+      const who = await verifyIdToken(data.idToken);
+      return await webCheckout(who.uid, who.email, data);
+    } catch (err) {
+      return { ok: false as const, error: (err as Error).message || "Checkout failed" };
+    }
+  });
+
+export const cancelMyOrder = createServerFn({ method: "POST" })
+  .inputValidator((d) => z.object({ idToken: token, orderId: z.string().min(3).max(80) }).parse(d))
+  .handler(async ({ data }) => {
+    const { verifyIdToken, cancelOrder } = await import("./wallet.server");
+    try {
+      const who = await verifyIdToken(data.idToken);
+      return await cancelOrder(who.uid, data.orderId);
+    } catch (err) {
+      return { ok: false as const, error: (err as Error).message };
+    }
+  });
+
+export const submitCryptoDeposit = createServerFn({ method: "POST" })
+  .inputValidator((d) =>
+    z
+      .object({
+        idToken: token,
+        hash: z.string().regex(/^0x[0-9a-fA-F]{64}$/),
+        chain: z.enum(["bep20", "polygon"]),
+        name: z.string().max(100).optional(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const { verifyIdToken, creditCryptoDeposit } = await import("./wallet.server");
+    try {
+      const who = await verifyIdToken(data.idToken);
+      return await creditCryptoDeposit(who.uid, who.email, data);
+    } catch (err) {
+      return { ok: false as const, message: (err as Error).message || "Could not check that transaction" };
+    }
+  });
+
+export const claimSignupReferral = createServerFn({ method: "POST" })
+  .inputValidator((d) => z.object({ idToken: token, code: z.string().max(30), name: z.string().max(100) }).parse(d))
+  .handler(async ({ data }) => {
+    const { verifyIdToken, applySignupReferral } = await import("./wallet.server");
+    try {
+      const who = await verifyIdToken(data.idToken);
+      return await applySignupReferral(who.uid, data.name, data.code);
+    } catch {
+      return { ok: false as const };
+    }
+  });
