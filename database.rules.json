@@ -40,7 +40,8 @@
         "$field": {
           ".write": "auth != null && ((auth.uid === $uid && ($field === 'name' || $field === 'phone' || $field === 'email' || $field === 'joined' || $field === 'myRefCode' || $field === 'source' || $field === 'alerts' || $field === 'apiKey' || $field === 'apiEnabled' || $field === 'telegramChatId' || $field === 'pushSubs')) || (auth != null && root.child('users/' + auth.uid + '/isAdmin').val() === true && (auth.token.email === 'red.eyes.owner121@gmail.com' || auth.token.email === 'mohiuddinarif78@gmail.com')))"
         }
-      }
+      },
+      ".read": "auth != null && root.child('users/' + auth.uid + '/isAdmin').val() === true && (auth.token.email === 'red.eyes.owner121@gmail.com' || auth.token.email === 'mohiuddinarif78@gmail.com')"
     },
     "orders": {
       ".read": "auth != null && root.child('users/' + auth.uid + '/isAdmin').val() === true && (auth.token.email === 'red.eyes.owner121@gmail.com' || auth.token.email === 'mohiuddinarif78@gmail.com')",
