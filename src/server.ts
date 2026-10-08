@@ -1,25 +1,5 @@
 import "./lib/error-capture";
 
-// Locked Firebase rules block anonymous reads/writes. Every server-side call to
-// the Realtime Database gets the database secret attached, so the bot, deposits
-// and webhooks keep full access while browsers stay restricted.
-{
-  const g = globalThis as { __rtdbAuthFetch?: boolean };
-  if (!g.__rtdbAuthFetch) {
-    g.__rtdbAuthFetch = true;
-    const orig = globalThis.fetch.bind(globalThis);
-    globalThis.fetch = ((input: any, init?: any) => {
-      const secret = process.env["FIREBASE_DATABASE_SECRET"];
-      const raw = typeof input === "string" ? input : input instanceof URL ? input.href : null;
-      if (secret && raw && /firebaseio\.com|firebasedatabase\.app/.test(raw)) {
-        const u = new URL(raw);
-        if (!u.searchParams.has("auth")) u.searchParams.set("auth", secret);
-        return orig(u.toString(), init);
-      }
-      return orig(input, init);
-    }) as typeof fetch;
-  }
-}
 
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
