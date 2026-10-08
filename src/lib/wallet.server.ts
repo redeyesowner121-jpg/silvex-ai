@@ -36,9 +36,9 @@ async function history(uid: string, type: string, amount: number, desc: string) 
 
 export type CheckoutInput = {
   items: { id: string; qty: number }[];
-  coupon?: string;
-  phone?: string;
-  note?: string;
+  coupon?: string | undefined;
+  phone?: string | undefined;
+  note?: string | undefined;
 };
 
 export async function webCheckout(uid: string, email: string, input: CheckoutInput) {
@@ -204,7 +204,7 @@ export async function cancelOrder(uid: string, orderId: string) {
 export async function creditCryptoDeposit(
   uid: string,
   email: string,
-  input: { hash: string; chain: "bep20" | "polygon"; name?: string },
+  input: { hash: string; chain: "bep20" | "polygon"; name?: string | undefined },
 ) {
   const c = (await dbGet<any>("site_settings/config")) || {};
   const { defaultDepositAddress, verifyDepositOnChain } = await import("./deposit.server");
