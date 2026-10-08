@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { equalTo, get, onValue, orderByChild, push, query, ref, set, update } from "firebase/database";
+import { cancelMyOrder } from "@/lib/wallet.functions";
 import { useStore } from "@/context/StoreContext";
 import { downloadDeliveryTxt } from "@/lib/delivery-download";
 import type { CartItem } from "@/context/StoreContext";
@@ -49,15 +50,8 @@ function Orders() {
   async function cancelOrder(order: Order) {
     if (!db || !user) return;
     if (!confirm("Cancel this order? The amount is refunded to your wallet.")) return;
-    await update(ref(db, `orders/${order.orderId}`), { status: "Cancelled" });
-    const w = await get(ref(db, `users/${user.uid}/wallet`));
-    await set(ref(db, `users/${user.uid}/wallet`), (Number(w.val()) || 0) + Number(order.total));
-    await push(ref(db, `users/${user.uid}/history`), {
-      type: "Refund",
-      amount: order.total,
-      desc: `Cancelled ${order.orderId.slice(-4)}`,
-      date: new Date().toISOString(),
-    });
+    const res = await cancelMyOrder({ data: { idToken: await user.getIdToken(), orderId: order.orderId } });
+    if (!res.ok) return alert(res.error);
     showSuccess("Cancelled", "Amount refunded to your wallet.");
   }
 

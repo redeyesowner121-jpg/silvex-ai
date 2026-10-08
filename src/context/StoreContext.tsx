@@ -403,7 +403,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         await update(ref(db, `users/${user.uid}`), {
           name: user.displayName || user.email?.split("@")[0] || "User",
           email: user.email || "",
-          wallet: 0,
           myRefCode: (base.slice(0, 3) + Math.floor(100 + Math.random() * 900)).toUpperCase(),
           joined: new Date().toISOString(),
         }).catch(() => {});

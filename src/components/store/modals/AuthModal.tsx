@@ -24,6 +24,7 @@ import {
 } from "firebase/database";
 import { useStore } from "@/context/StoreContext";
 import { checkDeposit, fallbackDepositAddress } from "@/lib/deposit.functions";
+import { claimSignupReferral } from "@/lib/wallet.functions";
 import { emailShell, sendMail } from "@/lib/mailer";
 import { Emo } from "@/components/store/Emo";
 import { Sheet, inputCls } from "./ui";
@@ -81,35 +82,12 @@ export function AuthModal() {
         const res = await createUserWithEmailAndPassword(auth, mail, pass);
         await updateProfile(res.user, { displayName: name });
         const myRefCode = (name.slice(0, 3) + Math.floor(100 + Math.random() * 900)).toUpperCase();
-        let wallet = 0;
-        let refBy = "";
-        let usedRef = "";
+        await update(ref(db, `users/${res.user.uid}`), { name, email: mail, myRefCode });
         if (refCode.trim()) {
-          const snap = await get(
-            query(ref(db, "users"), orderByChild("myRefCode"), equalTo(refCode.trim().toUpperCase())),
-          );
-          if (snap.exists()) {
-            const key = Object.keys(snap.val())[0]!;
-            const referrer = snap.val()[key];
-            refBy = key;
-            usedRef = refCode.trim().toUpperCase();
-            await set(ref(db, `users/${key}/wallet`), (Number(referrer.wallet) || 0) + 20);
-            await push(ref(db, `users/${key}/history`), {
-              type: "Referral",
-              amount: 20,
-              desc: `User ${name} joined`,
-              date: new Date().toISOString(),
-            });
-            wallet = 20;
-          }
+          await claimSignupReferral({
+            data: { idToken: await res.user.getIdToken(), code: refCode.trim(), name },
+          }).catch(() => undefined);
         }
-        await update(ref(db, `users/${res.user.uid}`), {
-          name,
-          email: mail,
-          wallet,
-          myRefCode,
-          ...(refBy ? { refBy, usedRef } : {}),
-        });
         showSuccess("Account created", "Welcome to Silvex AI!");
       } else {
         await signInWithEmailAndPassword(auth, mail, pass);
@@ -172,7 +150,6 @@ export function AuthModal() {
       await update(ref(db, `users/${u.uid}`), {
         name: u.displayName || u.email?.split("@")[0] || "User",
         email: u.email || "",
-        wallet: 0,
         myRefCode,
       });
     }
