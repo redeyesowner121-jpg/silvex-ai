@@ -24,6 +24,7 @@ import {
 import { useStore } from "@/context/StoreContext";
 import { checkDeposit, fallbackDepositAddress } from "@/lib/deposit.functions";
 import { checkDepositLink, createDepositLink } from "@/lib/razorpay.functions";
+import { submitCryptoDeposit } from "@/lib/wallet.functions";
 import { binanceInfo, verifyBinanceDeposit, verifyBinancePay } from "@/lib/binance.functions";
 import { Emo } from "@/components/store/Emo";
 import { Sheet, inputCls } from "./ui";
@@ -202,41 +203,13 @@ export function WalletModal() {
     if (!/^0x[0-9a-fA-F]{64}$/.test(hash)) return notify("Paste the full transaction hash");
     setChecking(true);
     try {
-      const claimed = await get(ref(db, `deposits/${hash}`));
-      if (claimed.exists()) return notify("This transaction has already been used.");
-
-      const res = await checkDeposit({ data: { hash, chain, address: depositAddress } });
+      const res = await submitCryptoDeposit({
+        data: { idToken: await user.getIdToken(), hash, chain: chain as "bep20" | "polygon", name: profile?.name ?? undefined },
+      });
       if (!res.ok) return notify(res.message);
-
-      const base = {
-        uid: user.uid,
-        name: profile?.name ?? user.email,
-        email: user.email,
-        amount: res.amount,
-        symbol: res.symbol,
-        chain: res.chain,
-        txHash: hash,
-        date: new Date().toISOString(),
-      };
-
-      if (res.status === "credited") {
-        await set(ref(db, `deposits/${hash}`), { ...base, status: "Credited" });
-        const w = await get(ref(db, `users/${user.uid}/wallet`));
-        await set(ref(db, `users/${user.uid}/wallet`), (Number(w.val()) || 0) + res.amount);
-        await push(ref(db, `users/${user.uid}/history`), {
-          type: "Deposit",
-          amount: res.amount,
-          desc: `${res.symbol} on ${res.chain}`,
-          date: base.date,
-        });
-        closeModal();
-        showSuccess("Balance added", `$${res.amount} credited to your wallet.`);
-      } else {
-        await set(ref(db, `deposits/${hash}`), { ...base, status: "Pending" });
-        await push(ref(db, "requests"), { ...base, type: "Deposit", utr: hash, status: "Pending" });
-        closeModal();
-        showSuccess("Sent for review", res.message);
-      }
+      closeModal();
+      if (res.credited) showSuccess("Balance added", `$${res.amount} credited to your wallet.`);
+      else showSuccess("Sent for review", res.message);
       setTxHash("");
     } catch (e) {
       notify(e instanceof Error ? e.message : "Could not check that transaction");

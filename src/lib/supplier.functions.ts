@@ -28,29 +28,6 @@ export const syncSupplier = createServerFn({ method: "POST" }).handler(async () 
   }
 });
 
-/** Buy a linked product from the supplier and get the delivery lines back. */
-export const buyFromSupplier = createServerFn({ method: "POST" })
-  .inputValidator((input: { productId: string; qty?: number; orderId?: string }) => input)
-  .handler(async ({ data }) => {
-    const { dbGet } = await import("./telegram.server");
-    const { supplierBuy } = await import("./supplier.server");
-    try {
-      const p = await dbGet<any>(`products/${data.productId}`);
-      const sid = String(p?.supplierId ?? "").trim();
-      if (!sid) return { ok: false as const, error: "This product is not linked to the supplier", items: [] };
-      const qty = Math.max(1, Math.min(20, Number(data.qty) || 1));
-      const items = await supplierBuy(
-        sid,
-        qty,
-        data.orderId || `req-${Date.now()}`,
-        String(p?.provider || "custom"),
-      );
-      return { ok: true as const, items };
-    } catch (err) {
-      return { ok: false as const, error: (err as Error).message, items: [] };
-    }
-  });
-
 /** Cheap background refresh (runs at most once every 5 minutes). */
 export const autoSyncSupplier = createServerFn({ method: "POST" }).handler(async () => {
   const { syncSupplierProducts } = await import("./supplier.server");
