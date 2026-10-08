@@ -1,0 +1,259 @@
+/**
+ * Every wallet change made from the website runs here, on the server, after
+ * checking the customer's login. Customers can no longer change their own
+ * balance from the browser — the database rules block it.
+ */
+import { dbGet, dbPatch, dbPush, dbPut, dbTransact, loadBotRuntime } from "./telegram.server";
+
+const round = (n: number) => Math.round(n * 100) / 100;
+const now = () => new Date().toISOString();
+
+/** Confirms a Firebase login token and returns the account id. */
+export async function verifyIdToken(idToken: string): Promise<{ uid: string; email: string }> {
+  const apiKey = process.env["FIREBASE_API_KEY"] || process.env["GOOGLE_API_KEY"] || "";
+  const res = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${apiKey}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ idToken }),
+  });
+  const info = res.ok ? await res.json() : null;
+  const uid: string | undefined = info?.users?.[0]?.localId;
+  if (!uid) throw new Error("Please log in again.");
+  return { uid, email: String(info.users[0].email || "") };
+}
+
+/** Adds (or removes, with a negative amount) money atomically. */
+async function addToWallet(uid: string, amount: number): Promise<number> {
+  const out = await dbTransact<number>(`users/${uid}/wallet`, (w) => round((Number(w) || 0) + amount));
+  return Number(out ?? 0);
+}
+
+async function history(uid: string, type: string, amount: number, desc: string) {
+  await dbPush(`users/${uid}/history`, { type, amount, desc, date: now() });
+}
+
+/* ---------------- Checkout ---------------- */
+
+export type CheckoutInput = {
+  items: { id: string; qty: number }[];
+  coupon?: string;
+  phone?: string;
+  note?: string;
+};
+
+export async function webCheckout(uid: string, email: string, input: CheckoutInput) {
+  await loadBotRuntime().catch(() => undefined);
+  const [products, flash, profile] = await Promise.all([
+    dbGet<Record<string, any>>("products"),
+    dbGet<{ pid?: string; price?: number; endTime?: number }>("site_settings/flash_sale").catch(() => null),
+    dbGet<any>(`users/${uid}`),
+  ]);
+  const flashOn = !!flash?.pid && Number(flash.endTime) > Date.now() && Number(flash.price) > 0;
+
+  // Prices always come from the database, never from the browser.
+  const lines = input.items
+    .map((i) => ({ id: String(i.id), qty: Math.max(1, Math.min(100, Math.floor(Number(i.qty) || 1))) }))
+    .filter((i) => products?.[i.id]);
+  if (!lines.length) throw new Error("Your cart is empty.");
+  const cart = lines.map((l) => {
+    const p = products![l.id];
+    if (p.soldOut) throw new Error(`${p.title} is out of stock`);
+    const price = flashOn && flash!.pid === l.id ? Number(flash!.price) : Number(p.price || 0);
+    return { ...p, id: l.id, qty: l.qty, price };
+  });
+  const subTotal = round(cart.reduce((s, i) => s + i.price * i.qty, 0));
+
+  let discount = 0;
+  const code = String(input.coupon || "").trim().toUpperCase();
+  if (code) {
+    const c = await dbGet<any>(`coupons/${code}`);
+    const used = Number(profile?.used_coupons?.[code]) || 0;
+    if (c && subTotal >= Number(c.minOrder || 0) && used < Number(c.maxUsage || 1)) {
+      discount = c.type === "percent" ? Math.round((subTotal * Number(c.value)) / 100) : Number(c.value);
+    }
+  }
+  const total = round(Math.max(0, subTotal - discount));
+
+  // Take the money first, atomically. Fails if the balance is too low.
+  const paid = await dbTransact<number>(`users/${uid}/wallet`, (w) => {
+    const cur = Number(w) || 0;
+    if (cur < total) return undefined;
+    return round(cur - total);
+  });
+  if (paid === undefined) throw new Error("Not enough wallet balance");
+
+  const orderId = "ORD" + Date.now();
+  const delivered: { title: string; content: string }[] = [];
+  const refunds: { title: string; missing: number; amount: number }[] = [];
+  let allDelivered = true;
+
+  for (const item of cart) {
+    try {
+      if (item.delivery === "supplier") {
+        const { supplierBuy } = await import("./supplier.server");
+        const got = await supplierBuy(String(item.supplierId ?? ""), item.qty, orderId, String(item.provider || "custom")).catch(() => [] as string[]);
+        got.forEach((content) => delivered.push({ title: item.title, content }));
+        for (const content of got) void dbPush(`usedStock/${item.id}`, { content, orderId, email, date: now() });
+        if (got.length < item.qty) {
+          if (!got.length) allDelivered = false;
+          else refunds.push({ title: item.title, missing: item.qty - got.length, amount: round((item.qty - got.length) * item.price) });
+        }
+        continue;
+      }
+      if (item.delivery === "repeat" && item.link) {
+        for (let n = 0; n < item.qty; n++) delivered.push({ title: item.title, content: item.link });
+        continue;
+      }
+      if (item.delivery === "auto") {
+        let taken: string[] = [];
+        await dbTransact<string[]>(`products/${item.id}/stock`, (cur) => {
+          const list = Array.isArray(cur) ? cur.filter(Boolean) : [];
+          if (list.length < item.qty) return undefined;
+          taken = list.slice(0, item.qty);
+          return list.slice(item.qty);
+        });
+        if (taken.length === item.qty) {
+          taken.forEach((content) => delivered.push({ title: item.title, content }));
+          await Promise.all(taken.map((content) => dbPush(`usedStock/${item.id}`, { content, orderId, email, date: now() })));
+          continue;
+        }
+      }
+    } catch {
+      /* treated as not delivered */
+    }
+    allDelivered = false;
+  }
+
+  for (const r of refunds) {
+    await addToWallet(uid, r.amount);
+    await history(uid, "Refund", r.amount, `Partial delivery: ${r.title} (${r.missing} undelivered)`);
+  }
+
+  const status = delivered.length && allDelivered ? "Completed" : "Pending";
+  const note = String(input.note || "").slice(0, 500);
+  await dbPut(`orders/${orderId}`, {
+    orderId,
+    uid,
+    email,
+    items: cart.map(({ stock, ...rest }) => rest),
+    subTotal,
+    couponDiscount: discount,
+    couponCode: discount > 0 ? code : null,
+    total,
+    phone: String(input.phone || "").slice(0, 30),
+    note: refunds.length
+      ? `${note ? note + " · " : ""}Partial delivery: ${refunds.map((r) => `${r.title} ${r.missing} refunded $${r.amount}`).join(", ")}`
+      : note,
+    delivered,
+    status,
+    date: now(),
+  });
+  await history(uid, "Purchase", total, `Order ${orderId.slice(-4)}`);
+  if (input.phone && input.phone !== profile?.phone) await dbPatch(`users/${uid}`, { phone: String(input.phone).slice(0, 30) });
+  if (discount > 0) await dbTransact<number>(`users/${uid}/used_coupons/${code}`, (v) => (Number(v) || 0) + 1);
+  await Promise.all(cart.map((i) => dbTransact<number>(`products/${i.id}/salesCount`, (c) => (Number(c) || 0) + 1).catch(() => undefined)));
+
+  // Referral commission for whoever invited this buyer (capped per friend).
+  try {
+    const refBy = String(profile?.refBy || "");
+    if (refBy && refBy !== uid) {
+      const { referralRate, referralCap } = await import("./referral");
+      const earned = Number(await dbGet<number>(`users/${refBy}/refEarned/${uid}`)) || 0;
+      const commission = round(Math.min(total * referralRate(), referralCap() - earned));
+      if (commission > 0) {
+        await addToWallet(refBy, commission);
+        await dbPut(`users/${refBy}/refEarned/${uid}`, round(earned + commission));
+        await history(refBy, "Referral commission", commission, "From a friend's purchase");
+      }
+    }
+  } catch {
+    /* never block an order on commission */
+  }
+
+  return {
+    ok: true as const,
+    orderId,
+    status,
+    total,
+    discount,
+    delivered,
+    refunded: round(refunds.reduce((s, r) => s + r.amount, 0)),
+    items: cart.map((i) => ({ title: i.title, qty: i.qty, price: i.price })),
+  };
+}
+
+/* ---------------- Cancel ---------------- */
+
+export async function cancelOrder(uid: string, orderId: string) {
+  let refund = 0;
+  const out = await dbTransact<any>(`orders/${orderId}`, (o) => {
+    if (!o || o.uid !== uid || o.status !== "Pending") return undefined;
+    refund = Number(o.total) || 0;
+    return { ...o, status: "Cancelled" };
+  });
+  if (!out) throw new Error("This order can no longer be cancelled.");
+  if (refund > 0) {
+    await addToWallet(uid, refund);
+    await history(uid, "Refund", refund, `Cancelled ${orderId.slice(-4)}`);
+  }
+  return { ok: true as const, refund };
+}
+
+/* ---------------- Crypto deposit ---------------- */
+
+export async function creditCryptoDeposit(
+  uid: string,
+  email: string,
+  input: { hash: string; chain: "bep20" | "polygon"; name?: string },
+) {
+  const c = (await dbGet<any>("site_settings/config")) || {};
+  const { defaultDepositAddress, verifyDepositOnChain } = await import("./deposit.server");
+  const address = String(c.depositAddress || defaultDepositAddress() || "");
+  if (!address) throw new Error("No deposit wallet is set up yet.");
+  const res = await verifyDepositOnChain(input.hash, input.chain, address);
+  if (!res.ok) return { ok: false as const, message: res.message };
+
+  const base = {
+    uid,
+    name: input.name || email,
+    email,
+    amount: res.amount,
+    symbol: res.symbol,
+    chain: res.chain,
+    txHash: input.hash,
+    date: now(),
+  };
+  // Claim the transaction once — a second claim gets nothing.
+  const claimed = await dbTransact<any>(`deposits/${input.hash}`, (cur) =>
+    cur ? undefined : { ...base, status: res.status === "credited" ? "Credited" : "Pending" },
+  );
+  if (!claimed) return { ok: false as const, message: "This transaction has already been used." };
+
+  if (res.status === "credited") {
+    await addToWallet(uid, res.amount);
+    await history(uid, "Deposit", res.amount, `${res.symbol} on ${res.chain}`);
+    return { ok: true as const, credited: true, amount: res.amount, message: "" };
+  }
+  await dbPush("requests", { ...base, type: "Deposit", utr: input.hash, status: "Pending" });
+  return { ok: true as const, credited: false, amount: res.amount, message: res.message };
+}
+
+/* ---------------- Signup referral ---------------- */
+
+export async function applySignupReferral(uid: string, name: string, code: string) {
+  const clean = code.trim().toUpperCase();
+  if (!clean) return { ok: false as const };
+  const me = (await dbGet<any>(`users/${uid}`)) || {};
+  if (me.refBonusDone) return { ok: false as const };
+  const all = (await dbGet<Record<string, any>>("users")) || {};
+  const key = Object.keys(all).find((k) => String(all[k]?.myRefCode || "").toUpperCase() === clean);
+  if (!key || key === uid) return { ok: false as const };
+  const fresh = await dbTransact<any>(`users/${uid}/refBonusDone`, (v) => (v ? undefined : true));
+  if (!fresh) return { ok: false as const };
+  await dbPatch(`users/${uid}`, { refBy: key, usedRef: clean });
+  await addToWallet(key, 20);
+  await history(key, "Referral", 20, `User ${name || "a friend"} joined`);
+  await addToWallet(uid, 20);
+  await history(uid, "Referral", 20, "Signup bonus");
+  return { ok: true as const };
+}
