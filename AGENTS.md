@@ -18,3 +18,4 @@ Pandora Digital provider added to PROVIDERS (id 'pandora', string product ids, I
 - Supplier orders send both `qty` and `quantity` — shops disagree on the field name and silently default to 1.
 - Supplier stock changes (back in stock, +5 or more with a 3h per-product cooldown, new imports) are announced via a background queue, combined into one digest when several change; Railway also runs a 2-minute supplier check timer.
 - Broadcasts run one at a time (`runBroadcast` lane), are tagged `_broadcast` so `tg()` can pause them on 429s, and shrink free-mode waves while customers use the bot — keeps live replies responsive.
+- Website wallet changes (checkout, cancel refunds, crypto deposits, signup referral) run server-side in src/lib/wallet.server.ts after verifying the Firebase ID token; Firebase rules forbid customers writing wallet/history/referral fields — prevents self-credited balances.
