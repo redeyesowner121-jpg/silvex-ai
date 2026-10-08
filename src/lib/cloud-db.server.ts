@@ -575,5 +575,5 @@ export async function cloudTransact<T, R = T>(
 
 /** Which data store the server uses. Flip DATA_BACKEND=cloud at switch-over. */
 export function usingCloud(): boolean {
-  return (process.env.DATA_BACKEND || "").toLowerCase() === "cloud";
+  return (process.env["DATA_BACKEND"] || "").toLowerCase() === "cloud";
 }
