@@ -25,12 +25,17 @@ async function resolveKey(request: Request): Promise<{ uid: string; user: any } 
   return { uid, user };
 }
 
+function unitPrice(p: any) {
+  const a = Number(p?.apiPrice);
+  return a > 0 ? a : Number(p?.price || 0);
+}
+
 function publicProduct(id: string, p: any) {
   const stock = Array.isArray(p.stock) ? p.stock.filter(Boolean).length : 0;
   return {
     id,
     title: p.title || "",
-    price: Number(p.price || 0),
+    price: unitPrice(p),
     category: p.category || "",
     delivery: p.delivery || "manual",
     inStock: p.soldOut ? false : p.delivery === "manual" || p.delivery === "repeat" ? true : stock > 0,
@@ -114,7 +119,7 @@ async function handle(request: Request, splat: string): Promise<Response> {
     if (!p) return json({ ok: false, error: "Product not found" }, 404);
     if (p.soldOut) return json({ ok: false, error: "Product is out of stock" }, 409);
 
-    const price = Number(p.price || 0) * qty;
+    const price = unitPrice(p) * qty;
     const balance = Number(user.wallet || 0);
     if (balance < price) {
       return json({ ok: false, error: "Insufficient balance", balance, required: price }, 402);
@@ -172,7 +177,7 @@ async function handle(request: Request, splat: string): Promise<Response> {
       orderId,
       uid,
       email: user.email || "",
-      items: [{ ...p, id: productId, qty, price: Number(p.price || 0) }],
+      items: [{ ...p, id: productId, qty, price: unitPrice(p) }],
       subTotal: price,
       couponDiscount: 0,
       total: price,
