@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Eye, EyeOff, Megaphone, PackagePlus, PackageX, Save, Search, Trash2 } from "lucide-react";
 import { providerName } from "@/lib/provider-names";
-import { get, push, ref, remove, set, update } from "firebase/database";
+import { get, push, ref, remove, set, update } from "@/lib/fb/database";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useStore, type Product } from "@/context/StoreContext";
 import { broadcastProductEvent } from "@/lib/broadcast.functions";

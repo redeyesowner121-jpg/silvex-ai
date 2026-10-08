@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { get, onValue, ref, update } from "firebase/database";
+import { get, onValue, ref, update } from "@/lib/fb/database";
 import { buildStatementCsv, downloadCsv } from "@/lib/statement";
 import { useStore } from "@/context/StoreContext";
 import { deliveryBlock, emailShell, sendMail } from "@/lib/mailer";

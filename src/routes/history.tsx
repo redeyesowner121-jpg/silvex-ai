@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { equalTo, get, onValue, orderByChild, query, ref } from "firebase/database";
+import { equalTo, get, onValue, orderByChild, query, ref } from "@/lib/fb/database";
 import { buildStatementCsv, downloadCsv } from "@/lib/statement";
 import { useStore } from "@/context/StoreContext";
 

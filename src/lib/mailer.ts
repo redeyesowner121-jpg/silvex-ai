@@ -1,4 +1,4 @@
-import { get, ref, type Database } from "firebase/database";
+import { get, ref, type Database } from "@/lib/fb/database";
 import { sendSmtpMail, type MailReceipt, type SmtpSettings } from "./mail.functions";
 
 export type MailConfig = SmtpSettings & { enabled?: boolean };

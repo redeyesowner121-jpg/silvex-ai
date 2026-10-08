@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { ref, remove, update } from "firebase/database";
+import { ref, remove, update } from "@/lib/fb/database";
 import { useStore, type Product } from "@/context/StoreContext";
 import { input, Empty } from "@/components/admin/shared";
 import {

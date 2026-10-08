@@ -9,7 +9,7 @@ import {
   signInWithRedirect,
   signOut,
   updateProfile,
-} from "firebase/auth";
+} from "@/lib/fb/auth";
 import {
   equalTo,
   get,
@@ -20,7 +20,7 @@ import {
   ref,
   set,
   update,
-} from "firebase/database";
+} from "@/lib/fb/database";
 import { useStore } from "@/context/StoreContext";
 import { checkDeposit, fallbackDepositAddress } from "@/lib/deposit.functions";
 import { checkDepositLink, createDepositLink } from "@/lib/razorpay.functions";

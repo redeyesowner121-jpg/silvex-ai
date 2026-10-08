@@ -1,5 +1,5 @@
 /**
- * Drop-in replacement for the few "firebase/database" calls the website uses.
+ * Drop-in replacement for the few "@/lib/fb/database" calls the website uses.
  * Every read/write goes to Lovable Cloud through server functions that apply
  * the store's access rules. Live listeners are refreshed by polling.
  */

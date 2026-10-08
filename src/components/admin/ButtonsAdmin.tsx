@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { onValue, ref, set, update } from "firebase/database";
+import { onValue, ref, set, update } from "@/lib/fb/database";
 import { Bot, Boxes, Check, Palette, Search, Smile, Type } from "lucide-react";
 import { useStore } from "@/context/StoreContext";
 import {

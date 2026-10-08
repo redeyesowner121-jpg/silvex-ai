@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { onValue, ref } from "firebase/database";
+import { onValue, ref } from "@/lib/fb/database";
 import { AdminPageShell } from "@/components/admin/AdminPageShell";
 import { CouponsAdmin } from "@/components/admin/CouponsAdmin";
 import { useStore } from "@/context/StoreContext";

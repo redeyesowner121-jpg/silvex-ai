@@ -1,5 +1,5 @@
 /**
- * Drop-in replacement for the "firebase/auth" calls the website uses,
+ * Drop-in replacement for the "@/lib/fb/auth" calls the website uses,
  * backed by Lovable Cloud logins. `user.uid` is the customer's store id.
  */
 import { supabase } from "@/integrations/supabase/client";
