@@ -16,9 +16,7 @@ import { StoreProvider } from "@/context/StoreContext";
 import { AppShell } from "@/components/store/AppShell";
 import { Toaster } from "@/components/ui/sonner";
 import { PushPrompt } from "@/components/store/PushPrompt";
-import { getFirebaseConfig } from "@/lib/firebase.functions";
 import { getStoreSnapshot } from "@/lib/store-snapshot.functions";
-import { primeFirebaseConfig } from "@/lib/firebase";
 import { primeStoreSnapshot } from "@/context/store-prime";
 
 function NotFoundComponent() {
@@ -116,16 +114,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "icon", href: "/favicon.png", type: "image/png" },
       { rel: "manifest", href: "/manifest.webmanifest" },
       { rel: "apple-touch-icon", href: "/favicon.png" },
-      { rel: "preconnect", href: "https://silvex-ai-default-rtdb.firebaseio.com" },
-      { rel: "preconnect", href: "https://identitytoolkit.googleapis.com" },
     ],
   }),
   loader: async () => {
-    const [config, snapshot] = await Promise.all([
-      getFirebaseConfig(),
-      getStoreSnapshot().catch(() => null),
-    ]);
-    return { config, snapshot };
+    const snapshot = await getStoreSnapshot().catch(() => null);
+    return { snapshot };
   },
   shellComponent: RootShell,
   component: RootComponent,
@@ -166,7 +159,6 @@ function RootComponent() {
   }, []);
   // Settings and shop data travel with the page, so the store shows instantly.
   const data = Route.useLoaderData();
-  primeFirebaseConfig(data?.config);
   primeStoreSnapshot(data?.snapshot);
 
   return (

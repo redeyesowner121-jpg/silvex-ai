@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { get, ref, set } from "firebase/database";
+import { get, ref, set } from "@/lib/fb/database";
 import { useStore } from "@/context/StoreContext";
 import { sendSmtpMail } from "@/lib/mail.functions";
 import { emailShell } from "@/lib/mailer";

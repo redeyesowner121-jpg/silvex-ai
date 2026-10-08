@@ -10,16 +10,10 @@ const now = () => new Date().toISOString();
 
 /** Confirms a Firebase login token and returns the account id. */
 export async function verifyIdToken(idToken: string): Promise<{ uid: string; email: string }> {
-  const apiKey = process.env["FIREBASE_API_KEY"] || process.env["GOOGLE_API_KEY"] || "";
-  const res = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${apiKey}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ idToken }),
-  });
-  const info = res.ok ? await res.json() : null;
-  const uid: string | undefined = info?.users?.[0]?.localId;
-  if (!uid) throw new Error("Please log in again.");
-  return { uid, email: String(info.users[0].email || "") };
+  const { callerFromToken } = await import("./cloud-access.server");
+  const who = await callerFromToken(idToken);
+  if (!who) throw new Error("Please log in again.");
+  return { uid: who.uid, email: who.email };
 }
 
 /** Adds (or removes, with a negative amount) money atomically. */

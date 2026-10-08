@@ -9,8 +9,8 @@ import {
   type ReactNode,
   type Context,
 } from "react";
-import type { Auth, User } from "firebase/auth";
-import type { Database } from "firebase/database";
+import type { Auth, User } from "@/lib/fb/auth";
+import type { Database } from "@/lib/fb/database";
 import { toast } from "sonner";
 import { getFirebase } from "@/lib/firebase";
 import { isOriginProject } from "@/lib/origin";
@@ -312,8 +312,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
     (async () => {
       const { auth: a, db: d } = await getFirebase();
-      const { onAuthStateChanged } = await import("firebase/auth");
-      const { ref, onValue } = await import("firebase/database");
+      const { onAuthStateChanged } = await import("@/lib/fb/auth");
+      const { ref, onValue } = await import("@/lib/fb/database");
       if (!mounted.current) return;
       setAuth(a);
       setDb(d);
@@ -389,7 +389,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (adminNow) {
       let offs: Array<() => void> = [];
       let alive = true;
-      void import("firebase/database").then(({ ref, onValue }) => {
+      void import("@/lib/fb/database").then(({ ref, onValue }) => {
         if (!alive) return;
         offs.push(onValue(ref(db, "products"), (s) => setProducts(toList(s.val() || {})), () => undefined));
         offs.push(onValue(ref(db, "site_settings/config"), (s) => applyCfg((s.val() || {}) as SiteConfig), () => undefined));
@@ -429,7 +429,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
     let unsub = () => {};
     (async () => {
-      const { ref, onValue, update, get } = await import("firebase/database");
+      const { ref, onValue, update, get } = await import("@/lib/fb/database");
 
       // Self-heal: if the account exists in Firebase Auth but has no profile row
       // (interrupted signup, Google redirect sign-in, etc.) create it now so the

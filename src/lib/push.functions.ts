@@ -15,22 +15,14 @@ const schema = z.object({
 export const savePushSubscription = createServerFn({ method: "POST" })
   .inputValidator((d) => schema.parse(d))
   .handler(async ({ data }) => {
-    const apiKey = process.env["FIREBASE_API_KEY"] || process.env["GOOGLE_API_KEY"] || "";
-    const res = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${apiKey}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ idToken: data.idToken }),
-    });
-    const info = res.ok ? await res.json() : null;
-    const uid: string | undefined = info?.users?.[0]?.localId;
-    if (!uid) return { ok: false as const, error: "Please sign in again." };
-
+    const { callerFromToken } = await import("./cloud-access.server");
+    const who = await callerFromToken(data.idToken);
+    if (!who) return { ok: false as const, error: "Please sign in again." };
+    const uid = who.uid;
     const { dbGet, dbPut } = await import("./telegram.server");
     const { subKey } = await import("./push.server");
     const profile = await dbGet<{ isAdmin?: boolean; isOwner?: boolean }>(`users/${uid}`);
-    const email = String(info.users[0].email || "").toLowerCase();
-    const admin =
-      !!profile?.isAdmin || !!profile?.isOwner || email === "red.eyes.owner121@gmail.com";
+    const admin = who.staff || !!profile?.isAdmin || !!profile?.isOwner;
     await dbPut(`pushSubs/${uid}/${subKey(data.sub.endpoint)}`, { ...data.sub, admin, at: Date.now() });
     return { ok: true as const, admin };
   });
@@ -41,19 +33,9 @@ export const getVapidKey = createServerFn({ method: "GET" }).handler(async () =>
 });
 
 async function verify(idToken: string) {
-  const apiKey = process.env["FIREBASE_API_KEY"] || process.env["GOOGLE_API_KEY"] || "";
-  const res = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${apiKey}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ idToken }),
-  });
-  const info = res.ok ? await res.json() : null;
-  const uid: string | undefined = info?.users?.[0]?.localId;
-  if (!uid) return null;
-  const { dbGet } = await import("./telegram.server");
-  const profile = await dbGet<{ isAdmin?: boolean; isOwner?: boolean }>(`users/${uid}`);
-  const email = String(info.users[0].email || "").toLowerCase();
-  return { uid, admin: !!profile?.isAdmin || !!profile?.isOwner || email === "red.eyes.owner121@gmail.com" };
+  const { callerFromToken } = await import("./cloud-access.server");
+  const who = await callerFromToken(idToken);
+  return who ? { uid: who.uid, admin: who.staff } : null;
 }
 
 /** Admin "Send notification" → pop-up on every subscribed phone. */

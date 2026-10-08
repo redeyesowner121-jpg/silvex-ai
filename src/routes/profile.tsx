@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { equalTo, get, orderByChild, query, ref, update } from "firebase/database";
-import { EmailAuthProvider, reauthenticateWithCredential, signOut, updatePassword, verifyBeforeUpdateEmail } from "firebase/auth";
+import { equalTo, get, orderByChild, query, ref, update } from "@/lib/fb/database";
+import { EmailAuthProvider, reauthenticateWithCredential, signOut, updatePassword, verifyBeforeUpdateEmail } from "@/lib/fb/auth";
 import { useStore } from "@/context/StoreContext";
 import { Emo } from "@/components/store/Emo";
 import {

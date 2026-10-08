@@ -17,6 +17,7 @@ import { Route as HistoryRouteImport } from './routes/history'
 import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as ProductsRouteImport } from './routes/products'
 import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminApiShopsRouteImport } from './routes/admin.api-shops'
 import { Route as AdminBotButtonsRouteImport } from './routes/admin.bot-buttons'
@@ -71,6 +72,11 @@ const ProductsRoute = ProductsRouteImport.update({
 const ProfileRoute = ProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
@@ -160,6 +166,7 @@ export interface FileRoutesByFullPath {
   '/orders': typeof OrdersRoute
   '/products': typeof ProductsRoute
   '/profile': typeof ProfileRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/admin/api-shops': typeof AdminApiShopsRoute
   '/admin/bot-buttons': typeof AdminBotButtonsRoute
   '/admin/coupons': typeof AdminCouponsRoute
@@ -184,6 +191,7 @@ export interface FileRoutesByTo {
   '/orders': typeof OrdersRoute
   '/products': typeof ProductsRoute
   '/profile': typeof ProfileRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/admin/api-shops': typeof AdminApiShopsRoute
   '/admin/bot-buttons': typeof AdminBotButtonsRoute
   '/admin/coupons': typeof AdminCouponsRoute
@@ -210,6 +218,7 @@ export interface FileRoutesById {
   '/orders': typeof OrdersRoute
   '/products': typeof ProductsRoute
   '/profile': typeof ProfileRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/admin/api-shops': typeof AdminApiShopsRoute
   '/admin/bot-buttons': typeof AdminBotButtonsRoute
   '/admin/coupons': typeof AdminCouponsRoute
@@ -237,6 +246,7 @@ export interface FileRouteTypes {
     | '/orders'
     | '/products'
     | '/profile'
+    | '/reset-password'
     | '/admin/api-shops'
     | '/admin/bot-buttons'
     | '/admin/coupons'
@@ -261,6 +271,7 @@ export interface FileRouteTypes {
     | '/orders'
     | '/products'
     | '/profile'
+    | '/reset-password'
     | '/admin/api-shops'
     | '/admin/bot-buttons'
     | '/admin/coupons'
@@ -286,6 +297,7 @@ export interface FileRouteTypes {
     | '/orders'
     | '/products'
     | '/profile'
+    | '/reset-password'
     | '/admin/api-shops'
     | '/admin/bot-buttons'
     | '/admin/coupons'
@@ -312,6 +324,7 @@ export interface RootRouteChildren {
   OrdersRoute: typeof OrdersRoute
   ProductsRoute: typeof ProductsRoute
   ProfileRoute: typeof ProfileRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   ApiPublicBinanceCheckRoute: typeof ApiPublicBinanceCheckRoute
   ApiPublicProductImgIdRoute: typeof ApiPublicProductImgIdRoute
   ApiPublicRazorpayWebhookRoute: typeof ApiPublicRazorpayWebhookRoute
@@ -375,6 +388,13 @@ declare module '@tanstack/react-router' {
       path: '/profile'
       fullPath: '/profile'
       preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/': {
@@ -522,6 +542,7 @@ const rootRouteChildren: RootRouteChildren = {
   OrdersRoute: OrdersRoute,
   ProductsRoute: ProductsRoute,
   ProfileRoute: ProfileRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   ApiPublicBinanceCheckRoute: ApiPublicBinanceCheckRoute,
   ApiPublicProductImgIdRoute: ApiPublicProductImgIdRoute,
   ApiPublicRazorpayWebhookRoute: ApiPublicRazorpayWebhookRoute,

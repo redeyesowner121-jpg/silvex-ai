@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { ref, update, set } from "firebase/database";
+import { ref, update, set } from "@/lib/fb/database";
 import { Download } from "lucide-react";
 import { useStore } from "@/context/StoreContext";
 import { websiteUrl } from "@/lib/referral";
