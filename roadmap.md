@@ -71,7 +71,7 @@ Phase 4 — polish
 - [x] 1. Enable Lovable Cloud + schema (tables, roles, RLS, transaction functions)
 - [x] 2. Server data layer (src/lib/cloud-db.server.ts) behind DATA_BACKEND=cloud — tested on the copy
 - [x] 3. Bot + server code on new layer (all db* calls, snapshot, product images switch with the flag)
-- [ ] 4. Website logins + live data + admin pages
-- [~] 5. Data copy script + verification (test copy done: 668 customers, $609.43, 246 orders match; re-run with --wipe at switch)
-- [ ] 6. Switch over (Railway settings, webhook, live test) — needs user go-ahead for downtime
-- [ ] 7. Remove Firebase code/secrets, update REMIX.md + memory
+- [x] 4. Website logins + live data + admin pages (Cloud logins, rules in server code, owner admin tested)
+- [x] 5. Fresh copy loaded 14:2x UTC Oct 8 (668 customers, $606.22, 248 orders match)
+- [~] 6. Switch over: Railway settings set; waiting for the update to go live, then re-copy + live test
+- [~] 7. Website Firebase removed; server rollback path + FIREBASE_* secrets removed after live check

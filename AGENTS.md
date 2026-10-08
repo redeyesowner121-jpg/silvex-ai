@@ -25,3 +25,4 @@ Pandora Digital provider added to PROVIDERS (id 'pandora', string product ids, I
 - scripts/copy-firebase-to-cloud.py reloads Cloud from a Firebase JSON export in DO-block batches (sandbox DB role is insert-only, so wipes go through run_sql).
 
 - Server data access goes through Firebase-style paths in telegram.server db* helpers; `DATA_BACKEND=cloud` routes them to src/lib/cloud-db.server.ts (users/products/orders/site_settings → tables, everything else → kv_store, CAS on updated_at). Why: switch the bot over with one setting, no rewrite of ~300 calls.
+- Website data/logins use src/lib/fb/{auth,database}.ts (Firebase-shaped API over Lovable Cloud auth + cloudRead/cloudWrite server fns); access rules live in src/lib/cloud-access.server.ts. Why: kept 28 pages unchanged while removing Firebase.
