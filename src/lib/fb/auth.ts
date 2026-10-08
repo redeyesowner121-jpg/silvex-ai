@@ -167,6 +167,18 @@ export class GoogleAuthProvider {
 }
 
 async function google(): Promise<UserCredential> {
+  // The managed sign-in helper only works on Lovable-hosted addresses; Railway
+  // (silvex-ai.com) has no /~oauth handler, so use the direct sign-in there.
+  const host = window.location.hostname;
+  const lovableHosted = /\.lovable\.app$|\.lovableproject\.com$|^localhost$/.test(host);
+  if (!lovableHosted) {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: window.location.origin, queryParams: { prompt: "select_account" } },
+    });
+    if (error) throw new AuthError("auth/operation-not-allowed", error.message);
+    return new Promise<UserCredential>(() => undefined);
+  }
   const result = await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin });
   if (result.error) throw new AuthError("auth/error", String((result.error as any)?.message || result.error));
   if (result.redirected) return new Promise<UserCredential>(() => undefined);
