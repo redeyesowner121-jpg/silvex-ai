@@ -111,27 +111,7 @@ export function AuthModal() {
     setBusy(true);
     try {
       await sendPasswordResetEmail(auth, mail, { url: window.location.origin });
-      // Branded heads-up through the store's own mailbox, so the customer
-      // recognises the reset email (which comes from Firebase's address).
-      const html = emailShell(
-        "Silvex AI",
-        "Password reset on its way",
-        `<p>We received a password reset request for <b>${mail}</b>.</p>
-         <p>The reset link arrives in a separate email from <b>noreply@silvex-ai.firebaseapp.com</b> — it can take a minute, and sometimes lands in the <b>Spam</b> folder, so please check there too.</p>
-         <p>If you didn't ask for this, you can safely ignore both emails.</p>`,
-        { preheader: "Your Silvex AI password reset link is on its way", badge: "Password reset" },
-      );
-      const sent = await sendMail(db, {
-        to: mail,
-        subject: "Silvex AI — password reset link sent",
-        html,
-      });
-      showSuccess(
-        "Email sent",
-        sent.ok
-          ? "Check your inbox (and Spam folder) for the reset link."
-          : "Reset link sent — check your inbox and Spam folder.",
-      );
+      showSuccess("Email sent", "Check your inbox (and Spam folder) for the reset link.");
     } catch (e) {
       notify(friendly(e));
     } finally {
