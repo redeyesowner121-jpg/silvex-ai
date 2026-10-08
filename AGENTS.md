@@ -23,3 +23,5 @@ Pandora Digital provider added to PROVIDERS (id 'pandora', string product ids, I
 - Admin rights in rules require both the `isAdmin` flag and a permanent-owner email — a stray `isAdmin` flag alone grants nothing.
 - Lovable Cloud schema: customers (legacy_uid ↔ Firebase uid, auth_user_id nullable for Telegram-only), roles in user_roles via has_role/is_staff, stock in private product_stock claimed by claim_stock(), money via wallet_adjust()/claim_payment() — row-locked atomic changes replace Firebase ETag transactions; bot-internal nodes live in kv_store keyed by path.
 - scripts/copy-firebase-to-cloud.py reloads Cloud from a Firebase JSON export in DO-block batches (sandbox DB role is insert-only, so wipes go through run_sql).
+
+- Server data access goes through Firebase-style paths in telegram.server db* helpers; `DATA_BACKEND=cloud` routes them to src/lib/cloud-db.server.ts (users/products/orders/site_settings → tables, everything else → kv_store, CAS on updated_at). Why: switch the bot over with one setting, no rewrite of ~300 calls.

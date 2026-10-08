@@ -19,9 +19,14 @@ function dbUrl() {
 
 async function logoFor(id: string): Promise<string | null> {
   if (!cache || Date.now() - cache.at > TTL) {
-    const res = await fetch(`${dbUrl()}/products.json`, { signal: AbortSignal.timeout(6000) });
-    if (!res.ok) return null;
-    const products = (await res.json()) as Record<string, { logo?: string }> | null;
+    const cdb = await import("@/lib/cloud-db.server");
+    let products: Record<string, { logo?: string }> | null;
+    if (cdb.usingCloud()) products = await cdb.cloudGet("products");
+    else {
+      const res = await fetch(`${dbUrl()}/products.json`, { signal: AbortSignal.timeout(6000) });
+      if (!res.ok) return null;
+      products = (await res.json()) as Record<string, { logo?: string }> | null;
+    }
     if (!products) return null;
     const slim: Record<string, { logo?: string | undefined }> = {};
     for (const [k, v] of Object.entries(products)) slim[k] = { logo: v?.logo };

@@ -35,6 +35,8 @@ function dbUrl() {
 
 async function read(path: string) {
   try {
+    const cdb = await import("./cloud-db.server");
+    if (cdb.usingCloud()) return await cdb.cloudGet(path);
     const res = await fetch(`${dbUrl()}/${path}.json`, { signal: AbortSignal.timeout(4000) });
     if (!res.ok) return null;
     return await res.json();

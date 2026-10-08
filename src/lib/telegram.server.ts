@@ -1,3 +1,4 @@
+import { cloudCreateIfAbsent, cloudGet, cloudPatch, cloudPush, cloudPut, cloudTransact, usingCloud } from "./cloud-db.server";
 /** Server-only helpers for the Telegram bot + Firebase Realtime Database REST access. */
 import { createHash, timingSafeEqual } from "crypto";
 import { isOriginProject } from "./origin";
@@ -306,6 +307,7 @@ export function safeEqual(a: string, b: string): boolean {
 /* ---------------- Realtime Database (REST) ---------------- */
 
 export async function dbGet<T = any>(path: string): Promise<T | null> {
+  if (usingCloud()) return cloudGet<T>(path);
   const res = await fetch(`${rtdbUrl()}/${path}.json`);
   if (!res.ok) return null;
   return (await res.json()) as T | null;
@@ -353,6 +355,7 @@ async function dbWrite(method: string, path: string, value: unknown): Promise<vo
 }
 
 export async function dbPut(path: string, value: unknown): Promise<void> {
+  if (usingCloud()) return cloudPut(path, value);
   await dbWrite("PUT", path, value);
 }
 
@@ -362,6 +365,7 @@ export async function dbPut(path: string, value: unknown): Promise<void> {
  * reach different server instances at exactly the same time.
  */
 export async function dbCreateIfAbsent(path: string, value: unknown): Promise<boolean> {
+  if (usingCloud()) return cloudCreateIfAbsent(path, value);
   const url = `${rtdbUrl()}/${path}.json`;
   const current = await fetch(url, { headers: { "X-Firebase-ETag": "true" } });
   if (!current.ok) throw new Error(`Database claim read failed (${current.status})`);
@@ -394,6 +398,7 @@ export async function dbTransact<T, R = T>(
   update: (current: T | null) => R | undefined,
   tries = 8,
 ): Promise<R | undefined> {
+  if (usingCloud()) return cloudTransact<T, R>(path, update, tries);
   const url = `${rtdbUrl()}/${path}.json`;
   for (let i = 0; i < tries; i++) {
     const cur = await fetch(url, { headers: { "X-Firebase-ETag": "true" } });
@@ -421,6 +426,7 @@ export async function dbTransact<T, R = T>(
 
 
 export async function dbPatch(path: string, value: Record<string, unknown>): Promise<void> {
+  if (usingCloud()) return cloudPatch(path, value);
   await dbWrite("PATCH", path, value);
 }
 
@@ -428,6 +434,10 @@ export async function dbPush(path: string, value: unknown): Promise<void> {
   // Every wallet change writes a history entry — tell the bot admins about it.
   const hm = /^users\/([^/]+)\/history$/.exec(path);
   if (hm && value && typeof value === "object") void notifyBalanceChange(hm[1]!, value as any).catch(() => undefined);
+  if (usingCloud()) {
+    await cloudPush(path, value);
+    return;
+  }
   await fetch(`${rtdbUrl()}/${path}.json?print=silent`, {
     method: "POST",
     body: JSON.stringify(value),

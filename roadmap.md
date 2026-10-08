@@ -69,8 +69,8 @@ Phase 4 — polish
 
 ## Firebase → Lovable Cloud migration
 - [x] 1. Enable Lovable Cloud + schema (tables, roles, RLS, transaction functions)
-- [ ] 2. Server data layer replacing dbGet/dbPut/dbPatch/dbPush/dbTransact
-- [ ] 3. Bot + server code on new layer
+- [x] 2. Server data layer (src/lib/cloud-db.server.ts) behind DATA_BACKEND=cloud — tested on the copy
+- [x] 3. Bot + server code on new layer (all db* calls, snapshot, product images switch with the flag)
 - [ ] 4. Website logins + live data + admin pages
 - [~] 5. Data copy script + verification (test copy done: 668 customers, $609.43, 246 orders match; re-run with --wipe at switch)
 - [ ] 6. Switch over (Railway settings, webhook, live test) — needs user go-ahead for downtime
