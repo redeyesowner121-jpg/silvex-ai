@@ -69,3 +69,26 @@ export const claimSignupReferral = createServerFn({ method: "POST" })
       return { ok: false as const };
     }
   });
+
+/** Web admin changed a balance in the browser: tell the bot admins. */
+export const reportBalanceChange = createServerFn({ method: "POST" })
+  .inputValidator((d) =>
+    z
+      .object({
+        idToken: token,
+        uid: z.string().min(1).max(200),
+        type: z.string().max(60),
+        amount: z.number(),
+        desc: z.string().max(500),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const { verifyIdToken } = await import("./wallet.server");
+    const { isPermanentOwner } = await import("./owners");
+    const who = await verifyIdToken(data.idToken);
+    if (!isPermanentOwner(who.email)) return { ok: false as const };
+    const { notifyBalanceChange } = await import("./telegram.server");
+    await notifyBalanceChange(data.uid, { type: data.type, amount: data.amount, desc: data.desc, by: who.email });
+    return { ok: true as const };
+  });

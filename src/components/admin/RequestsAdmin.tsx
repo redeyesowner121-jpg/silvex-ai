@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { get, onValue, push, ref, set, update } from "firebase/database";
 import { useStore } from "@/context/StoreContext";
+import { reportBalanceChange } from "@/lib/wallet.functions";
 import { Empty, type RequestRow } from "@/components/admin/shared";
 
 export function RequestsAdmin() {
-  const { db, notify } = useStore();
+  const { db, notify, user } = useStore();
   const [requests, setRequests] = useState<RequestRow[]>([]);
 
   useEffect(() => {
@@ -25,6 +26,8 @@ export function RequestsAdmin() {
       if (next < 0) return notify("User has insufficient balance");
       await set(ref(db, `users/${request.uid}/wallet`), next);
       await push(ref(db, `users/${request.uid}/history`), { type: request.type, amount: request.amount, desc: `${request.type} approved`, date: new Date().toISOString() });
+      const delta = request.type === "Deposit" ? Number(request.amount) : -Number(request.amount);
+      void user?.getIdToken().then((idToken) => reportBalanceChange({ data: { idToken, uid: request.uid, type: request.type, amount: delta, desc: `${request.type} request approved` } })).catch(() => undefined);
     }
     await update(ref(db, `requests/${request.id}`), { status: approve ? "Approved" : "Rejected" });
     notify(approve ? "Approved" : "Rejected");
