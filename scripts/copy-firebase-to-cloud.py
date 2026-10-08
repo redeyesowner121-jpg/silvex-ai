@@ -51,7 +51,7 @@ out = ["BEGIN;"] + ([] if not WIPE else [
 
 users = d.get("users") or {}
 seen_tg, seen_ref, seen_key = set(), set(), set()
-KNOWN = {"wallet","email","myRefCode","name","joined","telegramChatId","source","history","apiEnabled","apiKey","refBy","usedRef","phone","isAdmin","isOwner","refEarned","alerts","used_coupons","totalDeposit","refBonusDone","telegramUsername"}
+KNOWN = {"wallet","email","myRefCode","name","joined","telegramChatId","source","history","apiEnabled","apiKey","refBy","usedRef","phone","isAdmin","isOwner","refEarned","alerts","used_coupons","totalDeposit","refBonusDone","telegramUsername"} - {"isAdmin","isOwner"}
 for uid, u in users.items():
     if not isinstance(u, dict):
         continue
@@ -82,7 +82,7 @@ for uid, u in users.items():
 
 if WIPE: out.append("UPDATE public.customers c SET auth_user_id = k.auth_user_id FROM keep_links k WHERE c.legacy_uid = k.legacy_uid;")
 
-PKNOWN = {"title","desc","price","botPrice","apiPrice","type","delivery","link","logo","hidden","hideWeb","hideBot","soldOut","locked","salesCount","provider","providerName","supplierId","supplierPrice","supplierStock","supplierSyncedAt","markup","stock","reviews","usedStock"}
+PKNOWN = {"title","desc","price","botPrice","apiPrice","type","delivery","link","logo","hidden","hideWeb","hideBot","soldOut","locked","salesCount","provider","providerName","supplierId","supplierPrice","supplierStock","supplierSyncedAt","markup","stock"}
 for pid, p in (d.get("products") or {}).items():
     if not isinstance(p, dict): continue
     extra = {k: v for k, v in p.items() if k not in PKNOWN}
@@ -115,7 +115,7 @@ for pid, recs in (d.get("usedStock") or {}).items():
         if isinstance(r, dict) and r.get("content"):
             out.append(f"INSERT INTO public.used_stock (product_id,content,order_id,email,created_at) VALUES ({q(pid)},{q(r['content'])},{q(r.get('orderId'))},{q(r.get('email'))},{q(iso(r.get('date')) or '2026-01-01')});")
 
-OKNOWN = {"orderId","uid","email","status","total","couponDiscount","coupon","source","items","delivered","note","date"}
+OKNOWN = {"uid","email","status","total","couponDiscount","coupon","source","items","delivered","note","date"}
 for oid, o in (d.get("orders") or {}).items():
     if not isinstance(o, dict): continue
     items = o.get("items") or []
@@ -148,10 +148,10 @@ for nid, n in (d.get("notifications") or {}).items():
 
 PUBLIC_SETTINGS = {"banner", "flash_sale", "button_colors"}
 for k, v in (d.get("site_settings") or {}).items():
-    out.append(f"INSERT INTO public.settings (key,value,is_public) VALUES ({q(k)},{q(v if isinstance(v,(dict,list)) else {'value': v})},{q(k in PUBLIC_SETTINGS)});")
+    out.append(f"INSERT INTO public.settings (key,value,is_public) VALUES ({q(k)},{q(v if isinstance(v,(dict,list)) else {'__v': v})},{q(k in PUBLIC_SETTINGS)});")
 
 # Everything else is bot-internal: store one row per child under its path.
-HANDLED = {"users","products","reviews","usedStock","orders","deposits","razorpayPaymentClaims","razorpayPayments","razorpayLinks","requests","pushSubs","notifications","site_settings","apiKeys"}
+HANDLED = {"users","products","orders","site_settings"}  # the rest is also kept whole in kv_store for the bot
 for top, val in d.items():
     if top in HANDLED: continue
     if isinstance(val, dict):
