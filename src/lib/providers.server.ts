@@ -8,7 +8,7 @@ import { dbGet, dbPatch, dbPut } from "./telegram.server";
 export type ProviderId = "qamify" | "safwan" | "mmostore" | "w2premium" | "eklas" | "elite" | "canboso" | "pandora" | "safwantiger" | "cupponhub" | "custom";
 
 /** Shops that were removed — their imported products get cleaned up. */
-export const RETIRED_PROVIDERS = ["canboso", "custom", "elite", "w2premium", "safwan", "eklas", "pandora"];
+export const RETIRED_PROVIDERS = ["canboso", "custom", "elite", "w2premium", "safwan", "pandora"];
 
 export type ProviderShape = {
   productsPath: string;
@@ -97,6 +97,21 @@ export const PROVIDERS: ProviderDef[] = [
       refField: "",
       stringProductId: true,
       idempotencyHeader: true,
+    },
+  },
+  {
+    id: "eklas",
+    name: "Eklas",
+    url: "https://api.eklas.dev/v1",
+    key: "tgb_O0aZZYoosD_gMgAo8DCGcNJyVO7YwrnkpAeRMd4z21z8kXEQ",
+    docs: "https://docs.eklas.dev",
+    markup: 130,
+    shape: {
+      productsPath: "products",
+      balancePath: "balance",
+      orderPath: "orders",
+      qtyField: "quantity",
+      refField: "client_order_id",
     },
   },
 ];
