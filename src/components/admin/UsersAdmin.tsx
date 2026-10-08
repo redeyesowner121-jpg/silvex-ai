@@ -7,6 +7,7 @@ import { exportOrdersCsv, exportOrdersPdf, type ExportRow } from "@/lib/export-o
 import { sendSmtpMail } from "@/lib/mail.functions";
 import { deliveryBlock, emailShell, sendMail } from "@/lib/mailer";
 import { notifyTelegramOrder } from "@/lib/telegram.functions";
+import { reportBalanceChange } from "@/lib/wallet.functions";
 import { input, Empty } from "@/components/admin/shared";
 
 
@@ -158,6 +159,14 @@ export function UsersAdmin() {
       by: user?.email || "",
       date: new Date().toISOString(),
     });
+    void user
+      ?.getIdToken()
+      .then((idToken) =>
+        reportBalanceChange({
+          data: { idToken, uid: u.uid, type: "Adjustment", amount: change, desc: `Balance set by admin ($${before.toFixed(2)} → $${amount.toFixed(2)})` },
+        }),
+      )
+      .catch(() => undefined);
     notify("Balance updated");
   }
 
