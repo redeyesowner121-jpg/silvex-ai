@@ -140,12 +140,22 @@ export function UsersAdmin() {
     const raw = prompt(`New wallet balance for ${u.email}`, String(u.wallet ?? 0));
     if (raw === null) return;
     const amount = Number(raw);
-    if (Number.isNaN(amount)) return notify("Enter a number");
+    if (Number.isNaN(amount) || amount < 0) return notify("Enter a valid amount");
+    const before = Number(u.wallet ?? 0);
+    const change = amount - before;
+    if (Math.abs(change) < 0.0001) return notify("Balance unchanged");
+    // Every change needs a confirm; big ones need the amount typed back.
+    if (!confirm(`Change ${u.email || u.uid} from $${before.toFixed(2)} to $${amount.toFixed(2)} (${change > 0 ? "+" : ""}${change.toFixed(2)})?`)) return;
+    if (Math.abs(change) >= 20) {
+      const typed = prompt(`Big change. Type ${amount} again to confirm.`);
+      if (typed === null || Number(typed) !== amount) return notify("Cancelled — amount didn't match");
+    }
     await set(ref(db, `users/${u.uid}/wallet`), amount);
     await push(ref(db, `users/${u.uid}/history`), {
       type: "Adjustment",
-      amount,
-      desc: "Balance set by admin",
+      amount: change,
+      desc: `Balance set by admin ${user?.email || ""} ($${before.toFixed(2)} → $${amount.toFixed(2)})`,
+      by: user?.email || "",
       date: new Date().toISOString(),
     });
     notify("Balance updated");
