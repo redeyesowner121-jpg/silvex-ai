@@ -1,11 +1,11 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { get, push, ref, runTransaction, set, update } from "firebase/database";
+import { get, ref } from "firebase/database";
 import { useStore } from "@/context/StoreContext";
 import { deliveryBlock, emailShell, itemsTable, sendMail } from "@/lib/mailer";
 import { notifyTelegramOrder } from "@/lib/telegram.functions";
-import { referralCap, referralRate, websiteUrl } from "@/lib/referral";
-import { buyFromSupplier } from "@/lib/supplier.functions";
+import { websiteUrl } from "@/lib/referral";
+import { checkoutCart } from "@/lib/wallet.functions";
 
 import { Emo } from "@/components/store/Emo";
 import { productImageSrc } from "@/lib/product-image";
@@ -83,154 +83,21 @@ function Cart() {
     if (wallet < total) return notify("Not enough wallet balance");
     setBusy(true);
     try {
-      if (phone !== (profile?.phone ?? "")) {
-        await update(ref(db, `users/${user.uid}`), { phone });
-      }
-
-      const orderId = "ORD" + Date.now();
-
-      // Deliver instantly where possible: auto = pull stock lines, repeat = same link.
-      const delivered: { title: string; content: string }[] = [];
-      const partialRefunds: { title: string; missing: number; amount: number }[] = [];
-      let allDelivered = true;
-      for (const item of cart) {
-        const snap = await get(ref(db, `products/${item.id}`));
-        const p = snap.val() || {};
-        if (p.delivery === "supplier") {
-          const r = await buyFromSupplier({
-            data: { productId: item.id, qty: item.qty, orderId },
-          }).catch(() => ({ ok: false as const, items: [] as string[] }));
-          if (r.ok && r.items.length) {
-            r.items.forEach((content) => delivered.push({ title: item.title, content }));
-            // Supplier sent fewer items than paid for: refund the missing units.
-            if (r.items.length < item.qty) {
-              const missing = item.qty - r.items.length;
-              const back = Math.round(missing * Number(item.price || 0) * 100) / 100;
-              if (back > 0) partialRefunds.push({ title: item.title, missing, amount: back });
-            }
-            void Promise.all(
-              r.items.map((content) =>
-                push(ref(db, `usedStock/${item.id}`), {
-                  content,
-                  orderId,
-                  email: user.email || "",
-                  date: new Date().toISOString(),
-                }),
-              ),
-            );
-            continue;
-          }
-          allDelivered = false;
-          continue;
-        }
-        if (p.delivery === "repeat" && p.link) {
-          for (let n = 0; n < item.qty; n++) delivered.push({ title: item.title, content: p.link });
-          continue;
-        }
-        if (p.delivery === "auto") {
-          let taken: string[] = [];
-          await runTransaction(ref(db, `products/${item.id}/stock`), (cur) => {
-            const list: string[] = Array.isArray(cur) ? cur.filter(Boolean) : [];
-            if (list.length < item.qty) {
-              taken = [];
-              return cur;
-            }
-            taken = list.slice(0, item.qty);
-            return list.slice(item.qty);
-          });
-          if (taken.length === item.qty) {
-            taken.forEach((content) => delivered.push({ title: item.title, content }));
-            // keep a record of used stock for the admin
-            await Promise.all(
-              taken.map((content) =>
-                push(ref(db, `usedStock/${item.id}`), {
-                  content,
-                  orderId,
-                  email: user.email || "",
-                  date: new Date().toISOString(),
-                }),
-              ),
-            );
-            continue;
-          }
-        }
-        allDelivered = false;
-      }
-
-
-
-      await set(ref(db, `users/${user.uid}/wallet`), wallet - total);
-      for (const pr of partialRefunds) {
-        await runTransaction(
-          ref(db, `users/${user.uid}/wallet`),
-          (w) => Math.round(((Number(w) || 0) + pr.amount) * 100) / 100,
-        );
-        await push(ref(db, `users/${user.uid}/history`), {
-          type: "Refund",
-          amount: pr.amount,
-          desc: `Partial delivery: ${pr.title} (${pr.missing} undelivered)`,
-          date: new Date().toISOString(),
-        });
-      }
-      await set(ref(db, `orders/${orderId}`), {
-        orderId,
-        uid: user.uid,
-        email: user.email,
-        items: cart,
-        subTotal: cartTotal,
-        couponDiscount: discount,
-        couponCode: discount > 0 ? coupon.trim().toUpperCase() : null,
-        total,
-        phone,
-        note: partialRefunds.length
-          ? `${note ? note + " · " : ""}Partial delivery: ${partialRefunds.map((pr) => `${pr.title} ${pr.missing} refunded $${pr.amount}`).join(", ")}`
-          : note,
-        delivered,
-        status: delivered.length && allDelivered ? "Completed" : "Pending",
-        date: new Date().toISOString(),
+      const res = await checkoutCart({
+        data: {
+          idToken: await user.getIdToken(),
+          items: cart.map((i) => ({ id: i.id, qty: i.qty })),
+          coupon: discount > 0 ? coupon.trim().toUpperCase() : undefined,
+          phone,
+          note,
+        },
       });
-      await push(ref(db, `users/${user.uid}/history`), {
-        type: "Purchase",
-        amount: total,
-        desc: `Order ${orderId.slice(-4)}`,
-        date: new Date().toISOString(),
-      });
-      // 2% referral commission for whoever invited this buyer (capped per friend)
-      try {
-        const refBy = profile?.refBy;
-        if (refBy && refBy !== user.uid) {
-          const earnedSnap = await get(ref(db, `users/${refBy}/refEarned/${user.uid}`));
-          const earned = Number(earnedSnap.val()) || 0;
-          const commission = Math.min(
-            Math.round(total * referralRate() * 100) / 100,
-            referralCap() - earned,
-          );
-          if (commission > 0) {
-            const wSnap = await get(ref(db, `users/${refBy}/wallet`));
-            await set(ref(db, `users/${refBy}/wallet`), (Number(wSnap.val()) || 0) + commission);
-            await set(ref(db, `users/${refBy}/refEarned/${user.uid}`), earned + commission);
-            await push(ref(db, `users/${refBy}/history`), {
-              type: "Referral commission",
-              amount: commission,
-              desc: "2% from a friend's purchase",
-              date: new Date().toISOString(),
-            });
-          }
-        }
-      } catch {
-        /* never block an order on commission */
-      }
-      if (discount > 0) {
-        await runTransaction(
-          ref(db, `users/${user.uid}/used_coupons/${coupon.trim().toUpperCase()}`),
-          (v) => (v || 0) + 1,
-        );
-      }
-      await Promise.all(
-        cart.map((i) => runTransaction(ref(db, `products/${i.id}/salesCount`), (c) => (c || 0) + 1)),
-      );
+      if (!res.ok) return notify(res.error);
+      const { orderId, delivered, total } = res;
+      const allDelivered = res.status === "Completed";
+      const partialRefunds = res.refunded > 0 ? [{ amount: res.refunded }] : [];
       if (user.email) {
-        const done = Boolean(delivered.length && allDelivered);
+        const done = allDelivered;
         sendMail(db, {
           to: user.email,
           subject: `${siteName} · Order ${orderId.slice(-6)} ${done ? "delivered" : "received"}`,
@@ -239,7 +106,7 @@ function Cart() {
             done ? `Your order is delivered ${emoji("web.party")}` : `Order received ${emoji("web.ok")}`,
             `<p>Hi${user.displayName ? " " + user.displayName : ""}, thanks for your purchase.</p>
              ${itemsTable(
-               cart.map((i) => ({ title: i.title, qty: i.qty, amount: i.price * i.qty })),
+               res.items.map((i) => ({ title: i.title, qty: i.qty, amount: i.price * i.qty })),
                total,
              )}
              ${done ? "<p><b>Your delivery details:</b></p>" + deliveryBlock(delivered) : "<p>Our team is preparing your order. You will get another email the moment it is delivered.</p>"}
@@ -250,16 +117,7 @@ function Cart() {
               ctaUrl: `${(config.siteUrl || websiteUrl()).replace(/\/+$/, "")}/orders`,
             },
           ),
-          ...(done
-            ? {
-                receipt: {
-                  orderId,
-                  siteName,
-                  total,
-                  items: delivered,
-                },
-              }
-            : {}),
+          ...(done ? { receipt: { orderId, siteName, total, items: delivered } } : {}),
         }).then((r) => {
           if (!r.ok) notify(`Email not sent: ${r.error}`);
         });
