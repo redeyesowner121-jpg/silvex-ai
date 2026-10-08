@@ -57,7 +57,7 @@ function prune(v: Json): Json {
     return a.some((x) => x !== undefined) ? a.map((x) => (x === undefined ? null : x)) : undefined;
   }
   if (typeof v === "object") {
-    const o: Record<string, Json> = {};
+    const o: any = {};
     for (const [k, x] of Object.entries(v)) {
       const p = prune(x);
       if (p !== undefined) o[k] = p;
@@ -119,7 +119,7 @@ function historyEntry(h: any): Json {
 }
 
 function rowToUser(row: any, history: any[], alerts: any[]): Json {
-  const u: Record<string, Json> = { ...(row.extra || {}) };
+  const u: any = { ...(row.extra || {}) };
   for (const [k, col] of Object.entries(USER_COLS)) u[k] = row[col];
   u.wallet = Number(row.wallet);
   u.refEarned = Number(row.ref_earned);
@@ -133,9 +133,9 @@ function rowToUser(row: any, history: any[], alerts: any[]): Json {
   return prune(u) ?? null;
 }
 
-function userToRow(uid: string, u: any): Record<string, Json> {
-  const row: Record<string, Json> = { legacy_uid: uid };
-  const extra: Record<string, Json> = {};
+function userToRow(uid: string, u: any): any {
+  const row: any = { legacy_uid: uid };
+  const extra: any = {};
   for (const [k, v] of Object.entries(u || {})) {
     if (k === "history" || k === "alerts" || k === "joined") continue;
     if (USER_COLS[k]) continue;
@@ -177,7 +177,7 @@ const NUMERIC = new Set(["price", "bot_price", "api_price", "supplier_price", "m
 const BOOLS = new Set(["hidden", "hide_web", "hide_bot", "sold_out", "locked"]);
 
 function rowToProduct(row: any, stock: string[]): Json {
-  const p: Record<string, Json> = { ...(row.extra || {}) };
+  const p: any = { ...(row.extra || {}) };
   for (const [k, col] of Object.entries(PRODUCT_COLS)) {
     let v = row[col];
     if (v !== null && NUMERIC.has(col)) v = Number(v);
@@ -189,9 +189,9 @@ function rowToProduct(row: any, stock: string[]): Json {
   return prune(p) ?? null;
 }
 
-function productToRow(id: string, p: any): Record<string, Json> {
-  const row: Record<string, Json> = { id };
-  const extra: Record<string, Json> = {};
+function productToRow(id: string, p: any): any {
+  const row: any = { id };
+  const extra: any = {};
   for (const [k, v] of Object.entries(p || {})) if (!PRODUCT_COLS[k] && k !== "stock") extra[k] = v;
   row.title = p.title || "";
   row.description = p.desc ?? null;
@@ -237,11 +237,11 @@ function rowToOrder(row: any): Json {
   }) ?? null;
 }
 
-async function orderToRow(id: string, o: any): Promise<Record<string, Json>> {
-  const extra: Record<string, Json> = {};
+async function orderToRow(id: string, o: any): Promise<any> {
+  const extra: any = {};
   for (const [k, v] of Object.entries(o || {})) if (!ORDER_COLS.includes(k)) extra[k] = v;
   const items = Array.isArray(o.items) ? o.items : o.items && typeof o.items === "object" ? Object.values(o.items) : [];
-  const row: Record<string, Json> = {
+  const row: any = {
     id, customer_id: o.uid ? await customerId(String(o.uid)) : null, email: o.email ?? null,
     status: o.status || "Pending", total: num(o.total), coupon: o.coupon ?? null,
     coupon_discount: num(o.couponDiscount), source: o.source ?? null, items, delivery: o.delivered ?? null,
@@ -327,7 +327,7 @@ async function writeNode(top: string, key: string, value: Json, expect?: { stamp
     return true;
   }
 
-  let row: Record<string, Json>;
+  let row: any;
   if (top === "users") row = userToRow(key, value);
   else if (top === "products") row = productToRow(key, value);
   else if (top === "orders") row = await orderToRow(key, value);
@@ -378,7 +378,7 @@ async function syncUserChildren(uid: string, u: any): Promise<void> {
   if (goneAlerts.length) await db.from("customer_alerts").delete().in("id", goneAlerts);
 }
 
-function historyRow(cid: string, key: string, e: any): Record<string, Json> {
+function historyRow(cid: string, key: string, e: any): any {
   const { type, amount, desc, date, by, ...extra } = e || {};
   return {
     legacy_id: key, customer_id: cid, type: type || "Adjustment", amount: num(amount), description: desc ?? null,
@@ -426,7 +426,7 @@ async function readTop(top: string): Promise<Json> {
     ]);
     const hBy = groupBy(hist, "customer_id");
     const aBy = groupBy(alerts, "customer_id");
-    const out: Record<string, Json> = {};
+    const out: any = {};
     for (const r of rows) {
       const uid = r.legacy_uid || r.id;
       customerIds.set(uid, r.id);
