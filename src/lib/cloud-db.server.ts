@@ -28,10 +28,11 @@ function split(path: string): string[] {
   return path.split("/").filter(Boolean);
 }
 
-function ms(v: unknown): number | undefined {
+/** Dates go back out as ISO strings, the way the store always saved them. */
+function ms(v: unknown): string | undefined {
   if (!v) return undefined;
   const t = Date.parse(String(v));
-  return Number.isFinite(t) ? t : undefined;
+  return Number.isFinite(t) ? new Date(t).toISOString() : undefined;
 }
 
 function toIso(v: unknown): string | null {
