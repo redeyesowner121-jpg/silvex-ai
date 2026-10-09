@@ -14,6 +14,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { StoreProvider } from "@/context/StoreContext";
 import { AppShell } from "@/components/store/AppShell";
+import { MaintenanceGate } from "@/components/store/MaintenanceGate";
 import { Toaster } from "@/components/ui/sonner";
 import { PushPrompt } from "@/components/store/PushPrompt";
 import { getStoreSnapshot } from "@/lib/store-snapshot.functions";
@@ -165,8 +166,10 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <StoreProvider>
         <AppShell>
-          {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-          <Outlet />
+          <MaintenanceGate>
+            {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+            <Outlet />
+          </MaintenanceGate>
         </AppShell>
         <PushPrompt />
         <Toaster position="top-center" />

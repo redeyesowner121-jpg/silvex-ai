@@ -535,6 +535,39 @@ export function SettingsAdmin({
       </div>
 
       <div className="space-y-2 rounded-2xl border border-border bg-card p-4">
+        <h2 className="text-sm font-black">Maintenance mode</h2>
+        <p className="text-xs text-muted-foreground">
+          Pauses the website and the bot for regular users. You and other admins keep full access.
+        </p>
+        <input
+          className={input}
+          placeholder="Message shown to visitors (optional)"
+          value={(config as { maintenanceText?: string }).maintenanceText || ""}
+          onChange={async (e) => {
+            if (!db) return;
+            await update(ref(db, "site_settings/config"), { maintenanceText: e.target.value });
+          }}
+        />
+        <button
+          onClick={async () => {
+            if (!db) return;
+            const on = (config as { maintenanceMode?: boolean }).maintenanceMode === true;
+            await update(ref(db, "site_settings/config"), { maintenanceMode: !on });
+            notify(on ? "Maintenance mode off" : "Maintenance mode ON — users paused");
+          }}
+          className={`w-full rounded-xl py-2.5 text-sm font-bold ${
+            (config as { maintenanceMode?: boolean }).maintenanceMode === true
+              ? "bg-emerald-500/10 text-emerald-600"
+              : "bg-muted text-muted-foreground"
+          }`}
+        >
+          {(config as { maintenanceMode?: boolean }).maintenanceMode === true
+            ? "Maintenance ON"
+            : "Maintenance OFF"}
+        </button>
+      </div>
+
+      <div className="space-y-2 rounded-2xl border border-border bg-card p-4">
         <h2 className="text-sm font-black">Bot announcements</h2>
         <p className="text-xs text-muted-foreground">
           Send a message with Buy now / Browse / Website buttons to every bot user when a product is

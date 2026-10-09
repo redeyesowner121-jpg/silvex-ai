@@ -100,6 +100,10 @@ export type SiteConfig = {
   supportLink?: string;
   /** Telegram support username or link (e.g. @silvexai). */
   supportTelegram?: string;
+  /** When true, the website and bot show a maintenance notice to non-admins. */
+  maintenanceMode?: boolean;
+  /** Custom maintenance notice text shown to visitors. */
+  maintenanceText?: string;
   minOrder?: number;
   lowStockAlert?: number;
   categories?: Category[];
