@@ -340,12 +340,18 @@ export async function adminSettings(chatId: number) {
   const c = await cfg();
   await say(
     chatId,
-    `⚙️ <b>Settings</b>\n\nSite name: ${c.siteName || "-"}\nSupport: ${c.supportLink || "-"}\nDeposit address: <code>${c.depositAddress || "-"}</code>`,
+    `⚙️ <b>Settings</b>\n\nSite name: ${c.siteName || "-"}\nSupport: ${c.supportLink || "-"}\nDeposit address: <code>${c.depositAddress || "-"}</code>\nMaintenance mode: ${c.maintenanceMode ? "🛠 ON (users paused)" : "off"}`,
     {
       inline_keyboard: [
         [{ text: "✏️ Site name", callback_data: "a:s:siteName" }],
         [{ text: "✏️ Support link", callback_data: "a:s:supportLink" }],
         [{ text: "✏️ Deposit address", callback_data: "a:s:depositAddress" }],
+        [
+          {
+            text: c.maintenanceMode ? "✅ Turn maintenance off" : "🛠 Turn maintenance on",
+            callback_data: "a:maint",
+          },
+        ],
         [{ text: "⬅️ Back to Admin Panel", callback_data: "a:home" }],
       ],
     },

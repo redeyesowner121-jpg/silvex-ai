@@ -132,6 +132,17 @@ export async function handleCallback(chatId: number, data: string) {
       });
     }
     if (key === "set") return adminSettings(chatId);
+    if (key === "maint") {
+      const c = await cfg();
+      await saveConfig({ maintenanceMode: !c.maintenanceMode });
+      await say(
+        chatId,
+        c.maintenanceMode
+          ? "✅ Maintenance mode is off — the shop is open for everyone again."
+          : "🛠 Maintenance mode is on — only owners can use the bot now.",
+      );
+      return adminSettings(chatId);
+    }
     if (key === "em") {
       if (arg === "list") return emojiList(chatId);
       if (arg === "tog") return emojiToggle(chatId);
