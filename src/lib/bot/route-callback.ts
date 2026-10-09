@@ -3,7 +3,7 @@
 import { dbGet, dbPatch, dbPut } from "@/lib/telegram.server";
 import { isPermanentOwner } from "@/lib/owners";
 import { resetAllEmojis, syncEmojiImages } from "@/lib/emoji.server";
-import { adminBack, askEmail, cfg, invalidateProducts, isBotAdmin, say, saveConfig, setState, startJoinPrompt, welcome } from "@/lib/bot/core";
+import { adminBack, askEmail, cfg, invalidateProducts, isBotAdmin, maintenanceGate, say, saveConfig, setState, startJoinPrompt, welcome } from "@/lib/bot/core";
 import { askPayMethod, askProductSearch, askQty, buy, checkCardPayment, payProductByCard, confirmWalletPay, sendApiDocsFile, sendApiKey, sendOrders, sendProduct, sendProducts, sendProfile, sendRefer, sendReviews, sendSupport, sendWallet, startCardDeposit, startDeposit, startWithdraw, walletHistory } from "@/lib/bot/shop";
 import { adminAskDelivery, adminCancelOrder, adminDecideRequest, adminHome, adminOrder, adminOrders, adminProduct, adminProducts, adminRequests, adminSettings, adminStats, adminUser, adminUsers, broadcast, broadcastMenu, broadcastTemplate, broadcastTemplates } from "@/lib/bot/admin";
 import { clearProductEmoji, emojiGroup, emojiHome, emojiList, emojiProducts, emojiSlotPick, emojiSlotReset, emojiToggle } from "@/lib/bot/emoji-ui";
@@ -132,6 +132,17 @@ export async function handleCallback(chatId: number, data: string) {
       });
     }
     if (key === "set") return adminSettings(chatId);
+    if (key === "maint") {
+      const c = await cfg();
+      await saveConfig({ maintenanceMode: !c.maintenanceMode });
+      await say(
+        chatId,
+        c.maintenanceMode
+          ? "✅ Maintenance mode is off — the shop is open for everyone again."
+          : "🛠 Maintenance mode is on — only owners can use the bot now.",
+      );
+      return adminSettings(chatId);
+    }
     if (key === "em") {
       if (arg === "list") return emojiList(chatId);
       if (arg === "tog") return emojiToggle(chatId);
@@ -185,6 +196,8 @@ export async function handleCallback(chatId: number, data: string) {
     }
     return;
   }
+
+  if (await maintenanceGate(chatId)) return;
 
   if (data === "products") return sendProducts(chatId);
   if (data === "psearch") return askProductSearch(chatId);

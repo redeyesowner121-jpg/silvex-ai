@@ -2,7 +2,7 @@
 import { defaultDepositAddress, verifyDepositAnyChain } from "@/lib/deposit.server";
 import { dbGet, dbPatch, dbPush, dbPut, money, notifyGroup, notifyOwners, tgTag } from "@/lib/telegram.server";
 
-import { adminBack, askEmail, backHome, cfg, ensureUser, getState, invalidateProducts, isBotAdmin, say, saveConfig, saveEmail, setState, startJoinPrompt, welcome } from "@/lib/bot/core";
+import { adminBack, askEmail, backHome, cfg, ensureUser, getState, invalidateProducts, isBotAdmin, maintenanceGate, say, saveConfig, saveEmail, setState, startJoinPrompt, welcome } from "@/lib/bot/core";
 import {
   applyStartReferral,
   askQty,
@@ -40,6 +40,7 @@ export async function handleText(
     if (await handleOwnerReply(chatId, replyToMessageId, t)) return;
   }
 
+  if (await maintenanceGate(chatId)) return;
 
   if (t === "/start" || t === "/menu" || t.startsWith("/start ")) {
     await setState(chatId, null);
