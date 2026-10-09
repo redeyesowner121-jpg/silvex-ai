@@ -165,8 +165,10 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <StoreProvider>
         <AppShell>
-          {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-          <Outlet />
+          <MaintenanceGate>
+            {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+            <Outlet />
+          </MaintenanceGate>
         </AppShell>
         <PushPrompt />
         <Toaster position="top-center" />
