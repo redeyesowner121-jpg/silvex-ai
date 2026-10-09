@@ -89,6 +89,21 @@ export async function saveConfig(patch: Record<string, unknown>) {
   cfgLoadedAt = 0;
 }
 
+/**
+ * Maintenance mode: when on, only bot admins can use the bot; everyone else
+ * gets a short "back soon" note. Returns true when the message was handled.
+ */
+export async function maintenanceGate(chatId: number): Promise<boolean> {
+  const c = await cfg();
+  if (!c.maintenanceMode) return false;
+  if (await isBotAdmin(chatId)) return false;
+  const text =
+    c.maintenanceText ||
+    "🛠 We are doing a quick maintenance. The shop will be back very soon — please try again in a little while.";
+  await say(chatId, text).catch(() => undefined);
+  return true;
+}
+
 export async function siteName(): Promise<string> {
   return (await cfg()).siteName || "Silvex AI";
 }
