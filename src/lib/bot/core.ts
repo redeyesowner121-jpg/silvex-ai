@@ -41,6 +41,8 @@ export type Cfg = {
   telegramOwners?: string | number[];
   notifyGroup?: string | number;
   messageEffect?: string;
+  maintenanceMode?: boolean;
+  maintenanceText?: string;
 };
 
 export const CFG = "site_settings/config";
